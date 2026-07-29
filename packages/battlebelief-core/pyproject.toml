@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "battlebelief-core"
+version = "0.1.0"
+description = "Pure core contracts and application logic for BattleBelief"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "Apache-2.0"
+authors = [{ name = "BattleBelief contributors" }]
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/battlebelief_core"]

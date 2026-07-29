@@ -1,0 +1,37 @@
+name: Bug
+description: Report a reproducible correctness or runtime defect
+title: "[Bug] "
+labels: ["type: bug", "priority: normal"]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: State what happened without including credentials or private replay data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: BattleBelief commit or version
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [protocol, belief, engine, search, training, evaluation, teams, packaging]
+    validations:
+      required: true

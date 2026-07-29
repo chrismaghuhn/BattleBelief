@@ -1,0 +1,48 @@
+name: Reproducibility failure
+description: Report a deterministic benchmark or manifest mismatch
+title: "[Reproducibility] "
+labels: ["type: bug", "area: reproducibility", "priority: high"]
+body:
+  - type: dropdown
+    id: determinism_class
+    attributes:
+      label: Expected determinism class
+      options: [bit-identical, action-identical, semantic]
+    validations:
+      required: true
+  - type: input
+    id: expected_hash
+    attributes:
+      label: Expected manifest or Decision Record hash
+    validations:
+      required: true
+  - type: input
+    id: actual_hash
+    attributes:
+      label: Actual manifest or Decision Record hash
+    validations:
+      required: true
+  - type: textarea
+    id: seeds
+    attributes:
+      label: Search, world, policy, and simulator seeds
+    validations:
+      required: true
+  - type: textarea
+    id: platform
+    attributes:
+      label: Platform, CPU, Python, dependency, and artifact versions
+    validations:
+      required: true
+  - type: input
+    id: workers
+    attributes:
+      label: Worker count and parallel mode
+    validations:
+      required: true
+  - type: textarea
+    id: first_divergence
+    attributes:
+      label: First divergent Decision Record
+    validations:
+      required: true

@@ -1,0 +1,36 @@
+name: Engine divergence
+description: Record a classified Showdown versus surrogate-engine difference
+title: "[Engine divergence] "
+labels: ["type: bug", "area: engine", "priority: high"]
+body:
+  - type: input
+    id: showdown
+    attributes:
+      label: Pokémon Showdown commit
+    validations:
+      required: true
+  - type: input
+    id: surrogate
+    attributes:
+      label: Surrogate engine artifact digest
+    validations:
+      required: true
+  - type: textarea
+    id: state
+    attributes:
+      label: Minimal public fixture or state digest
+    validations:
+      required: true
+  - type: textarea
+    id: difference
+    attributes:
+      label: Observed difference
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Proposed classification
+      options: [unclassified, bounded_approximation, unsupported]
+    validations:
+      required: true
