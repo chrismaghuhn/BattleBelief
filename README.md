@@ -3,7 +3,7 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** M0 repository foundation in progress. Battle play, search,
+> **Status:** M0 repository foundation complete. Battle play, search,
 > training, and strength claims are not implemented.
 
 BattleBelief targets current Smogon Gen 9 OU first. Teams are fixed before a
