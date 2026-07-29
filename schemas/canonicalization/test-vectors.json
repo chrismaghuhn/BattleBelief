@@ -1,0 +1,8 @@
+[
+  {
+    "name": "object-key-order",
+    "value": {"b": 1, "a": 2},
+    "canonical_utf8": "{\"a\":2,\"b\":1}",
+    "sha256": "d3626ac30a87e6f7a6428233b3c68299976865fa5508e4267c5415c76af7a772"
+  }
+]
