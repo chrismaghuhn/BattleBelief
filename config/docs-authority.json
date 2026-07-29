@@ -1,0 +1,29 @@
+{
+  "definitions": [
+    {
+      "id": "m5-planning-estimate",
+      "owner": "docs/evaluation/m5-strength-qualification.md",
+      "parts": ["planning point estimate ", ">= 72%"]
+    },
+    {
+      "id": "m5-cluster-lower-bound",
+      "owner": "docs/evaluation/m5-strength-qualification.md",
+      "parts": ["one-sided 95% cluster-CI ", "lower bound >= 70%"]
+    },
+    {
+      "id": "m5-runtime-p95",
+      "owner": "docs/evaluation/m5-strength-qualification.md",
+      "parts": ["p95-End-to-End-Entscheidungszeit ", "höchstens zwei Sekunden"]
+    },
+    {
+      "id": "m5-fallback-rate",
+      "owner": "docs/evaluation/m5-strength-qualification.md",
+      "parts": ["Fallback-Entscheidungsrate ", "unter 0,1 Prozent"]
+    },
+    {
+      "id": "package-edge-runtime-core",
+      "owner": "docs/architecture/code-boundaries.md",
+      "parts": ["battlebelief-runtime ", "──────► battlebelief-core"]
+    }
+  ]
+}
