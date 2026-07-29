@@ -1205,8 +1205,8 @@ Bindende Reihenfolge:
 6. jeder in der Task-7-Wire-Zuordnung deklarierte Typ ist `BATTLE_EVENT`;
 7. `title`, `users`, `join`, `j`, `J`, `leave`, `l`, `L`, `name`, `n`, `N`,
    `chat`, `c`, `c:`, `:`, `html`, `uhtml`, `uhtmlchange` und `notify` sind
-   `ROOM_CONTROL_OR_CHAT`; die dokumentierten Raumhinweise `battle` und `b`
-   gehören ebenfalls in diese Kategorie;
+   `ROOM_CONTROL_OR_CHAT`; die dokumentierten Raumhinweise `battle`, `b` und
+   `B` gehören ebenfalls in diese Kategorie;
 8. alles andere ist `UNKNOWN` und wird später zu
    `UnknownProtocolEvent(code="unknown_protocol_event")`.
 
@@ -1313,6 +1313,8 @@ Unit-Tests prüfen mindestens:
 
 - die Sequenz `title`, `J`, Chat mit eingebettetem `|request|`, `move`,
   echtem `request`, `L` bleibt korrekt klassifiziert und geordnet;
+- `|b|ROOM|USER1|USER2` und `|B|ROOM|USER1|USER2` sind
+  `ROOM_CONTROL_OR_CHAT`, während `|Bx|ROOM|USER1|USER2` `UNKNOWN` bleibt;
 - Room-Control/Chat erreicht weder BattleParser noch RequestReader;
 - unbekannter room-scoped Typ wird `UNKNOWN`, nicht kosmetisch ignoriert;
 - malformed HP;
