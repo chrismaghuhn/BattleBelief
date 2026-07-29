@@ -12,16 +12,11 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
-
 FRONTMATTER = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 FENCED_CODE = re.compile(r"(?ms)^(`{3,})[^\n]*\n.*?^\1[ \t]*$")
-LOCAL_PATH = re.compile(
-    r"(?i)(?<![a-z])[a-z]:[\\/]|file://|%3a(?:%2f|/)"
-)
-OLD_NAMES = re.compile(
-    r"(?i)urn:pokemonbot|pokemonbot[-_](?:core|runtime|lab)"
-)
+LOCAL_PATH = re.compile(r"(?i)(?<![a-z])[a-z]:[\\/]|file://|%3a(?:%2f|/)")
+OLD_NAMES = re.compile(r"(?i)urn:pokemonbot|pokemonbot[-_](?:core|runtime|lab)")
 
 
 def jsonable(value: Any) -> Any:
@@ -52,9 +47,7 @@ def collect_doc_errors(root: Path) -> list[str]:
     errors: list[str] = []
     docs_root = root / "docs"
     schema = json.loads(
-        (root / "schemas/documents/frontmatter.schema.json").read_text(
-            encoding="utf-8"
-        )
+        (root / "schemas/documents/frontmatter.schema.json").read_text(encoding="utf-8")
     )
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
@@ -106,11 +99,7 @@ def collect_doc_errors(root: Path) -> list[str]:
         if successor is not None and successor not in known_ids:
             errors.append(f"{document_id}: unresolved superseded_by {successor}")
         marker = f"[`{document_id}`]"
-        if (
-            frontmatter["status"] == "accepted"
-            and frontmatter["normative"]
-            and marker not in index
-        ):
+        if frontmatter["status"] == "accepted" and frontmatter["normative"] and marker not in index:
             errors.append(f"{document_id}: accepted normative document not indexed")
         if frontmatter["status"] in {"superseded", "archived"} and marker in index:
             errors.append(f"{document_id}: noncurrent document listed as current")
@@ -121,20 +110,14 @@ def collect_doc_errors(root: Path) -> list[str]:
         ):
             errors.append(f"{document_id}: old namespace in current normative document")
 
-    authority = json.loads(
-        (root / "config/docs-authority.json").read_text(encoding="utf-8")
-    )
+    authority = json.loads((root / "config/docs-authority.json").read_text(encoding="utf-8"))
     for definition in authority["definitions"]:
         literal = "".join(definition["parts"])
         hits = [
-            path.relative_to(root).as_posix()
-            for path, text in texts.items()
-            if literal in text
+            path.relative_to(root).as_posix() for path, text in texts.items() if literal in text
         ]
         if hits != [definition["owner"]]:
-            errors.append(
-                f"{definition['id']}: expected {definition['owner']}, got {hits}"
-            )
+            errors.append(f"{definition['id']}: expected {definition['owner']}, got {hits}")
 
     metadata_path = docs_root / "archive/2026-07-29-design-freeze.metadata.yaml"
     metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
@@ -153,16 +136,12 @@ def collect_doc_errors(root: Path) -> list[str]:
         target = root / row["target_document"]
         if not target.exists():
             errors.append(f"{row['old_section']}: missing migration target")
-        elif f"# {row['target_heading']}" not in target.read_text(
-            encoding="utf-8"
-        ).splitlines():
+        elif f"# {row['target_heading']}" not in target.read_text(encoding="utf-8").splitlines():
             errors.append(f"{row['old_section']}: missing target H1")
         if row["normative_owner"] not in known_ids:
             errors.append(f"{row['old_section']}: missing migration owner")
 
-    expected_coverage = list(
-        range(1, len(snapshot.read_text(encoding="utf-8").splitlines()) + 1)
-    )
+    expected_coverage = list(range(1, len(snapshot.read_text(encoding="utf-8").splitlines()) + 1))
     if coverage != expected_coverage:
         errors.append("migration matrix has gaps, overlaps, or wrong order")
     return sorted(errors)

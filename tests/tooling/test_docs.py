@@ -2,7 +2,6 @@ from pathlib import Path
 
 from tools.check_docs import collect_doc_errors
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

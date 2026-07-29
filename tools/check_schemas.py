@@ -10,9 +10,9 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
-from tools.canonicalize_manifest import canonicalize, manifest_digest
+from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E402
 
 
 def collect_schema_errors(root: Path) -> list[str]:
@@ -28,9 +28,7 @@ def collect_schema_errors(root: Path) -> list[str]:
             errors.append(f"{path.relative_to(root)}: invalid schema: {error}")
             continue
         schema_id = schema.get("$id")
-        if not isinstance(schema_id, str) or not schema_id.startswith(
-            "urn:battlebelief:"
-        ):
+        if not isinstance(schema_id, str) or not schema_id.startswith("urn:battlebelief:"):
             errors.append(f"{path.relative_to(root)}: invalid project schema ID")
         elif schema_id in ids:
             errors.append(
@@ -55,9 +53,7 @@ def collect_schema_errors(root: Path) -> list[str]:
         )
 
     vectors: list[dict[str, Any]] = json.loads(
-        (schema_root / "canonicalization/test-vectors.json").read_text(
-            encoding="utf-8"
-        )
+        (schema_root / "canonicalization/test-vectors.json").read_text(encoding="utf-8")
     )
     for vector in vectors:
         actual_bytes = canonicalize(vector["value"])

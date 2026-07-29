@@ -7,7 +7,6 @@ import tempfile
 import venv
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "0.1.0"
 PACKAGE_DIRS = (
@@ -79,8 +78,7 @@ def main() -> int:
                 [
                     str(environment_python(core_env)),
                     "-c",
-                    "import battlebelief_core; "
-                    "assert battlebelief_core.__version__ == '0.1.0'",
+                    "import battlebelief_core; assert battlebelief_core.__version__ == '0.1.0'",
                 ]
             ],
         )

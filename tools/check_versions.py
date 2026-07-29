@@ -4,7 +4,6 @@ import sys
 import tomllib
 from pathlib import Path
 
-
 PACKAGES = {
     "battlebelief-core": Path("packages/battlebelief-core/pyproject.toml"),
     "battlebelief-runtime": Path("packages/battlebelief-runtime/pyproject.toml"),

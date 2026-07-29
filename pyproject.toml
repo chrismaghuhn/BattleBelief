@@ -27,13 +27,14 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = ["-ra", "--strict-config", "--strict-markers"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--import-mode=importlib"]
 testpaths = ["tests", "packages"]
 pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+exclude = ["docs"]
 src = [
   "packages/battlebelief-core/src",
   "packages/battlebelief-runtime/src",
@@ -54,3 +55,4 @@ mypy_path = [
   "packages/battlebelief-lab/src",
 ]
 files = ["packages"]
+exclude = "packages/.*/tests/"

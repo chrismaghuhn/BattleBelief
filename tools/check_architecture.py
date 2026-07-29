@@ -5,7 +5,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
 CORE_FORBIDDEN = frozenset(
     {
         "battlebelief_runtime",
@@ -19,9 +18,7 @@ CORE_FORBIDDEN = frozenset(
         "poke_engine",
     }
 )
-RUNTIME_FORBIDDEN = frozenset(
-    {"battlebelief_lab", "torch", "duckdb", "pyarrow"}
-)
+RUNTIME_FORBIDDEN = frozenset({"battlebelief_lab", "torch", "duckdb", "pyarrow"})
 LAB_RUNTIME_ALLOWED = (
     "battlebelief_runtime.adapters",
     "battlebelief_runtime.testing",
@@ -67,14 +64,13 @@ def scan_tree(root: Path, rule: ImportRule) -> list[str]:
     for path in sorted(root.rglob("*.py")):
         for line, module in imported_modules(path):
             if any(has_root(module, forbidden) for forbidden in rule.forbidden_roots):
-                errors.append(
-                    f"{path.relative_to(root)}:{line}: forbidden import {module}"
-                )
-            if has_root(module, "battlebelief_runtime") and rule.runtime_allowlist:
-                if not any(has_root(module, allowed) for allowed in rule.runtime_allowlist):
-                    errors.append(
-                        f"{path.relative_to(root)}:{line}: forbidden import {module}"
-                    )
+                errors.append(f"{path.relative_to(root)}:{line}: forbidden import {module}")
+            if (
+                has_root(module, "battlebelief_runtime")
+                and rule.runtime_allowlist
+                and not any(has_root(module, allowed) for allowed in rule.runtime_allowlist)
+            ):
+                errors.append(f"{path.relative_to(root)}:{line}: forbidden import {module}")
     return sorted(set(errors))
 
 
