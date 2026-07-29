@@ -4,7 +4,7 @@ title: GitHub, CI und Security
 document_type: operation
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - repository
   - github
@@ -139,14 +139,36 @@ Commit. Tag-Schutz ersetzt keine Digests oder Attestations.
 Minimale Labelachsen:
 
 ```text
-type: bug | feature | research | documentation
-area: protocol | belief | engine | search | training | evaluation | teams
+type: bug | feature | research | debt | decision | documentation | dependencies
+area: protocol | belief | engine | search | training | evaluation | teams |
+      reproducibility
 priority: blocking | high | normal
-status: needs-decision | blocked-external
+status: needs-decision | ready | in-progress | blocked | done
+evidence: not-collected | collected | supports-hypothesis |
+          does-not-support-hypothesis | inconclusive
 good-first-issue
 ```
 
-Issueformulare: Bug, Engine-Divergenz, Forschungshypothese und Transfer-Audit.
+Issueformulare:
+
+- Bug;
+- Feature;
+- Technical Debt;
+- Engine-Divergenz;
+- Forschungshypothese;
+- Decision-/ADR-Vorschlag;
+- Reproduzierbarkeitsfehler;
+- Transfer-Audit.
+
+`status` beschreibt ausschließlich den Arbeitsablauf. `evidence` beschreibt
+den Forschungsbefund. Eine nicht unterstützte Hypothese kann deshalb den
+Status `done` besitzen.
+
+Ein Research-Issue prüft eine falsifizierbare Hypothese. Ein
+Decision-/ADR-Vorschlag ändert nach vorhandener Evidenz einen schwer
+reversiblen Vertrag. Ein Reproduzierbarkeitsfehler zeichnet mindestens
+erwarteten und tatsächlichen Manifesthash, Seeds, Plattform, Workerzahl,
+Determinismusklasse und den ersten divergierenden Decision Record auf.
 
 Von Beginn an: `README.md`, `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
 `CITATION.cff` und die verlinkte Architektur-, Evaluations-,

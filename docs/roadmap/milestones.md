@@ -4,7 +4,7 @@ title: Projektroadmap und Meilensteine
 document_type: roadmap
 status: accepted
 normative: false
-version: 4
+version: 5
 applies_to:
   - project
   - gen9ou
@@ -90,10 +90,14 @@ Lieferumfang:
 - getrennte Entwicklungs- und Evaluationsartefakte;
 - versiegelbare Hero-Teams und Gegnerpolicy-Mischung.
 
-Gate: Die vorregistrierten Belief- und Decision-Metriken aus
-[`evaluation-metrics`](../evaluation/metrics.md) schlagen die festgelegten
-Development-Baselines. Engine-Bias, Search-Stabilität und Clusterstruktur sind
-messbar. Das ist keine Releaseevidenz.
+Gate: Hidden-Set-NLL verbessert sich auf evidenzgesicherten
+Ground-Truth-Fällen; Reveal-Likelihood verbessert sich separat auf zensierten
+Replays; Kalibrierung, Coverage und Open-World-Verhalten bestehen ihre
+vorregistrierten Guardrails. Die normativen Definitionen und
+Entscheidungsregeln stehen ausschließlich in
+[`evaluation-metrics`](../evaluation/metrics.md). Engine-Bias,
+Search-Stabilität und Clusterstruktur sind messbar. Das ist keine
+Releaseevidenz.
 
 Großes GPU-Training beginnt erst nach diesem Gate.
 

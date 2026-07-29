@@ -4,7 +4,7 @@ title: Code- und Paketgrenzen
 document_type: architecture
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - repository
 effective_from: 2026-07-29
@@ -126,6 +126,18 @@ Canonical BattleEvent       → Core
 ObservedState reducer       → Core
 Showdown command encoding   → Runtime
 ```
+
+## Format-Scope
+
+Core-Verträge vermeiden unbegründete OU-Sonderfälle, werden aber
+ausschließlich für den aktuellen Gen-9-OU-Scope implementiert und geprüft.
+M0 und M1 führen weder ein Generationen-/Tier-Plugin-System noch eine
+behauptete Universalabstraktion ein.
+
+Eine Generalisierung erfolgt erst anhand eines zweiten realen
+Singles-Formats. Dieses benötigt eigene Ruleset-, Zielpopulations-,
+Capability- und Strength-Artefakte. Doubles und VGC bleiben außerhalb des
+Scopes.
 
 ## Ports
 
