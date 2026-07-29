@@ -4,7 +4,7 @@ title: BattleBelief M0 Repository Foundation Implementation Plan
 document_type: roadmap
 status: proposed
 normative: false
-version: 1
+version: 2
 applies_to:
   - m0
   - repository
@@ -58,8 +58,12 @@ M3  replay and dataset ingestion
 ├─ .github/
 │  ├─ ISSUE_TEMPLATE/
 │  │  ├─ bug.yml
+│  │  ├─ decision-proposal.yml
 │  │  ├─ engine-divergence.yml
+│  │  ├─ feature.yml
 │  │  ├─ research-hypothesis.yml
+│  │  ├─ reproducibility-failure.yml
+│  │  ├─ technical-debt.yml
 │  │  └─ transfer-audit.yml
 │  ├─ workflows/pr.yml
 │  ├─ dependabot.yml
@@ -120,12 +124,26 @@ M3  replay and dataset ingestion
 Existing `docs/` and `schemas/` files remain authoritative inputs. The
 bit-identical design freeze is never edited.
 
-### Task 1: Bootstrap the repository and public metadata
+Current physical state at plan revision 2:
+
+```text
+implemented:
+  public Git repository and tracked main branch
+  origin https://github.com/chrismaghuhn/BattleBelief.git
+  baseline commit 0347ad0b27247e5c157642d5e67574014109e48b
+  planning documents, schemas, .gitignore, and .gitattributes
+
+not implemented:
+  package skeletons, public project metadata, CI, rulesets, security settings,
+  issue forms, and every battle/research capability
+```
+
+### Task 1: Complete public metadata on the existing repository
 
 **Files:**
 
-- Create: `.gitignore`
-- Create: `.gitattributes`
+- Verify: `.gitignore`
+- Verify: `.gitattributes`
 - Create: `.editorconfig`
 - Create: `README.md`
 - Create: `CONTRIBUTING.md`
@@ -135,36 +153,42 @@ bit-identical design freeze is never edited.
 - Include unchanged: `docs/**`
 - Include unchanged: `schemas/**`
 
-- [ ] **Step 1: Verify that the remote has no history before initializing**
+- [ ] **Step 1: Verify the published planning baseline**
 
 Run:
 
 ```powershell
-git ls-remote --symref https://github.com/chrismaghuhn/BattleBelief.git HEAD
-git ls-remote --heads --tags https://github.com/chrismaghuhn/BattleBelief.git
+git status -sb
+git fetch origin main
+git rev-parse HEAD
+git rev-parse origin/main
+gh api repos/chrismaghuhn/BattleBelief/commits/main --jq '.sha'
+git show HEAD:docs/superpowers/plans/2026-07-29-battlebelief-m0-foundation.md |
+  Select-String '^version: 2$'
 ```
 
-Expected: no branch or tag refs. If any ref exists, stop this task and reconcile
-the remote history without force-pushing or deleting either copy.
+Expected: the worktree is clean, all three hashes are identical, and the
+published plan is revision 2. If they differ, stop and reconcile without
+force-pushing or deleting either copy.
 
-- [ ] **Step 2: Initialize the local repository and remote**
+- [ ] **Step 2: Create the M0 feature branch**
 
 Run:
 
 ```powershell
-git init -b main
-git remote add origin https://github.com/chrismaghuhn/BattleBelief.git
-git remote -v
+git switch -c feat/m0-foundation
+git status -sb
 ```
 
-Expected: `origin` fetch and push URLs both point to the BattleBelief
-repository.
+Expected: the current branch is `feat/m0-foundation` and it starts exactly at
+the published planning baseline.
 
 - [ ] **Step 3: Add the repository hygiene files**
 
 `.gitignore`:
 
 ```gitignore
+.claude/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -194,12 +218,15 @@ Thumbs.db
 
 ```gitattributes
 * text=auto
+.gitattributes text eol=lf
+.gitignore text eol=lf
 *.py text eol=lf
 *.md text eol=lf
 *.json text eol=lf
 *.toml text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+*.csv text eol=lf
 *.ps1 text eol=crlf
 ```
 
@@ -342,20 +369,17 @@ rg -n "(Users[\\\\/]|file://|BEGIN .*PRIVATE KEY|password\\s*=|token\\s*=)" . `
 
 Expected: no matches.
 
-- [ ] **Step 6: Create and push the bootstrap commit**
+- [ ] **Step 6: Commit the public metadata on the feature branch**
 
 Run:
 
 ```powershell
-git add .editorconfig .gitattributes .gitignore README.md CONTRIBUTING.md SECURITY.md CITATION.cff LICENSE docs schemas
-git commit -m "chore: bootstrap BattleBelief planning repository"
-git push -u origin main
-git switch -c feat/m0-foundation
+git add .editorconfig .gitattributes .gitignore README.md CONTRIBUTING.md SECURITY.md CITATION.cff LICENSE
+git commit -m "chore: add BattleBelief project metadata"
 ```
 
-Expected: the approved planning state exists on remote `main`, and all
-remaining M0 work occurs on `feat/m0-foundation`. This initial push is the only
-bootstrap exception before branch protection exists.
+Expected: only public metadata and repository-hygiene changes are committed on
+`feat/m0-foundation`. No additional direct push to `main` occurs.
 
 ### Task 2: Create the uv workspace and package metadata
 
@@ -1898,8 +1922,12 @@ git commit -m "test: validate schemas and canonical hashes"
 
 - Create: `.github/pull_request_template.md`
 - Create: `.github/ISSUE_TEMPLATE/bug.yml`
+- Create: `.github/ISSUE_TEMPLATE/feature.yml`
+- Create: `.github/ISSUE_TEMPLATE/technical-debt.yml`
 - Create: `.github/ISSUE_TEMPLATE/engine-divergence.yml`
 - Create: `.github/ISSUE_TEMPLATE/research-hypothesis.yml`
+- Create: `.github/ISSUE_TEMPLATE/decision-proposal.yml`
+- Create: `.github/ISSUE_TEMPLATE/reproducibility-failure.yml`
 - Create: `.github/ISSUE_TEMPLATE/transfer-audit.yml`
 - Create: `.github/ISSUE_TEMPLATE/config.yml`
 
@@ -1975,7 +2003,79 @@ body:
       required: true
 ```
 
-- [ ] **Step 3: Add the engine-divergence form**
+- [ ] **Step 3: Add the feature and technical-debt forms**
+
+`.github/ISSUE_TEMPLATE/feature.yml`:
+
+```yaml
+name: Feature
+description: Propose behavior after separating it from unresolved research
+title: "[Feature] "
+labels: ["type: feature", "status: needs-decision"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User or research outcome
+      description: Describe the externally observable result, not an assumed implementation.
+    validations:
+      required: true
+  - type: input
+    id: authority
+    attributes:
+      label: Contract, ADR, or Decision issue
+      description: Link the accepted authority, or state that a decision is still required.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance tests
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+    validations:
+      required: true
+```
+
+`.github/ISSUE_TEMPLATE/technical-debt.yml`:
+
+```yaml
+name: Technical debt
+description: Record a concrete maintainability or correctness liability
+title: "[Debt] "
+labels: ["type: debt", "priority: normal"]
+body:
+  - type: textarea
+    id: debt
+    attributes:
+      label: Concrete debt
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Current risk and evidence
+    validations:
+      required: true
+  - type: textarea
+    id: exit
+    attributes:
+      label: Measurable exit criterion
+    validations:
+      required: true
+  - type: textarea
+    id: deferral
+    attributes:
+      label: Why this is not fixed now
+    validations:
+      required: true
+```
+
+- [ ] **Step 4: Add the engine-divergence form**
 
 `.github/ISSUE_TEMPLATE/engine-divergence.yml`:
 
@@ -2018,7 +2118,7 @@ body:
       required: true
 ```
 
-- [ ] **Step 4: Add the research and transfer forms**
+- [ ] **Step 5: Add the research and transfer forms**
 
 `.github/ISSUE_TEMPLATE/research-hypothesis.yml`:
 
@@ -2026,7 +2126,7 @@ body:
 name: Research hypothesis
 description: Propose a falsifiable experiment without changing a sealed holdout
 title: "[Research] "
-labels: ["type: research", "status: needs-decision"]
+labels: ["type: research", "status: needs-decision", "evidence: not-collected"]
 body:
   - type: textarea
     id: hypothesis
@@ -2096,6 +2196,104 @@ body:
       required: true
 ```
 
+- [ ] **Step 6: Add the decision and reproducibility forms**
+
+`.github/ISSUE_TEMPLATE/decision-proposal.yml`:
+
+```yaml
+name: Decision / ADR proposal
+description: Propose a hard-to-reverse contract change based on explicit evidence
+title: "[Decision] "
+labels: ["type: decision", "status: needs-decision"]
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: Contract change requested
+      description: Name every normative document, schema, package boundary, or claim affected.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and linked research issues
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and what each gives up
+    validations:
+      required: true
+  - type: textarea
+    id: reversibility
+    attributes:
+      label: Reversibility and migration impact
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Exact decision requested
+    validations:
+      required: true
+```
+
+`.github/ISSUE_TEMPLATE/reproducibility-failure.yml`:
+
+```yaml
+name: Reproducibility failure
+description: Report a deterministic benchmark or manifest mismatch
+title: "[Reproducibility] "
+labels: ["type: bug", "area: reproducibility", "priority: high"]
+body:
+  - type: dropdown
+    id: determinism_class
+    attributes:
+      label: Expected determinism class
+      options: [bit-identical, action-identical, semantic]
+    validations:
+      required: true
+  - type: input
+    id: expected_hash
+    attributes:
+      label: Expected manifest or Decision Record hash
+    validations:
+      required: true
+  - type: input
+    id: actual_hash
+    attributes:
+      label: Actual manifest or Decision Record hash
+    validations:
+      required: true
+  - type: textarea
+    id: seeds
+    attributes:
+      label: Search, world, policy, and simulator seeds
+    validations:
+      required: true
+  - type: textarea
+    id: platform
+    attributes:
+      label: Platform, CPU, Python, dependency, and artifact versions
+    validations:
+      required: true
+  - type: input
+    id: workers
+    attributes:
+      label: Worker count and parallel mode
+    validations:
+      required: true
+  - type: textarea
+    id: first_divergence
+    attributes:
+      label: First divergent Decision Record
+    validations:
+      required: true
+```
+
+- [ ] **Step 7: Disable blank issues and link private security reporting**
+
 `.github/ISSUE_TEMPLATE/config.yml`:
 
 ```yaml
@@ -2106,7 +2304,7 @@ contact_links:
     about: Report credentials or security-sensitive defects privately
 ```
 
-- [ ] **Step 5: Validate YAML and provenance wording**
+- [ ] **Step 8: Validate YAML and provenance wording**
 
 Run:
 
@@ -2118,7 +2316,7 @@ rg -n "Source provenance|strength, parity, release, or MVP" .github
 Expected: YAML loading exits zero and both provenance/claim checks match their
 intended templates.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 9: Commit**
 
 ```powershell
 git add .github/ISSUE_TEMPLATE .github/pull_request_template.md
@@ -2422,18 +2620,46 @@ Run:
 
 ```powershell
 gh repo view chrismaghuhn/BattleBelief --json visibility,nameWithOwner
-gh label create "type: bug" --color D73A4A --description "Correctness or runtime defect" --force
-gh label create "type: research" --color 5319E7 --description "Research question or experiment" --force
-gh label create "type: dependencies" --color 0366D6 --description "Dependency update" --force
-gh label create "priority: normal" --color C5DEF5 --description "Normal project priority" --force
-gh label create "priority: high" --color B60205 --description "High project priority" --force
-gh label create "area: engine" --color F9D0C4 --description "Battle-engine compatibility" --force
-gh label create "status: needs-decision" --color FBCA04 --description "Maintainer decision required" --force
+$battleBeliefLabels = @(
+  @{Name="type: bug"; Color="D73A4A"; Description="Correctness or runtime defect"},
+  @{Name="type: feature"; Color="1D76DB"; Description="Accepted or proposed behavior"},
+  @{Name="type: research"; Color="5319E7"; Description="Falsifiable research question"},
+  @{Name="type: debt"; Color="BFD4F2"; Description="Concrete technical liability"},
+  @{Name="type: decision"; Color="0E8A16"; Description="Contract or ADR decision"},
+  @{Name="type: documentation"; Color="0075CA"; Description="Documentation change"},
+  @{Name="type: dependencies"; Color="0366D6"; Description="Dependency update"},
+  @{Name="area: protocol"; Color="F9D0C4"; Description="Protocol and reducer"},
+  @{Name="area: belief"; Color="F9D0C4"; Description="Hidden-state belief"},
+  @{Name="area: engine"; Color="F9D0C4"; Description="Battle-engine compatibility"},
+  @{Name="area: search"; Color="F9D0C4"; Description="Search algorithm"},
+  @{Name="area: training"; Color="F9D0C4"; Description="Training pipeline"},
+  @{Name="area: evaluation"; Color="F9D0C4"; Description="Evaluation and claims"},
+  @{Name="area: teams"; Color="F9D0C4"; Description="Offline teams"},
+  @{Name="area: reproducibility"; Color="F9D0C4"; Description="Determinism failure"},
+  @{Name="priority: blocking"; Color="7F0000"; Description="Blocks the active milestone"},
+  @{Name="priority: high"; Color="B60205"; Description="High project priority"},
+  @{Name="priority: normal"; Color="C5DEF5"; Description="Normal project priority"},
+  @{Name="status: needs-decision"; Color="FBCA04"; Description="Decision required"},
+  @{Name="status: ready"; Color="0E8A16"; Description="Ready to start"},
+  @{Name="status: in-progress"; Color="1D76DB"; Description="Work is active"},
+  @{Name="status: blocked"; Color="B60205"; Description="Cannot currently progress"},
+  @{Name="status: done"; Color="6F42C1"; Description="Work completed"},
+  @{Name="evidence: not-collected"; Color="EDEDED"; Description="No evidence collected"},
+  @{Name="evidence: collected"; Color="BFDADC"; Description="Evidence awaiting interpretation"},
+  @{Name="evidence: supports-hypothesis"; Color="0E8A16"; Description="Evidence supports hypothesis"},
+  @{Name="evidence: does-not-support-hypothesis"; Color="D93F0B"; Description="Evidence does not support hypothesis"},
+  @{Name="evidence: inconclusive"; Color="FBCA04"; Description="Evidence is inconclusive"},
+  @{Name="good-first-issue"; Color="7057FF"; Description="Suitable first contribution"}
+)
+foreach ($label in $battleBeliefLabels) {
+  gh label create $label.Name --color $label.Color `
+    --description $label.Description --force
+}
 ```
 
-Expected: visibility is `PUBLIC`, and every label used by an issue form or
-Dependabot exists. If visibility is not public, stop and obtain explicit
-approval before changing it.
+Expected: visibility is `PUBLIC`, and the complete minimal label taxonomy from
+`project-github-ci-security` exists. If visibility is not public, stop and
+obtain explicit approval before changing it.
 
 - [ ] **Step 5: Apply repository and security settings**
 
