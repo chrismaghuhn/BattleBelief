@@ -1,0 +1,7 @@
+{
+  "state": "configured",
+  "runner_type": "standard",
+  "query_suite": "default",
+  "threat_model": "remote",
+  "languages": ["python"]
+}

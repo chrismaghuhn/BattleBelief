@@ -1,0 +1,17 @@
+{
+  "name": "protected-tags-creation-gate",
+  "target": "tag",
+  "enforcement": "active",
+  "bypass_actors": [],
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/tags/v*",
+        "refs/tags/eval-*",
+        "refs/tags/claim-*"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [{"type": "creation"}]
+}
