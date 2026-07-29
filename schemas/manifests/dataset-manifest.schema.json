@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:dataset:v1",
+  "title": "BattleBelief dataset provenance manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "source",
+    "revision",
+    "license",
+    "dataset_card_digest",
+    "format",
+    "date_window",
+    "filters",
+    "split_manifest_digest",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "dataset_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source": {
+      "type": "string",
+      "format": "uri"
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_card_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "end": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "split_manifest_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

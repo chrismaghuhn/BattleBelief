@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:search-contract:v1",
+  "title": "BattleBelief search execution manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "algorithm_id",
+    "contract",
+    "mode",
+    "budget",
+    "seeds",
+    "parallelism",
+    "artifacts",
+    "environment",
+    "execution"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "manifest_id": {
+      "$ref": "#/$defs/id"
+    },
+    "algorithm_id": {
+      "const": "information_set_duct_v0"
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "version"
+      ],
+      "properties": {
+        "document_id": {
+          "const": "contract-search-v0"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "mode": {
+      "enum": [
+        "deterministic_benchmark",
+        "live_anytime"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "simulations",
+            "transitions",
+            "nodes",
+            "wall_time_ms"
+          ]
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "seeds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "search",
+        "world",
+        "policy",
+        "simulator"
+      ],
+      "properties": {
+        "search": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "world": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "simulator": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "parallelism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worker_count",
+        "reduction"
+      ],
+      "properties": {
+        "worker_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reduction": {
+          "enum": [
+            "single_thread",
+            "deterministic_root",
+            "runtime_scheduled"
+          ]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine_digest",
+        "model_digest",
+        "prior_digest",
+        "fallback_policy_digest"
+      ],
+      "properties": {
+        "engine_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "model_digest": {
+          "$ref": "#/$defs/nullableDigest"
+        },
+        "prior_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "fallback_policy_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_model",
+        "os",
+        "python_version",
+        "package_version"
+      ],
+      "properties": {
+        "cpu_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "os": {
+          "type": "string",
+          "minLength": 1
+        },
+        "python_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_iterations",
+        "completed_iterations",
+        "aborted_iterations",
+        "sampled_worlds"
+      ],
+      "properties": {
+        "started_iterations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "completed_iterations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "aborted_iterations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sampled_worlds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "deterministic_benchmark"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "budget": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "simulations",
+                  "transitions",
+                  "nodes"
+                ]
+              }
+            }
+          },
+          "parallelism": {
+            "properties": {
+              "reduction": {
+                "enum": [
+                  "single_thread",
+                  "deterministic_root"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "live_anytime"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "budget": {
+            "properties": {
+              "type": {
+                "const": "wall_time_ms"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nullableDigest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

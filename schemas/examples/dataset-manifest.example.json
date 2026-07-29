@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "dataset_id": "metamon-gen9ou-v6-example",
+  "source": "https://huggingface.co/datasets/jakegrigsby/metamon-parsed-replays",
+  "revision": "7d82b873647dee35a62e7b63cd253e5d273cbe87",
+  "license": "CC-BY-NC-4.0",
+  "dataset_card_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "format": "gen9ou",
+  "date_window": {
+    "start": "2022-11-18",
+    "end": "2026-05-19"
+  },
+  "filters": [
+    "exclude actions.missing from supervised targets",
+    "exclude imputed opponent sets from ground truth"
+  ],
+  "split_manifest_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "created_at": "2026-07-29T12:00:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "gen9ou-2026-07-example",
+  "format_id": "gen9ou",
+  "generation": 9,
+  "showdown_commit": "0123456789abcdef0123456789abcdef01234567",
+  "format_definition_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "banlist_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "captured_at": "2026-07-29T12:00:00Z"
+}

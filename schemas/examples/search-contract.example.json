@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "manifest_id": "search-example-v1",
+  "algorithm_id": "information_set_duct_v0",
+  "contract": {
+    "document_id": "contract-search-v0",
+    "version": 1
+  },
+  "mode": "deterministic_benchmark",
+  "budget": {
+    "type": "simulations",
+    "value": 1000
+  },
+  "seeds": {
+    "search": 101,
+    "world": 102,
+    "policy": 103,
+    "simulator": 104
+  },
+  "parallelism": {
+    "worker_count": 1,
+    "reduction": "single_thread"
+  },
+  "artifacts": {
+    "engine_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "model_digest": null,
+    "prior_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "fallback_policy_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "environment": {
+    "cpu_model": "reference-cpu",
+    "os": "reference-os",
+    "python_version": "3.12.0",
+    "package_version": "0.1.0"
+  },
+  "execution": {
+    "started_iterations": 1000,
+    "completed_iterations": 1000,
+    "aborted_iterations": 0,
+    "sampled_worlds": 1000
+  }
+}

@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:evaluation-claim:v1",
+  "title": "BattleBelief evaluation claim manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "claim_status",
+    "format",
+    "evaluation_window",
+    "artifacts",
+    "protocols",
+    "sample",
+    "result"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "claim_id": {
+      "$ref": "#/$defs/id"
+    },
+    "claim_status": {
+      "enum": [
+        "current",
+        "stale",
+        "superseded"
+      ]
+    },
+    "format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluation_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "end": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_commit",
+        "ruleset_snapshot_digest",
+        "holdout_digest",
+        "schedule_digest",
+        "team_digest",
+        "opponent_policy_digest",
+        "model_digest",
+        "engine_digest",
+        "search_contract_digest"
+      ],
+      "properties": {
+        "source_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,64}$"
+        },
+        "ruleset_snapshot_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "holdout_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "schedule_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "team_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "opponent_policy_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "model_digest": {
+          "$ref": "#/$defs/nullableDigest"
+        },
+        "engine_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "search_contract_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "protocols": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_population_document_id",
+        "statistical_analysis_document_id",
+        "strength_contract_document_id"
+      ],
+      "properties": {
+        "target_population_document_id": {
+          "const": "evaluation-target-population"
+        },
+        "statistical_analysis_document_id": {
+          "const": "evaluation-statistical-analysis"
+        },
+        "strength_contract_document_id": {
+          "const": "evaluation-m5-strength-qualification"
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_battles",
+        "valid_battles",
+        "losses_from_bot_failures",
+        "void_battles"
+      ],
+      "properties": {
+        "planned_battles": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "valid_battles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "losses_from_bot_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "void_battles": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "point_estimate",
+        "one_sided_confidence_level",
+        "lower_bound",
+        "qualification"
+      ],
+      "properties": {
+        "point_estimate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "one_sided_confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "lower_bound": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "qualification": {
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nullableDigest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

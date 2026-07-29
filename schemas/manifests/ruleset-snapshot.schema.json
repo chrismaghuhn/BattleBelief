@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:ruleset-snapshot:v1",
+  "title": "BattleBelief ruleset snapshot manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "format_id",
+    "generation",
+    "showdown_commit",
+    "format_definition_digest",
+    "banlist_digest",
+    "captured_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "snapshot_id": {
+      "$ref": "#/$defs/id"
+    },
+    "format_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "showdown_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "format_definition_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "banlist_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

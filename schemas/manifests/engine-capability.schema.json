@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:engine-capability:v1",
+  "title": "BattleBelief engine capability manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "engine",
+    "package_version",
+    "engine_commit",
+    "artifact_digest",
+    "build_features",
+    "adapter_version",
+    "format",
+    "oracle_showdown_commit",
+    "ruleset_snapshot_digest",
+    "evidence_run_id",
+    "generated_at",
+    "fallback_policy_id",
+    "exact",
+    "approximated",
+    "unsupported",
+    "known_divergences"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "manifest_id": {
+      "$ref": "#/$defs/id"
+    },
+    "engine": {
+      "const": "poke-engine"
+    },
+    "package_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engine_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "artifact_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "build_features": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "adapter_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "oracle_showdown_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "ruleset_snapshot_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "evidence_run_id": {
+      "$ref": "#/$defs/id"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fallback_policy_id": {
+      "$ref": "#/$defs/id"
+    },
+    "exact": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exactCapability"
+      }
+    },
+    "approximated": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/approximatedCapability"
+      }
+    },
+    "unsupported": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unsupportedCapability"
+      }
+    },
+    "known_divergences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/divergence"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "scope": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "integer",
+          "boolean",
+          "array"
+        ]
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_set_digest",
+        "property_suite_digest"
+      ],
+      "properties": {
+        "fixture_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "property_suite_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "exactCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "classification",
+        "applies_when",
+        "evidence"
+      ],
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/id"
+        },
+        "classification": {
+          "const": "exact"
+        },
+        "applies_when": {
+          "$ref": "#/$defs/scope"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "approximatedCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "classification",
+        "applies_when",
+        "approximation_id",
+        "evidence"
+      ],
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/id"
+        },
+        "classification": {
+          "const": "bounded_approximation"
+        },
+        "applies_when": {
+          "$ref": "#/$defs/scope"
+        },
+        "approximation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "unsupportedCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "classification",
+        "applies_when"
+      ],
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/id"
+        },
+        "classification": {
+          "const": "unsupported"
+        },
+        "applies_when": {
+          "$ref": "#/$defs/scope"
+        }
+      }
+    },
+    "divergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issue_id",
+        "trigger",
+        "classification"
+      ],
+      "properties": {
+        "issue_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification": {
+          "enum": [
+            "bounded_approximation",
+            "unsupported"
+          ]
+        }
+      }
+    }
+  }
+}

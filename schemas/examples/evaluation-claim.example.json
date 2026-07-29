@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "claim_id": "gen9ou-m5-example",
+  "claim_status": "current",
+  "format": "gen9ou",
+  "evaluation_window": {
+    "start": "2026-07-29",
+    "end": "2026-08-15"
+  },
+  "artifacts": {
+    "source_commit": "0123456789abcdef0123456789abcdef01234567",
+    "ruleset_snapshot_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "holdout_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "schedule_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "team_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "opponent_policy_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "model_digest": null,
+    "engine_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "search_contract_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "protocols": {
+    "target_population_document_id": "evaluation-target-population",
+    "statistical_analysis_document_id": "evaluation-statistical-analysis",
+    "strength_contract_document_id": "evaluation-m5-strength-qualification"
+  },
+  "sample": {
+    "planned_battles": 2000,
+    "valid_battles": 1998,
+    "losses_from_bot_failures": 1,
+    "void_battles": 2
+  },
+  "result": {
+    "point_estimate": 0.72,
+    "one_sided_confidence_level": 0.95,
+    "lower_bound": 0.70,
+    "qualification": "pass"
+  }
+}

@@ -1,0 +1,12 @@
+document_id: archive-design-freeze-2026-07-29
+title: Pokémon Singles Bot – Planungs- und Architekturvertrag
+document_type: archive
+status: archived
+normative: false
+snapshot_path: 2026-07-29-design-freeze.md
+source_path: docs/superpowers/specs/2026-07-29-pokemon-singles-bot-design.md
+source_hash: sha256:3b39cce1e00f59f6662740e9293389c5c0a37330a365bc37404fcde5a116cfec
+hash_algorithm: sha256
+frozen_on: 2026-07-29
+successor_index: ../README.md
+migration_matrix: 2026-07-29-design-freeze.migration.csv

@@ -1,0 +1,157 @@
+---
+document_id: roadmap-milestones
+title: Projektroadmap und Meilensteine
+document_type: roadmap
+status: accepted
+normative: false
+version: 4
+applies_to:
+  - project
+  - gen9ou
+effective_from: 2026-07-29
+supersedes: []
+superseded_by: null
+owners:
+  - maintainer
+last_reviewed: 2026-07-29
+---
+
+# Projektroadmap und Meilensteine
+
+Die Roadmap ordnet Arbeit. Verbindliche Schwellen und Bedeutungen stehen in den
+verlinkten Contracts.
+
+## M0 – Öffentliche Projektgrundlage
+
+Lieferumfang:
+
+- öffentliches Apache-2.0-Repository;
+- aktuelle Contracts, ADRs, Schemas und Archivnachweis;
+- GitHub-Rulesets, CI und Security;
+- drei separat installierbare, gemeinsam versionierte Python-Pakete;
+- öffentliche Core- und Runtime-Schnittstellen;
+- Transfer-Audit-Inventar.
+
+Gate:
+
+- alle M0-Installations-Smokes aus
+  [`architecture-dependency-matrix`](../architecture/dependency-matrix.md);
+- alle Paketgrenzen aus
+  [`architecture-code-boundaries`](../architecture/code-boundaries.md)
+  maschinell erzwungen;
+- `pr-gate` und Dokumentationsgates grün;
+- keine ungeklärte Herkunft, Secrets oder großen Artefakte.
+
+## M1 – Protocol-safe Prototype
+
+Lieferumfang:
+
+- Showdown-Verbindung und Authentifizierung;
+- kanonische Events und Reducer;
+- autoritative Legal Actions aus Request und `rqid`;
+- Fixed-Team-Loader;
+- kampffähige Legal-/Heuristikpolicy und entsprechender Runtime-Modus;
+- klassifizierte Abbruchpfade.
+
+Gate: Die Evidence- und Safety-Anforderungen aus
+[`contract-protocol-state`](../contracts/protocol-state.md) und
+[`contract-legal-action-safety`](../contracts/legal-action-safety.md) bestehen
+in der lokalen Release-Smoke-Suite.
+
+## M2 – Engine-qualified Search Prototype
+
+Lieferumfang:
+
+- lokaler Showdown-Oracle;
+- Lab-Oracle-Profil und lokaler Oracle-Smoke;
+- geprüftes Gen9-`poke-engine`-Artefakt;
+- installierbares Runtime-`search`-Extra und echter Gen9-Sentinel;
+- Capability-Manifest und Eligibility-Gate;
+- Differentialtests;
+- `information_set_duct_v0`;
+- beide Search-Betriebsmodi.
+
+Gate: Engine-, Search- und Determinismus-Contracts bestehen im definierten
+Corpus; unbekannte oder nicht unterstützte Capabilities führen fail-closed zum
+Fallback. Die Runtime-Grenzen aus
+[`evaluation-m5-strength-qualification`](../evaluation/m5-strength-qualification.md)
+werden auf der Referenzhardware eingehalten; dies erzeugt noch keinen
+Strength-Claim.
+
+## M3 – Belief- und Forschungsbaseline
+
+Lieferumfang:
+
+- versionierter Meta-Snapshot;
+- Lab-Dataset-Profil und Replay-/Dataset-Ingestion-Smoke;
+- vollständige Set-Hypothesen plus Open-World-Komponente;
+- Replaypipeline;
+- Search-only-, Heuristik- und einfache Modellbaselines;
+- getrennte Entwicklungs- und Evaluationsartefakte;
+- versiegelbare Hero-Teams und Gegnerpolicy-Mischung.
+
+Gate: Die vorregistrierten Belief- und Decision-Metriken aus
+[`evaluation-metrics`](../evaluation/metrics.md) schlagen die festgelegten
+Development-Baselines. Engine-Bias, Search-Stabilität und Clusterstruktur sind
+messbar. Das ist keine Releaseevidenz.
+
+Großes GPU-Training beginnt erst nach diesem Gate.
+
+## M4 – MVP-Kandidat
+
+Lieferumfang:
+
+- optional Replay-BC, Search Teacher, Population Self-Play und Hybridmodell;
+- Pflichtablation Heuristik, Search, Model und Hybrid;
+- formale Auswahl genau eines Kandidaten;
+- anschließend Power Pilot und endgültiger Stichprobenplan.
+
+Gate: Einer der in
+[`training-pipeline-and-selection`](../training/pipeline-and-selection.md)
+definierten Auswahlwege besteht; alle Artefakte sind versiegelt und der
+Release-Holdout bleibt ungeöffnet.
+
+## M5 – Strength-qualified MVP
+
+Lieferumfang:
+
+- aktuelles Gen9 OU auf festem Ruleset-Snapshot;
+- versiegelte Hero-Teams;
+- Information-Set DUCT;
+- optional evidenzbasiertes Modell;
+- Capability-/Safety-Fallback;
+- öffentlicher CPU-Runtime-Pfad.
+
+Gate: Der vollständige
+[`evaluation-m5-strength-qualification`](../evaluation/m5-strength-qualification.md)
+ist bestanden und der unveränderliche Claim wurde nach dem Release-Runbook
+erstellt. Nur M5 heißt MVP.
+
+## M6 – Externe Human-Validierung
+
+Lieferumfang und Gate stehen in
+[`evaluation-m6-human-validation`](../evaluation/m6-human-validation.md). M6
+ist kein rückwirkender Bestandteil von M5.
+
+## Phase 2 – Optimierung
+
+- größere Modelle;
+- breiteres Population Self-Play;
+- Regret-Matching-/Exp3-Ablation;
+- selektiverer oder tieferer Search;
+- optionale Cross-Battle-Priors;
+- Inferenzoptimierung und Wheels.
+
+Jede zusätzliche Schicht muss Stärke erhöhen oder bei formaler
+Nichtunterlegenheit die vorab definierte Ressource senken.
+
+## Phase 3 – Offline-Team-Building
+
+Eigener Generator und teamdisjunkter Holdout bei fester Battle-Policy nach
+[`team-contract`](../teams/team-contract.md). Kein Teamwechsel innerhalb eines
+Battles und keine Vermischung von Team- und Policyverbesserung.
+
+## Phase 4 – Weitere Singles-Formate
+
+Ein Format nach dem anderen, jeweils mit neuem Ruleset-, Zielpopulations-,
+Capability- und Strength-Claim. Doubles und VGC bleiben ausgeschlossen.

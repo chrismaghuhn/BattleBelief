@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "manifest_id": "poke-engine-gen9ou-example",
+  "engine": "poke-engine",
+  "package_version": "0.1.0",
+  "engine_commit": "0123456789abcdef0123456789abcdef01234567",
+  "artifact_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "build_features": [
+    "gen9"
+  ],
+  "adapter_version": "0.1.0",
+  "format": "gen9ou",
+  "oracle_showdown_commit": "fedcba9876543210fedcba9876543210fedcba98",
+  "ruleset_snapshot_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "evidence_run_id": "engine-evidence-example",
+  "generated_at": "2026-07-29T12:00:00Z",
+  "fallback_policy_id": "legal-fallback-v1",
+  "exact": [
+    {
+      "capability": "ordinary-switching",
+      "classification": "exact",
+      "applies_when": {
+        "generation": 9,
+        "format": "gen9ou"
+      },
+      "evidence": {
+        "fixture_set_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "property_suite_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    }
+  ],
+  "approximated": [],
+  "unsupported": [],
+  "known_divergences": []
+}
