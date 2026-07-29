@@ -1,0 +1,36 @@
+name: Transfer audit
+description: Audit a historical component before any reuse
+title: "[Transfer audit] "
+labels: ["type: research", "status: needs-decision"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source repository, file, and commit
+    validations:
+      required: true
+  - type: dropdown
+    id: provenance
+    attributes:
+      label: Intended provenance classification
+      options: [copied, modified, ideas-only, clean-implementation]
+    validations:
+      required: true
+  - type: textarea
+    id: license
+    attributes:
+      label: License evidence
+    validations:
+      required: true
+  - type: textarea
+    id: assumptions
+    attributes:
+      label: Removed VGC or Doubles assumptions
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: New Singles and OU verification
+    validations:
+      required: true

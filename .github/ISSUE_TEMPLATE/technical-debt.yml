@@ -1,0 +1,29 @@
+name: Technical debt
+description: Record a concrete maintainability or correctness liability
+title: "[Debt] "
+labels: ["type: debt", "priority: normal"]
+body:
+  - type: textarea
+    id: debt
+    attributes:
+      label: Concrete debt
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Current risk and evidence
+    validations:
+      required: true
+  - type: textarea
+    id: exit
+    attributes:
+      label: Measurable exit criterion
+    validations:
+      required: true
+  - type: textarea
+    id: deferral
+    attributes:
+      label: Why this is not fixed now
+    validations:
+      required: true

@@ -1,0 +1,30 @@
+name: Research hypothesis
+description: Propose a falsifiable experiment without changing a sealed holdout
+title: "[Research] "
+labels: ["type: research", "status: needs-decision", "evidence: not-collected"]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Falsifiable hypothesis
+    validations:
+      required: true
+  - type: textarea
+    id: estimand
+    attributes:
+      label: Estimand and comparison
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Development or selection data
+      description: A release holdout cannot be proposed as development data.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Precommitted decision rule
+    validations:
+      required: true

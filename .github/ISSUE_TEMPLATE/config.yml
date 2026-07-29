@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/chrismaghuhn/BattleBelief/security/advisories/new
+    about: Report credentials or security-sensitive defects privately

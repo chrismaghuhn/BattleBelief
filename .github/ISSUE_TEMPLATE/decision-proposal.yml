@@ -1,0 +1,36 @@
+name: Decision / ADR proposal
+description: Propose a hard-to-reverse contract change based on explicit evidence
+title: "[Decision] "
+labels: ["type: decision", "status: needs-decision"]
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: Contract change requested
+      description: Name every normative document, schema, package boundary, or claim affected.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and linked research issues
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and what each gives up
+    validations:
+      required: true
+  - type: textarea
+    id: reversibility
+    attributes:
+      label: Reversibility and migration impact
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Exact decision requested
+    validations:
+      required: true
