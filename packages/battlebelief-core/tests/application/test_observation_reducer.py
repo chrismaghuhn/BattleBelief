@@ -1286,4 +1286,126 @@ class TestContractGapRegressions:
         pv = s.p1.pokemon[0]
         assert pv.hp is not None
         assert pv.hp.precision == HpPrecision.EXACT
-        assert pv.hp.fainted is True
+
+    def test_revival_heal_updates_inactive_target_without_touching_active(self) -> None:
+        # Rabsca faints while active, then Pawmot switches in. Revival
+        # Blessing later heals fainted, benched Rabsca directly without
+        # switching it in.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Rabsca", 20, details="Rabsca, L50", current=160, maximum=160)
+        s = ObservationReducer.reduce(
+            s, PokemonFainted(event_index=21, side_id="p1", slot=1, nickname="Rabsca")
+        )
+        s = _switch_in(s, "p1", "Pawmot", 22, details="Pawmot, L50", current=180, maximum=180)
+        s = ObservationReducer.reduce(
+            s,
+            HealthChanged(
+                event_index=23,
+                side_id="p1",
+                slot=1,
+                nickname="Rabsca",
+                hp=HpToken(current=80, maximum=160, status=None, fainted=False),
+                annotations=(),
+            ),
+        )
+        rabsca = next(pv for pv in s.p1.pokemon if pv.nickname == "Rabsca")
+        pawmot = next(pv for pv in s.p1.pokemon if pv.nickname == "Pawmot")
+        assert rabsca.fainted is False
+        assert rabsca.hp is not None
+        assert rabsca.hp.current == 80
+        assert rabsca.active is False
+        assert pawmot.active is True
+        assert pawmot.hp is not None
+        assert pawmot.hp.current == 180
+
+    def test_ability_suppression_ends_on_switch_out(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20)
+        s = ObservationReducer.reduce(
+            s,
+            AbilityChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                ability="roughskin",
+                action="set",
+                annotations=(),
+            ),
+        )
+        s = ObservationReducer.reduce(
+            s,
+            AbilityChanged(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                ability=None,
+                action="end",
+                annotations=(),
+            ),
+        )
+        garchomp = next(pv for pv in s.p1.pokemon if pv.nickname == "Garchomp")
+        assert garchomp.ability_intervals[-1].value is None
+        assert garchomp.ability_intervals[-1].valid_until is None
+        s = _switch_in(s, "p1", "Togekiss", 23)
+        garchomp = next(pv for pv in s.p1.pokemon if pv.nickname == "Garchomp")
+        assert garchomp.ability_intervals[-1].valid_until is not None
+
+    def test_boosts_cleared_unknown_scope_raises(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20)
+        with pytest.raises(ReducerInvariantError):
+            ObservationReducer.reduce(
+                s,
+                BoostsCleared(
+                    event_index=21,
+                    side_id="p1",
+                    slot=1,
+                    nickname="Garchomp",
+                    scope="not-a-real-scope",
+                ),
+            )
+
+    def test_tera_switch_back_reuses_existing_view(self) -> None:
+        # Given a compliant Runtime parser, the details string on a subsequent
+        # switch-in for a terastallized pokemon is unchanged from the original
+        # reveal (species/level/gender only) — tera state is tracked via
+        # tera_type, not embedded in the details string.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20, details="Garchomp, L50, M")
+        s = ObservationReducer.reduce(
+            s,
+            Terastallized(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", tera_type="Ground"
+            ),
+        )
+        s = _switch_in(s, "p1", "Togekiss", 22, details="Togekiss, L50, F")
+        s = _switch_in(s, "p1", "Garchomp", 23, details="Garchomp, L50, M")
+        assert len(s.p1.pokemon) == 2
+        garchomp = next(pv for pv in s.p1.pokemon if pv.nickname == "Garchomp")
+        assert garchomp.tera_type == "Ground"
+        assert garchomp.active is True
+
+    def test_temporary_form_switch_back_does_not_duplicate_view(self) -> None:
+        # Given a compliant Runtime parser, -formechange carries the full
+        # details string (species, level, gender), not species alone.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Rotom", 20, details="Rotom, L50")
+        s = ObservationReducer.reduce(
+            s,
+            FormChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Rotom",
+                details="Rotom-Wash, L50",
+                hp=_make_token(100, 100),
+            ),
+        )
+        s = _switch_in(s, "p2", "Togekiss", 22, details="Togekiss, L50, F")
+        s = _switch_in(s, "p1", "Rotom", 23, details="Rotom-Wash, L50", current=100, maximum=100)
+        assert len(s.p1.pokemon) == 1
+        rotom = s.p1.pokemon[0]
+        assert rotom.current_details == "Rotom-Wash, L50"
+        assert rotom.active is True

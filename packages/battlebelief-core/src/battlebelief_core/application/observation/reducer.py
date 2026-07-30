@@ -107,6 +107,23 @@ def _require_active(side: SideView, nickname: str, context: str) -> PokemonView:
     return pv
 
 
+def _require_health_target(side: SideView, nickname: str) -> PokemonView:
+    """Resolve a HealthChanged target: the active pokemon in the common case,
+    or a uniquely-identified fainted bench member for Revival Blessing's heal
+    on an inactive target. Fails closed on ambiguity rather than guessing.
+    """
+    active_pv = _find_active(side)
+    if active_pv is not None and active_pv.nickname == nickname:
+        return active_pv
+    candidates = [pv for pv in side.pokemon if not pv.active and pv.nickname == nickname]
+    if len(candidates) != 1:
+        raise ReducerInvariantError(
+            f"health: cannot uniquely resolve inactive target {nickname!r} "
+            f"on side {side.side_id!r} ({len(candidates)} candidates)"
+        )
+    return candidates[0]
+
+
 def _find_for_switch_in(
     pokemon: tuple[PokemonView, ...], nickname: str, details: str
 ) -> PokemonView | None:
@@ -161,7 +178,7 @@ def _clear_boosts(boosts: tuple[int, ...], scope: str) -> tuple[int, ...]:
     if scope in BOOST_STATS:
         idx = BOOST_STATS.index(scope)
         return (*boosts[:idx], 0, *boosts[idx + 1 :])
-    return boosts
+    raise ReducerInvariantError(f"clear_boost: unknown scope {scope!r}")
 
 
 def _update_side_condition(
@@ -180,12 +197,30 @@ def _open_interval(
     intervals: tuple[EvidenceInterval, ...], value: str | None, event_index: int
 ) -> tuple[EvidenceInterval, ...]:
     # Close any currently open interval
-    closed = tuple(
+    closed = _close_open_interval(intervals, event_index)
+    new_iv = EvidenceInterval(value=value, source_event_index=event_index, valid_from=event_index)
+    return (*closed, new_iv)
+
+
+def _close_open_interval(
+    intervals: tuple[EvidenceInterval, ...], event_index: int
+) -> tuple[EvidenceInterval, ...]:
+    return tuple(
         dataclasses.replace(iv, valid_until=event_index) if iv.valid_until is None else iv
         for iv in intervals
     )
-    new_iv = EvidenceInterval(value=value, source_event_index=event_index, valid_from=event_index)
-    return (*closed, new_iv)
+
+
+def _end_ability_suppression_on_switch_out(
+    intervals: tuple[EvidenceInterval, ...], event_index: int
+) -> tuple[EvidenceInterval, ...]:
+    """Gastro Acid suppression (-endability -> None-valued open interval) is
+    battle-only and ends when the pokemon switches out — unlike a genuinely
+    revealed ability, which remains known evidence while benched.
+    """
+    if intervals and intervals[-1].valid_until is None and intervals[-1].value is None:
+        return _close_open_interval(intervals, event_index)
+    return intervals
 
 
 def _activate_pokemon(
@@ -194,6 +229,7 @@ def _activate_pokemon(
     details: str,
     hp: HpObservation,
     status: str | None,
+    event_index: int,
 ) -> SideView:
     """Deactivate current active pokemon, activate (or add) the named one."""
     deactivated = tuple(
@@ -204,6 +240,9 @@ def _activate_pokemon(
             volatiles=(),
             recharging=False,
             transform_target=None,
+            ability_intervals=_end_ability_suppression_on_switch_out(
+                pv.ability_intervals, event_index
+            ),
         )
         if pv.active
         else pv
@@ -317,7 +356,7 @@ class ObservationReducer:
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             side = state.side(event.side_id)
             new_side = _activate_pokemon(
-                side, event.nickname, event.details, hp_obs, event.hp.status
+                side, event.nickname, event.details, hp_obs, event.hp.status, ei
             )
             return _update_side(state, new_side)
 
@@ -375,7 +414,7 @@ class ObservationReducer:
 
         if isinstance(event, HealthChanged):
             side = state.side(event.side_id)
-            pv = _require_active(side, event.nickname, "health")
+            pv = _require_health_target(side, event.nickname)
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             updated = dataclasses.replace(
                 pv,

@@ -138,6 +138,8 @@ class BoostsCleared(BattleEvent):
         target = (self.side_id, self.slot, self.nickname)
         if not (all(f is None for f in target) or all(f is not None for f in target)):
             raise ValueError("BoostsCleared target fields must be all-None or all-set")
+        if self.side_id is None and self.scope != "all":
+            raise ValueError("global BoostsCleared (-clearallboost) only supports scope='all'")
 
 
 @dataclass(frozen=True, slots=True)
