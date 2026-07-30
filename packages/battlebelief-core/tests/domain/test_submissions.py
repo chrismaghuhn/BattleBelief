@@ -266,6 +266,11 @@ class TestBattleSubmissionTeam:
                 terastallize=True,
             )
 
+    @pytest.mark.parametrize("order", [(1, 1), (0, 1), (1, 7)])
+    def test_team_order_must_use_unique_slots_one_through_six(self, order: tuple[int, ...]) -> None:
+        with pytest.raises(ValueError):
+            _team(order)
+
 
 class TestBattleSubmissionDefault:
     def test_valid_default(self) -> None:

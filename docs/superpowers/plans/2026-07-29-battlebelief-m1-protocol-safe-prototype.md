@@ -686,9 +686,11 @@ room_initialized
 generation
 game_type
 tier
+rated
 rules
 turn
 battle_started
+team_preview_started
 winner / tied
 our_side
 p1 / p2 SideView

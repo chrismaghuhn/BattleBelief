@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from battlebelief_core.domain.actions.decision_request import DecisionRequest, RequestKind
+from battlebelief_core.domain.actions.submission import ActionKind
 from battlebelief_core.domain.state.observed_state import ObservedState
 
 _GEN9 = 9
@@ -50,6 +51,12 @@ class RequestReconciler:
             return ReconciliationResult(
                 status=ReconciliationStatus.REJECT,
                 reason=f"room mismatch: {request.identity.room_id!r} != {room_id!r}",
+            )
+
+        if request.identity != request.safe_submissions.request_identity:
+            return ReconciliationResult(
+                status=ReconciliationStatus.REJECT,
+                reason="request identity does not match SafeSubmissionSet identity",
             )
 
         # rqid must not be older than latest accepted
@@ -109,15 +116,56 @@ class RequestReconciler:
                 reason=f"tier not gen9ou: {state.tier!r}",
             )
 
-        # for move/forced-switch/revival requests, active identity must be known
+        if not 1 <= request.team_member_count <= 6:
+            return ReconciliationResult(
+                status=ReconciliationStatus.REJECT,
+                reason=f"request team size out of range: {request.team_member_count}",
+            )
+
+        own_side = state.side(state.our_side)
+        if own_side.team_size is not None and request.team_member_count != own_side.team_size:
+            return ReconciliationResult(
+                status=ReconciliationStatus.REJECT,
+                reason=(
+                    f"team size mismatch: request={request.team_member_count}, "
+                    f"state={own_side.team_size}"
+                ),
+            )
+
+        submissions = request.safe_submissions.submissions
+        if request.kind == RequestKind.WAIT:
+            if submissions:
+                return ReconciliationResult(
+                    status=ReconciliationStatus.REJECT,
+                    reason="wait request must not contain submissions",
+                )
+        elif not any(sub.kind == ActionKind.DEFAULT for sub in submissions):
+            return ReconciliationResult(
+                status=ReconciliationStatus.REJECT,
+                reason="decision request must contain default",
+            )
+
+        # For move/forced-switch/revival requests, active identity must be known.
         _needs_active = {RequestKind.MOVE, RequestKind.FORCED_SWITCH, RequestKind.REVIVAL}
         if request.kind in _needs_active:
-            our_side_view = state.side(state.our_side)
-            active_pv = next((p for p in our_side_view.pokemon if p.active), None)
-            if active_pv is None and request.kind == RequestKind.MOVE:
+            active_pv = next((p for p in own_side.pokemon if p.active), None)
+            if active_pv is None:
                 return ReconciliationResult(
                     status=ReconciliationStatus.PENDING_PUBLIC_STATE,
                     reason="active pokemon not yet known from public state",
+                )
+            if request.active_identity is None:
+                return ReconciliationResult(
+                    status=ReconciliationStatus.REJECT,
+                    reason="decision request has no active identity",
+                )
+            if request.active_identity != active_pv.nickname:
+                return ReconciliationResult(
+                    status=ReconciliationStatus.REJECT,
+                    reason=(
+                        f"active identity mismatch: request={request.active_identity!r}, "
+                        f"state={active_pv.nickname!r}"
+                    ),
                 )
 
         return ReconciliationResult(status=ReconciliationStatus.ACCEPT, reason="ok")

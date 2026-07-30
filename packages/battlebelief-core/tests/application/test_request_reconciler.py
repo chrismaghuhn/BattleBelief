@@ -23,7 +23,7 @@ from battlebelief_core.domain.events.metadata import (
     TeamSizeDeclared,
     TierDeclared,
 )
-from battlebelief_core.domain.events.pokemon import PokemonSwitched
+from battlebelief_core.domain.events.pokemon import PokemonFainted, PokemonSwitched
 from battlebelief_core.domain.state.observed_state import ObservedState
 from battlebelief_core.domain.state.values import HpToken
 
@@ -92,13 +92,16 @@ def _move_request(
     state: ObservedState,
     rqid: int = 1,
     active: str | None = "Garchomp",
+    team_member_count: int = 6,
+    include_default: bool = True,
 ) -> DecisionRequest:
-    sss = _sss(_move_sub(), _default(), rqid=rqid)
+    submissions = (_move_sub(), _default()) if include_default else (_move_sub(),)
+    sss = _sss(*submissions, rqid=rqid)
     return DecisionRequest(
         identity=_identity(rqid),
         kind=RequestKind.MOVE,
         side_id="p1",
-        team_member_count=6,
+        team_member_count=team_member_count,
         active_identity=active,
         safe_submissions=sss,
         is_update=False,
@@ -146,6 +149,23 @@ class TestReconcilerPending:
         s = _base_state()
         # active_identity provided by caller but nothing active in state
         dr = _move_request(s, active="Garchomp")
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.PENDING_PUBLIC_STATE
+
+    @pytest.mark.parametrize("kind", [RequestKind.FORCED_SWITCH, RequestKind.REVIVAL])
+    def test_pending_when_active_identity_unknown_for_switch_like_request(
+        self, kind: RequestKind
+    ) -> None:
+        s = _base_state()
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=kind,
+            side_id="p1",
+            team_member_count=6,
+            active_identity="Garchomp",
+            safe_submissions=_sss(_default()),
+            is_update=False,
+        )
         result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
         assert result.status == ReconciliationStatus.PENDING_PUBLIC_STATE
 
@@ -229,6 +249,64 @@ class TestReconcilerReject:
         )
         assert result.status == ReconciliationStatus.REJECT
 
+    @pytest.mark.parametrize("team_member_count", [0, 7])
+    def test_reject_request_team_size_out_of_range(self, team_member_count: int) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        dr = _move_request(s, team_member_count=team_member_count)
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_reject_known_team_size_mismatch(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        dr = _move_request(s, team_member_count=5)
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_reject_known_active_identity_mismatch(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        dr = _move_request(s, active="Dragonite")
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_reject_wait_request_with_submission(self) -> None:
+        s = _base_state()
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.WAIT,
+            side_id="p1",
+            team_member_count=6,
+            active_identity=None,
+            safe_submissions=_sss(_default()),
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_reject_decision_request_without_default(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        dr = _move_request(s, include_default=False)
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_reject_mismatched_request_and_submission_set_identity(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        dr = DecisionRequest(
+            identity=_identity(2),
+            kind=RequestKind.MOVE,
+            side_id="p1",
+            team_member_count=6,
+            active_identity="Garchomp",
+            safe_submissions=_sss(_move_sub(), _default(), rqid=1),
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
     def test_reject_revival_not_treated_as_forced_switch(self) -> None:
         s = _base_state()
         sss = _sss(_default())
@@ -277,6 +355,30 @@ class TestReconcilerAccept:
         s = _base_state()
         s = _switch_in(s, "p1", "Garchomp", 10)
         dr = _move_request(s, active="Garchomp")
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.ACCEPT
+
+    def test_accept_forced_switch_after_active_pokemon_faints(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        s = ObservationReducer.reduce(
+            s,
+            PokemonFainted(
+                event_index=11,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+            ),
+        )
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.FORCED_SWITCH,
+            side_id="p1",
+            team_member_count=6,
+            active_identity="Garchomp",
+            safe_submissions=_sss(_default()),
+            is_update=False,
+        )
         result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
         assert result.status == ReconciliationStatus.ACCEPT
 

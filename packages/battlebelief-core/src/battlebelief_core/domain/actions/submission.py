@@ -69,6 +69,10 @@ class BattleSubmission:
         elif k == ActionKind.TEAM:
             if not self.team_order:
                 raise ValueError("team requires non-empty team_order")
+            if len(set(self.team_order)) != len(self.team_order) or any(
+                slot < 1 or slot > 6 for slot in self.team_order
+            ):
+                raise ValueError("team_order must contain unique slots from 1 through 6")
             if self.slot is not None:
                 raise ValueError("team must not carry slot")
             if self.terastallize:

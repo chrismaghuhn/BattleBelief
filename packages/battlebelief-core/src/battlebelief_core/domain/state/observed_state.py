@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from battlebelief_core.domain.events.evidence import VisibleEvidence
 from battlebelief_core.domain.state.side_view import SideView
+from battlebelief_core.errors import ReducerInvariantError
 
 
 def _empty_side(side_id: str) -> SideView:
@@ -26,9 +27,11 @@ class ObservedState:
     generation: int | None
     game_type: str | None
     tier: str | None
+    rated: bool | None
     rules: tuple[str, ...]
     turn: int
     battle_started: bool
+    team_preview_started: bool
     winner: str | None
     tied: bool
     our_side: str | None
@@ -48,9 +51,11 @@ class ObservedState:
             generation=None,
             game_type=None,
             tier=None,
+            rated=None,
             rules=(),
             turn=0,
             battle_started=False,
+            team_preview_started=False,
             winner=None,
             tied=False,
             our_side=None,
@@ -63,4 +68,8 @@ class ObservedState:
         )
 
     def side(self, side_id: str) -> SideView:
-        return self.p1 if side_id == "p1" else self.p2
+        if side_id == "p1":
+            return self.p1
+        if side_id == "p2":
+            return self.p2
+        raise ReducerInvariantError(f"invalid side id: {side_id!r}")

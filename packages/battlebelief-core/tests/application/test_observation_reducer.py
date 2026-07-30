@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from battlebelief_core.application.observation.reducer import ObservationReducer
 from battlebelief_core.domain.events.evidence import VisibleEvidence
 from battlebelief_core.domain.events.field import (
@@ -18,6 +20,7 @@ from battlebelief_core.domain.events.metadata import (
     PreviewCleared,
     PreviewPokemonDeclared,
     RuleDeclared,
+    TeamPreviewStarted,
     TeamSizeDeclared,
     TierDeclared,
 )
@@ -32,14 +35,17 @@ from battlebelief_core.domain.events.pokemon import (
     HealthChanged,
     IdentityChanged,
     ItemChanged,
+    MovePrevented,
     MoveUsed,
     PokemonDragged,
     PokemonFainted,
     PokemonSwitched,
     PokemonTransformed,
+    RechargeChanged,
     StatusChanged,
     TeamStatusCured,
     Terastallized,
+    VolatileChanged,
 )
 from battlebelief_core.domain.events.progress import (
     BattleStarted,
@@ -49,6 +55,7 @@ from battlebelief_core.domain.events.progress import (
 )
 from battlebelief_core.domain.state.observed_state import ObservedState
 from battlebelief_core.domain.state.values import HpPrecision, HpToken
+from battlebelief_core.errors import ReducerInvariantError
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -89,6 +96,7 @@ def _switch_in(
     details: str = "Garchomp, L50, M",
     current: int = 183,
     maximum: int = 183,
+    status: str | None = None,
 ) -> ObservedState:
     return ObservationReducer.reduce(
         s,
@@ -98,7 +106,7 @@ def _switch_in(
             slot=1,
             nickname=nickname,
             details=details,
-            hp=_make_token(current, maximum),
+            hp=_make_token(current, maximum, status),
         ),
     )
 
@@ -167,7 +175,12 @@ class TestMetadataAndPlayerAssignment:
     def test_battle_rated_stored(self) -> None:
         s = _with_players()
         s = ObservationReducer.reduce(s, BattleRated(event_index=11, rated=True))
-        assert s.battle_started is False  # rated != started
+        assert s.rated is True
+
+    def test_team_preview_started_stored(self) -> None:
+        s = _with_players()
+        s = ObservationReducer.reduce(s, TeamPreviewStarted(event_index=11))
+        assert s.team_preview_started is True
 
     def test_battle_init_sets_room_initialized(self) -> None:
         s = _base_state()
@@ -218,6 +231,24 @@ class TestMetadataAndPlayerAssignment:
         s = ObservationReducer.reduce(s, TurnStarted(event_index=30, turn=1))
         assert s.event_index == 30
 
+    def test_duplicate_event_index_is_rejected(self) -> None:
+        s = _with_players()
+        with pytest.raises(ReducerInvariantError):
+            ObservationReducer.reduce(s, TurnStarted(event_index=s.event_index, turn=1))
+
+    def test_older_event_index_is_rejected(self) -> None:
+        s = _with_players()
+        with pytest.raises(ReducerInvariantError):
+            ObservationReducer.reduce(s, TurnStarted(event_index=s.event_index - 1, turn=1))
+
+    def test_invalid_side_id_is_rejected(self) -> None:
+        s = _with_players()
+        with pytest.raises(ReducerInvariantError):
+            ObservationReducer.reduce(
+                s,
+                PlayerDeclared(event_index=10, side_id="p3", username="intruder"),
+            )
+
 
 # ---------------------------------------------------------------------------
 # switch → damage → status → faint
@@ -244,6 +275,11 @@ class TestSwitchDamageStatusFaint:
         assert hp is not None
         assert hp.precision == HpPrecision.EXACT
         assert hp.current == 183
+
+    def test_switch_condition_sets_visible_status(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20, status="brn")
+        assert _active(s, "p1").status == "brn"
 
     def test_switch_sets_opponent_hp_percent(self) -> None:
         s = _with_players("p1")
@@ -304,6 +340,42 @@ class TestSwitchDamageStatusFaint:
         assert hp is not None
         assert hp.current == 50
 
+    def test_health_changed_updates_visible_status(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20)
+        s = ObservationReducer.reduce(
+            s,
+            HealthChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                hp=_make_token(100, 183, "tox"),
+                annotations=(),
+            ),
+        )
+        assert _active(s, "p1").status == "tox"
+
+    def test_health_changed_fainted_token_keeps_state_consistent(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20)
+        s = ObservationReducer.reduce(
+            s,
+            HealthChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                hp=HpToken(current=0, maximum=183, status=None, fainted=True),
+                annotations=(),
+            ),
+        )
+        pv = s.p1.pokemon[0]
+        assert pv.hp is not None and pv.hp.fainted is True
+        assert pv.fainted is True
+        assert pv.active is True
+        assert s.p1.active_slot == 1
+
     def test_status_changed_sets_status(self) -> None:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
@@ -355,7 +427,11 @@ class TestSwitchDamageStatusFaint:
         )
         pv = s.p1.pokemon[0]
         assert pv.fainted is True
-        assert pv.active is False
+        assert pv.active is True
+        assert pv.hp is not None
+        assert pv.hp.current == 0
+        assert pv.hp.fainted is True
+        assert s.p1.active_slot == 1
 
     def test_team_status_cured_clears_all_statuses(self) -> None:
         s = _with_players("p1")
@@ -392,6 +468,8 @@ class TestTeraItemAbilityFormTransform:
             ),
         )
         assert _active(s, "p1").tera_type == "Ground"
+        assert s.visible_evidence[-1].kind == "tera"
+        assert s.visible_evidence[-1].effect == "Ground"
 
     def test_item_changed_set(self) -> None:
         s = _with_players("p1")
@@ -471,6 +549,8 @@ class TestTeraItemAbilityFormTransform:
             ),
         )
         assert _active(s, "p1").current_details == "Rotom-Wash"
+        assert s.visible_evidence[-1].kind == "form"
+        assert s.visible_evidence[-1].effect == "Rotom-Wash"
 
     def test_identity_changed(self) -> None:
         s = _with_players("p1")
@@ -523,6 +603,24 @@ class TestTeraItemAbilityFormTransform:
                 ),
             )
         assert s.p1.pokemon[0].revealed_moves.count("earthquake") == 1
+        assert [ev.kind for ev in s.visible_evidence].count("move") == 3
+
+    def test_move_prevented_is_visible_evidence(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Garchomp", 20)
+        s = ObservationReducer.reduce(
+            s,
+            MovePrevented(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                reason="flinch",
+                move_id="earthquake",
+            ),
+        )
+        assert s.visible_evidence[-1].kind == "move_prevented"
+        assert s.visible_evidence[-1].effect == "flinch"
 
     def test_transform_sets_target(self) -> None:
         s = _with_players("p1")
@@ -541,6 +639,8 @@ class TestTeraItemAbilityFormTransform:
             ),
         )
         assert _active(s, "p1").transform_target == "Garchomp"
+        assert s.visible_evidence[-1].kind == "transform"
+        assert s.visible_evidence[-1].effect == "Garchomp"
 
 
 # ---------------------------------------------------------------------------
@@ -564,11 +664,16 @@ class TestBoosts:
     def test_boost_clamps_at_positive_6(self) -> None:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
-        for _ in range(5):
+        for i in range(5):
             s = ObservationReducer.reduce(
                 s,
                 BoostChanged(
-                    event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+                    event_index=21 + i,
+                    side_id="p1",
+                    slot=1,
+                    nickname="Garchomp",
+                    stat="atk",
+                    delta=2,
                 ),
             )
         assert _active(s, "p1").boosts[0] == 6
@@ -576,11 +681,16 @@ class TestBoosts:
     def test_boost_clamps_at_negative_6(self) -> None:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
-        for _ in range(5):
+        for i in range(5):
             s = ObservationReducer.reduce(
                 s,
                 BoostChanged(
-                    event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=-2
+                    event_index=21 + i,
+                    side_id="p1",
+                    slot=1,
+                    nickname="Garchomp",
+                    stat="atk",
+                    delta=-2,
                 ),
             )
         assert _active(s, "p1").boosts[0] == -6
@@ -702,9 +812,53 @@ class TestBoosts:
             ),
         )
         s = _switch_in(s, "p1", "Togekiss", 22)
-        # Garchomp's boosts should persist on its view (not reset by switch out)
+        # Boosts are volatile battle state and disappear on switch-out.
         garchomp = next(pv for pv in s.p1.pokemon if pv.nickname == "Garchomp")
-        assert garchomp.boosts[0] == 3
+        assert garchomp.boosts[0] == 0
+
+    def test_switch_out_clears_transient_pokemon_state(self) -> None:
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Ditto", 20)
+        s = _switch_in(s, "p2", "Garchomp", 21)
+        s = ObservationReducer.reduce(
+            s,
+            PokemonTransformed(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Ditto",
+                target_side_id="p2",
+                target_slot=1,
+                target_nickname="Garchomp",
+            ),
+        )
+        s = ObservationReducer.reduce(
+            s,
+            VolatileChanged(
+                event_index=23,
+                side_id="p1",
+                slot=1,
+                nickname="Ditto",
+                volatile="confusion",
+                action="start",
+                annotations=(),
+            ),
+        )
+        s = ObservationReducer.reduce(
+            s,
+            RechargeChanged(
+                event_index=24,
+                side_id="p1",
+                slot=1,
+                nickname="Ditto",
+                recharging=True,
+            ),
+        )
+        s = _switch_in(s, "p1", "Togekiss", 25)
+        ditto = next(pv for pv in s.p1.pokemon if pv.nickname == "Ditto")
+        assert ditto.volatiles == ()
+        assert ditto.recharging is False
+        assert ditto.transform_target is None
 
 
 # ---------------------------------------------------------------------------
