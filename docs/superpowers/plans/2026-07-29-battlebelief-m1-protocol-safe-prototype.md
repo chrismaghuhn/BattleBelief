@@ -902,16 +902,16 @@ M1-Implementierungsentscheidung. Sie ist kein langfristiger Core-Vertrag.
 `SafeSubmissionSet.contains()` darf in einer späteren, separat geprüften
 Revision durch eine strukturelle `TeamOrderDomain`-Validierung ersetzt werden.
 
-- [ ] **Step 1: Failing Tests für jede Forminvariante schreiben**
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 1: Failing Tests für jede Forminvariante schreiben**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-core/tests/domain/test_submissions.py -v
 ```
 
-- [ ] **Step 3: Typen und Validierung implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: Commit**
+- [x] **Step 3: Typen und Validierung implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/battlebelief-core
@@ -1019,7 +1019,7 @@ class ActionSafetyGate:
 Das Gate läuft unabhängig nach der Policy. Es vertraut weder
 `HeuristicPolicy` noch späterem Search-/Modellcode.
 
-- [ ] **Step 1: Failing Contract-Tests schreiben**
+- [x] **Step 1: Failing Contract-Tests schreiben**
 
 Mindestens:
 
@@ -1033,15 +1033,15 @@ Mindestens:
 - bekannte Request-/State-Side- oder Scope-Mismatch ergibt Reject;
 - Revival wird nicht als gewöhnlicher Forced Switch reconciliert.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-core/tests/application/test_request_reconciler.py packages/battlebelief-core/tests/application/test_action_gate.py packages/battlebelief-core/tests/application/test_heuristic_policy.py -v
 ```
 
-- [ ] **Step 3: Reconciler, Policy und Gate implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: PR-2-Gates ausführen**
+- [x] **Step 3: Reconciler, Policy und Gate implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: PR-2-Gates ausführen**
 
 ```powershell
 uv run ruff format --check .
@@ -1053,7 +1053,7 @@ uv run python tools/check_architecture.py
 
 Expected: alle Befehle enden mit Exitcode 0.
 
-- [ ] **Step 6: Commit und PR 2 öffnen**
+- [x] **Step 6: Commit und PR 2 öffnen**
 
 ```powershell
 git add packages/battlebelief-core
