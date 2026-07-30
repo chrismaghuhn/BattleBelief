@@ -6,6 +6,7 @@ from battlebelief_core.domain.events.evidence import VisibleEvidence
 from battlebelief_core.domain.events.field import SideConditionChanged, WeatherChanged
 from battlebelief_core.domain.events.ignored import IgnoredDisplayEvent
 from battlebelief_core.domain.events.metadata import (
+    BattleInit,
     BattleRated,
     GameTypeDeclared,
     GenerationDeclared,
@@ -136,6 +137,25 @@ class TestMalformedAndUnknown:
     def test_error_is_rejected_by_parser(self) -> None:
         with pytest.raises(UnknownProtocolEvent):
             parse_battle_line("|error|[Invalid choice]", 0)
+
+
+class TestInitRoomIdentity:
+    def test_init_battle_with_room_id_is_accepted(self) -> None:
+        ev = parse_battle_line("|init|battle", 0, room_id="battle-gen9ou-1")
+        assert isinstance(ev, BattleInit)
+        assert ev.room_id == "battle-gen9ou-1"
+
+    def test_init_battle_without_room_id_is_rejected(self) -> None:
+        with pytest.raises(MalformedProtocolMessage):
+            parse_battle_line("|init|battle", 0)
+
+    def test_init_chat_is_rejected(self) -> None:
+        with pytest.raises(MalformedProtocolMessage):
+            parse_battle_line("|init|chat", 0, room_id="lobby")
+
+    def test_init_without_room_type_is_rejected(self) -> None:
+        with pytest.raises(MalformedProtocolMessage):
+            parse_battle_line("|init|", 0, room_id="battle-gen9ou-1")
 
 
 class TestInactiveLine:

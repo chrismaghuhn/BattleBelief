@@ -625,6 +625,8 @@ def parse_battle_line(payload: str, event_index: int, *, room_id: str | None = N
         wire_type, args = _split(payload)
 
         if wire_type == "init":
+            if args != ["battle"]:
+                raise MalformedProtocolMessage(f"unsupported init room type: {args!r}")
             if room_id is None:
                 raise MalformedProtocolMessage("init requires room_id from RoomLine context")
             return BattleInit(event_index=event_index, room_id=room_id)

@@ -525,7 +525,7 @@ State-bearing Eventklassen:
 |---|---|
 | Metadaten | `BattleInit`, `PlayerDeclared`, `TeamSizeDeclared`, `GameTypeDeclared`, `GenerationDeclared`, `TierDeclared`, `BattleRated`, `RuleDeclared`, `PreviewPokemonDeclared`, `PreviewCleared`, `TeamPreviewStarted` |
 | Verlauf | `BattleStarted`, `TurnStarted`, `BattleWon`, `BattleTied` |
-| Pokémon | `PokemonSwitched`, `PokemonDragged`, `PokemonFainted`, `MoveUsed`, `MovePrevented`, `HealthChanged`, `StatusChanged`, `TeamStatusCured`, `BoostChanged`, `BoostsSwapped`, `BoostsCopied`, `BoostsCleared`, `BoostsInverted`, `ItemChanged`, `AbilityChanged`, `IdentityChanged`, `FormChanged`, `PokemonTransformed`, `Terastallized`, `VolatileChanged`, `TransientEffectObserved`, `RechargeChanged` |
+| Pokémon | `PokemonSwitched`, `PokemonDragged`, `PokemonFainted`, `MoveUsed`, `MovePrevented`, `HealthChanged`, `StatusChanged`, `TeamStatusCured`, `BoostChanged`, `BoostsSwapped`, `BoostsCopied`, `BoostsCleared`, `BoostsInverted`, `ItemChanged`, `AbilityChanged`, `IdentityChanged`, `FormChanged`, `PokemonTransformed`, `Terastallized`, `VolatileChanged`, `RechargeChanged` |
 | Feld | `WeatherChanged`, `FieldConditionChanged`, `SideConditionChanged`, `SideConditionsSwapped` |
 
 Gemeinsame Felder:
@@ -1221,9 +1221,18 @@ Definition, die Klassifikator und Parser gemeinsam verwenden.
 ### Parserregeln
 
 ```python
-def parse_battle_line(payload: str, event_index: int) -> BattleEvent:
+def parse_battle_line(
+    payload: str, event_index: int, *, room_id: str | None = None
+) -> BattleEvent:
     ...
 ```
+
+`room_id` ist ausschließlich für `init` erforderlich: `|init|battle` enthält
+selbst keine Raum-ID, und `BattleInit` ist das einzige Eventfeld, das eine
+benötigt. Der Aufrufer besitzt sie bereits aus der `RoomLine` aus Task 6 und
+reicht sie an dieser einen Stelle durch. Fehlt `room_id` bei `init`, wirft der
+Parser `MalformedProtocolMessage`. Kein anderer Eventtyp liest dieses
+Schlüsselwortargument.
 
 - akzeptiert ausschließlich eine einzelne Battle-Payload;
 - validiert Feldzahl und Feldtypen vor Konstruktion;

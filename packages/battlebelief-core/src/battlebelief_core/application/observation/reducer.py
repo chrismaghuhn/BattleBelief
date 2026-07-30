@@ -47,7 +47,6 @@ from battlebelief_core.domain.events.pokemon import (
     StatusChanged,
     TeamStatusCured,
     Terastallized,
-    TransientEffectObserved,
     VolatileChanged,
 )
 from battlebelief_core.domain.events.progress import (
@@ -653,18 +652,6 @@ class ObservationReducer:
             pv = _require_active(side, event.nickname, "recharge")
             updated = dataclasses.replace(pv, recharging=event.recharging)
             return _update_side(state, _replace_pokemon(side, pv, updated))
-
-        if isinstance(event, TransientEffectObserved):
-            ev = VisibleEvidence(
-                event_index=ei,
-                kind=event.effect_id,
-                side_id=event.side_id,
-                slot=event.slot,
-                nickname=event.nickname,
-                effect=None,
-                annotations=event.annotations,
-            )
-            return dataclasses.replace(state, visible_evidence=(*state.visible_evidence, ev))
 
         # ── field events ──────────────────────────────────────────────────
         if isinstance(event, WeatherChanged):
