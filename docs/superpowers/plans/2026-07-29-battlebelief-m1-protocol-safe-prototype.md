@@ -1138,16 +1138,16 @@ Der Konstruktor akzeptiert nur die drei in Task 11 festgelegten Subcodes.
 Freitext `message` wird für Logs sanitiert; die Klassifikation hängt niemals
 von einem nachträglich interpretierten Teilstring ab.
 
-- [ ] **Step 1: Failing Frame- und Taxonomie-Tests schreiben**
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 1: Failing Frame- und Taxonomie-Tests schreiben**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_frame_decoder.py packages/battlebelief-runtime/tests/test_error_taxonomy.py -v
 ```
 
-- [ ] **Step 3: Decoder und Fehler implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: Commit**
+- [x] **Step 3: Decoder und Fehler implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/battlebelief-runtime tests/fixtures/frames
@@ -1309,7 +1309,7 @@ observed live protocol coverage:
 
 Sie ist kein Claim über die vollständige reale Gen-9-OU-Protokolloberfläche.
 
-- [ ] **Step 1: Fixture- und Unit-Tests schreiben**
+- [x] **Step 1: Fixture- und Unit-Tests schreiben**
 
 Unit-Tests prüfen mindestens:
 
@@ -1337,15 +1337,15 @@ Unit-Tests prüfen mindestens:
   Endzustand;
 - parserfremdes `|request|` wird abgelehnt.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_room_payload_classifier.py packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/contracts/test_protocol_contract.py -v
 ```
 
-- [ ] **Step 3: Parser implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: Commit**
+- [x] **Step 3: Parser implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/battlebelief-runtime tests/fixtures/protocol tests/fixtures/frames/battle-room-multiplex.txt tests/contracts/test_protocol_contract.py
