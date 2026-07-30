@@ -406,7 +406,7 @@ Repositorypolitik; keine Akzeptanzregel zählt Commits.
 - Create: `tests/fixtures/protocol/corpus.json`
 - Modify: `docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md`
 
-- [ ] **Step 1: Decision-Issue aus dem vorhandenen Formular erstellen**
+- [x] **Step 1: Decision-Issue aus dem vorhandenen Formular erstellen**
 
 Titel:
 
@@ -425,7 +425,7 @@ scope: one authenticated Gen9 OU direct-challenge session
 non-goals: ladder search, reconnect loop, multi-battle concurrency
 ```
 
-- [ ] **Step 2: ADR-0004 schreiben**
+- [x] **Step 2: ADR-0004 schreiben**
 
 Der ADR erklärt Kontext, Entscheidung, die drei Alternativen, obige
 Trade-offs und den Reversal-Punkt: Nur die Runtime-Connection hinter ihrer
@@ -452,7 +452,7 @@ owners:
 last_reviewed: 2026-07-30
 ```
 
-- [ ] **Step 3: Corpus-Manifest anlegen**
+- [x] **Step 3: Corpus-Manifest anlegen**
 
 `tests/fixtures/protocol/corpus.json`:
 
@@ -472,12 +472,12 @@ last_reviewed: 2026-07-30
 }
 ```
 
-- [ ] **Step 4: Dokumentindex aktualisieren**
+- [x] **Step 4: Dokumentindex aktualisieren**
 
 `docs/README.md` verlinkt ADR-0004 und diesen M1-Plan unter nichtnormativer
 Planung. Keine M1-Schwelle wird dort wiederholt.
 
-- [ ] **Step 5: Dokumentgates ausführen**
+- [x] **Step 5: Dokumentgates ausführen**
 
 Run:
 
@@ -488,7 +488,7 @@ uv run pytest tests/tooling/test_docs.py -v
 
 Expected: beide Befehle enden mit Exitcode 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add docs/adr/ADR-0004-clean-showdown-runtime-adapter.md docs/README.md tests/fixtures/protocol/corpus.json docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md
