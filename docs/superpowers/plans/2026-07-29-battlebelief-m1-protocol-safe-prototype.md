@@ -1490,7 +1490,7 @@ Der Loader behauptet keine vollständige Teamlegalität. Der Challenge-
 Coordinator behandelt spätere Showdown-Validierungsfehler als Startupfehler;
 lokale Oracle-Validierung kommt in M2.
 
-- [ ] **Step 1: Failing Request-, Encoder- und Loader-Tests schreiben**
+- [x] **Step 1: Failing Request-, Encoder- und Loader-Tests schreiben**
 
 Pflichtfälle:
 
@@ -1510,15 +1510,15 @@ Pflichtfälle:
 - Exportformat und newline-joined Pseudopacked werden abgelehnt;
 - Teamdigest ist stabil.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_request_reader.py packages/battlebelief-runtime/tests/adapters/test_command_encoder.py packages/battlebelief-runtime/tests/adapters/test_team_loader.py -v
 ```
 
-- [ ] **Step 3: Reader, Encoder und Loader implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: PR-3-Gates ausführen und committen**
+- [x] **Step 3: Reader, Encoder und Loader implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: PR-3-Gates ausführen und committen**
 
 ```powershell
 uv run ruff format --check .

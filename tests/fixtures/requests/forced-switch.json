@@ -1,0 +1,13 @@
+{
+  "forceSwitch": [true],
+  "side": {
+    "name": "ash",
+    "id": "p1",
+    "pokemon": [
+      {"ident": "p1: Garchomp", "details": "Garchomp, L50, M", "condition": "0 fnt", "active": true, "moves": ["earthquake"], "item": "rockyhelmet", "ability": "roughskin", "reviving": false},
+      {"ident": "p1: Rotom", "details": "Rotom, L50", "condition": "100/100", "active": false, "moves": ["voltswitch"], "item": "", "ability": "levitate", "reviving": false},
+      {"ident": "p1: Togekiss", "details": "Togekiss, L50, F", "condition": "0 fnt", "active": false, "moves": ["airslash"], "item": "", "ability": "serenegrace", "reviving": false}
+    ]
+  },
+  "rqid": 8
+}
