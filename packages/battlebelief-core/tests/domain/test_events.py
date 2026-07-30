@@ -163,15 +163,23 @@ class TestPokemonEvents:
 
     def test_pokemon_switched(self) -> None:
         ev = PokemonSwitched(
-            event_index=13, side_id="p1", slot=1, nickname="Garchomp",
-            details="Garchomp, L50, M", hp=self._hp_token,
+            event_index=13,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            details="Garchomp, L50, M",
+            hp=self._hp_token,
         )
         assert ev.nickname == "Garchomp"
 
     def test_pokemon_dragged(self) -> None:
         ev = PokemonDragged(
-            event_index=14, side_id="p2", slot=1, nickname="Togekiss",
-            details="Togekiss, L50, F", hp=self._hp_token,
+            event_index=14,
+            side_id="p2",
+            slot=1,
+            nickname="Togekiss",
+            details="Togekiss, L50, F",
+            hp=self._hp_token,
         )
         assert ev.slot == 1
 
@@ -181,40 +189,62 @@ class TestPokemonEvents:
 
     def test_move_used(self) -> None:
         ev = MoveUsed(
-            event_index=16, side_id="p1", slot=1, nickname="Garchomp",
+            event_index=16,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
             move_id="earthquake",
-            target_side_id="p2", target_slot=1, target_nickname="Togekiss",
+            target_side_id="p2",
+            target_slot=1,
+            target_nickname="Togekiss",
             annotations=(),
         )
         assert ev.move_id == "earthquake"
 
     def test_move_used_no_target(self) -> None:
         ev = MoveUsed(
-            event_index=16, side_id="p1", slot=1, nickname="Garchomp",
+            event_index=16,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
             move_id="swordsdance",
-            target_side_id=None, target_slot=None, target_nickname=None,
+            target_side_id=None,
+            target_slot=None,
+            target_nickname=None,
             annotations=("[from] lockedmove",),
         )
         assert ev.target_side_id is None
 
     def test_move_prevented(self) -> None:
         ev = MovePrevented(
-            event_index=17, side_id="p1", slot=1, nickname="Garchomp",
-            reason="flinch", move_id=None,
+            event_index=17,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            reason="flinch",
+            move_id=None,
         )
         assert ev.reason == "flinch"
 
     def test_health_changed(self) -> None:
         ev = HealthChanged(
-            event_index=18, side_id="p2", slot=1, nickname="Togekiss",
-            hp=self._hp_token, annotations=(),
+            event_index=18,
+            side_id="p2",
+            slot=1,
+            nickname="Togekiss",
+            hp=self._hp_token,
+            annotations=(),
         )
         assert ev.hp is self._hp_token
 
     def test_status_changed(self) -> None:
         ev = StatusChanged(
-            event_index=19, side_id="p2", slot=1, nickname="Togekiss",
-            status="brn", annotations=(),
+            event_index=19,
+            side_id="p2",
+            slot=1,
+            nickname="Togekiss",
+            status="brn",
+            annotations=(),
         )
         assert ev.status == "brn"
 
@@ -223,29 +253,44 @@ class TestPokemonEvents:
         assert ev.side_id == "p1"
 
     def test_boost_changed(self) -> None:
-        ev = BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                          stat="atk", delta=2)
+        ev = BoostChanged(
+            event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+        )
         assert ev.delta == 2
 
     def test_boosts_swapped(self) -> None:
         ev = BoostsSwapped(
-            event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-            target_side_id="p2", target_slot=1, target_nickname="Togekiss",
+            event_index=22,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            target_side_id="p2",
+            target_slot=1,
+            target_nickname="Togekiss",
             stats=("atk", "def"),
         )
         assert "atk" in ev.stats
 
     def test_boosts_copied(self) -> None:
         ev = BoostsCopied(
-            event_index=23, side_id="p1", slot=1, nickname="Garchomp",
-            source_side_id="p2", source_slot=1, source_nickname="Togekiss",
+            event_index=23,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            source_side_id="p2",
+            source_slot=1,
+            source_nickname="Togekiss",
             stats=("spa",),
         )
         assert ev.source_side_id == "p2"
 
     def test_boosts_cleared(self) -> None:
         ev = BoostsCleared(
-            event_index=24, side_id="p1", slot=1, nickname="Garchomp", scope="all",
+            event_index=24,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            scope="all",
         )
         assert ev.scope == "all"
 
@@ -255,62 +300,100 @@ class TestPokemonEvents:
 
     def test_item_changed(self) -> None:
         ev = ItemChanged(
-            event_index=26, side_id="p1", slot=1, nickname="Garchomp",
-            item="rockyhelmet", action="set", annotations=(),
+            event_index=26,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            item="rockyhelmet",
+            action="set",
+            annotations=(),
         )
         assert ev.action == "set"
 
     def test_ability_changed(self) -> None:
         ev = AbilityChanged(
-            event_index=27, side_id="p2", slot=1, nickname="Togekiss",
-            ability="serenegrace", action="set", annotations=(),
+            event_index=27,
+            side_id="p2",
+            slot=1,
+            nickname="Togekiss",
+            ability="serenegrace",
+            action="set",
+            annotations=(),
         )
         assert ev.ability == "serenegrace"
 
     def test_identity_changed(self) -> None:
         ev = IdentityChanged(
-            event_index=28, side_id="p1", slot=1, nickname="Zoroark",
+            event_index=28,
+            side_id="p1",
+            slot=1,
+            nickname="Zoroark",
             details="Zoroark, L50, M",
         )
         assert ev.details == "Zoroark, L50, M"
 
     def test_form_changed(self) -> None:
         ev = FormChanged(
-            event_index=29, side_id="p1", slot=1, nickname="Rotom",
+            event_index=29,
+            side_id="p1",
+            slot=1,
+            nickname="Rotom",
             details="Rotom-Wash",
         )
         assert ev.details == "Rotom-Wash"
 
     def test_pokemon_transformed(self) -> None:
         ev = PokemonTransformed(
-            event_index=30, side_id="p1", slot=1, nickname="Ditto",
-            target_side_id="p2", target_slot=1, target_nickname="Garchomp",
+            event_index=30,
+            side_id="p1",
+            slot=1,
+            nickname="Ditto",
+            target_side_id="p2",
+            target_slot=1,
+            target_nickname="Garchomp",
         )
         assert ev.target_nickname == "Garchomp"
 
     def test_terastallized(self) -> None:
         ev = Terastallized(
-            event_index=31, side_id="p1", slot=1, nickname="Garchomp", tera_type="Ground",
+            event_index=31,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            tera_type="Ground",
         )
         assert ev.tera_type == "Ground"
 
     def test_volatile_changed(self) -> None:
         ev = VolatileChanged(
-            event_index=32, side_id="p1", slot=1, nickname="Garchomp",
-            volatile="aquaring", action="start", annotations=(),
+            event_index=32,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            volatile="aquaring",
+            action="start",
+            annotations=(),
         )
         assert ev.action == "start"
 
     def test_transient_effect_observed(self) -> None:
         ev = TransientEffectObserved(
-            event_index=33, side_id="p1", slot=1, nickname="Garchomp",
-            effect_id="lifeorb", annotations=(),
+            event_index=33,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            effect_id="lifeorb",
+            annotations=(),
         )
         assert ev.effect_id == "lifeorb"
 
     def test_recharge_changed(self) -> None:
         ev = RechargeChanged(
-            event_index=34, side_id="p1", slot=1, nickname="Garchomp", recharging=True,
+            event_index=34,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            recharging=True,
         )
         assert ev.recharging is True
 
@@ -331,13 +414,19 @@ class TestFieldEvents:
 
     def test_field_condition_changed(self) -> None:
         ev = FieldConditionChanged(
-            event_index=37, condition="trickroom", action="start", annotations=(),
+            event_index=37,
+            condition="trickroom",
+            action="start",
+            annotations=(),
         )
         assert ev.condition == "trickroom"
 
     def test_side_condition_changed(self) -> None:
         ev = SideConditionChanged(
-            event_index=38, side_id="p1", condition="stealthrock", action="start",
+            event_index=38,
+            side_id="p1",
+            condition="stealthrock",
+            action="start",
         )
         assert ev.condition == "stealthrock"
 
@@ -354,17 +443,25 @@ class TestFieldEvents:
 class TestEvidenceAndIgnored:
     def test_visible_evidence(self) -> None:
         ev = VisibleEvidence(
-            event_index=40, kind="crit",
-            side_id="p1", slot=1, nickname="Garchomp",
-            effect=None, annotations=(),
+            event_index=40,
+            kind="crit",
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            effect=None,
+            annotations=(),
         )
         assert ev.kind == "crit"
 
     def test_visible_evidence_no_pokemon(self) -> None:
         ev = VisibleEvidence(
-            event_index=41, kind="fieldactivate",
-            side_id=None, slot=None, nickname=None,
-            effect="trickroom", annotations=(),
+            event_index=41,
+            kind="fieldactivate",
+            side_id=None,
+            slot=None,
+            nickname=None,
+            effect="trickroom",
+            annotations=(),
         )
         assert ev.side_id is None
 
@@ -374,9 +471,13 @@ class TestEvidenceAndIgnored:
 
     def test_evidence_is_frozen(self) -> None:
         ev = VisibleEvidence(
-            event_index=1, kind="miss",
-            side_id="p2", slot=1, nickname="Togekiss",
-            effect=None, annotations=(),
+            event_index=1,
+            kind="miss",
+            side_id="p2",
+            slot=1,
+            nickname="Togekiss",
+            effect=None,
+            annotations=(),
         )
         with pytest.raises((dataclasses.FrozenInstanceError, AttributeError)):
             ev.kind = "crit"  # type: ignore[misc]

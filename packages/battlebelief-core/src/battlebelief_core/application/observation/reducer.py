@@ -97,9 +97,7 @@ def _find_pokemon(side: SideView, nickname: str) -> PokemonView | None:
 
 
 def _replace_pokemon(side: SideView, updated: PokemonView) -> SideView:
-    new_pokemon = tuple(
-        updated if pv.nickname == updated.nickname else pv for pv in side.pokemon
-    )
+    new_pokemon = tuple(updated if pv.nickname == updated.nickname else pv for pv in side.pokemon)
     return dataclasses.replace(side, pokemon=new_pokemon)
 
 
@@ -112,7 +110,7 @@ def _update_side(state: ObservedState, new_side: SideView) -> ObservedState:
 def _apply_boost_delta(boosts: tuple[int, ...], stat: str, delta: int) -> tuple[int, ...]:
     idx = BOOST_STATS.index(stat)
     clamped = max(-6, min(6, boosts[idx] + delta))
-    return (*boosts[:idx], clamped, *boosts[idx + 1:])
+    return (*boosts[:idx], clamped, *boosts[idx + 1 :])
 
 
 def _clear_boosts(boosts: tuple[int, ...], scope: str) -> tuple[int, ...]:
@@ -125,7 +123,7 @@ def _clear_boosts(boosts: tuple[int, ...], scope: str) -> tuple[int, ...]:
     # single stat clear
     if scope in BOOST_STATS:
         idx = BOOST_STATS.index(scope)
-        return (*boosts[:idx], 0, *boosts[idx + 1:])
+        return (*boosts[:idx], 0, *boosts[idx + 1 :])
     return boosts
 
 
@@ -162,9 +160,7 @@ def _close_interval(
     )
 
 
-def _activate_pokemon(
-    side: SideView, nickname: str, details: str, hp: HpObservation
-) -> SideView:
+def _activate_pokemon(side: SideView, nickname: str, details: str, hp: HpObservation) -> SideView:
     """Deactivate current active pokemon, activate (or add) the named one."""
     # Deactivate current active
     deactivated = tuple(
@@ -312,7 +308,9 @@ class ObservationReducer:
             if pv is None:
                 raise ReducerInvariantError(f"boost: unknown pokemon {event.nickname}")
             new_boosts = _apply_boost_delta(pv.boosts, event.stat, event.delta)
-            return _update_side(state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts)))
+            return _update_side(
+                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts))
+            )
 
         if isinstance(event, BoostsSwapped):
             src_side = state.side(event.side_id)
@@ -357,7 +355,9 @@ class ObservationReducer:
             if pv is None:
                 raise ReducerInvariantError(f"clear_boost: unknown pokemon {event.nickname}")
             new_boosts = _clear_boosts(pv.boosts, event.scope)
-            return _update_side(state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts)))
+            return _update_side(
+                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts))
+            )
 
         if isinstance(event, BoostsInverted):
             side = state.side(event.side_id)
@@ -365,7 +365,9 @@ class ObservationReducer:
             if pv is None:
                 raise ReducerInvariantError(f"invert_boost: unknown pokemon {event.nickname}")
             inverted = tuple(-b for b in pv.boosts)
-            return _update_side(state, _replace_pokemon(side, dataclasses.replace(pv, boosts=inverted)))
+            return _update_side(
+                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=inverted))
+            )
 
         if isinstance(event, ItemChanged):
             side = state.side(event.side_id)
@@ -402,12 +404,12 @@ class ObservationReducer:
             new_intervals = _open_interval(pv.identity_intervals, event.details, ei)
             # Replace with new nickname
             updated = dataclasses.replace(
-                pv, nickname=event.nickname, current_details=event.details,
+                pv,
+                nickname=event.nickname,
+                current_details=event.details,
                 identity_intervals=new_intervals,
             )
-            new_pokemon = tuple(
-                updated if p.nickname == pv.nickname else p for p in side.pokemon
-            )
+            new_pokemon = tuple(updated if p.nickname == pv.nickname else p for p in side.pokemon)
             return _update_side(state, dataclasses.replace(side, pokemon=new_pokemon))
 
         if isinstance(event, FormChanged):
@@ -460,9 +462,13 @@ class ObservationReducer:
 
         if isinstance(event, TransientEffectObserved):
             ev = VisibleEvidence(
-                event_index=ei, kind=event.effect_id,
-                side_id=event.side_id, slot=event.slot, nickname=event.nickname,
-                effect=None, annotations=event.annotations,
+                event_index=ei,
+                kind=event.effect_id,
+                side_id=event.side_id,
+                slot=event.slot,
+                nickname=event.nickname,
+                effect=None,
+                annotations=event.annotations,
             )
             return dataclasses.replace(state, visible_evidence=(*state.visible_evidence, ev))
 
@@ -501,13 +507,9 @@ class ObservationReducer:
 
         # ── evidence and ignored ──────────────────────────────────────────
         if isinstance(event, VisibleEvidence):
-            return dataclasses.replace(
-                state, visible_evidence=(*state.visible_evidence, event)
-            )
+            return dataclasses.replace(state, visible_evidence=(*state.visible_evidence, event))
 
         if isinstance(event, IgnoredDisplayEvent):
-            return dataclasses.replace(
-                state, ignored_display_count=state.ignored_display_count + 1
-            )
+            return dataclasses.replace(state, ignored_display_count=state.ignored_display_count + 1)
 
         raise ReducerInvariantError(f"unhandled event type: {type(event).__name__}")

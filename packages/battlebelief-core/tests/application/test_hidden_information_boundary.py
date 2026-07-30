@@ -25,8 +25,12 @@ def _switch(s: ObservedState, side: str, nick: str, idx: int) -> ObservedState:
     return ObservationReducer.reduce(
         s,
         PokemonSwitched(
-            event_index=idx, side_id=side, slot=1, nickname=nick,
-            details=f"{nick}", hp=HpToken(current=100, maximum=100, status=None),
+            event_index=idx,
+            side_id=side,
+            slot=1,
+            nickname=nick,
+            details=f"{nick}",
+            hp=HpToken(current=100, maximum=100, status=None),
         ),
     )
 
@@ -45,10 +49,17 @@ class TestHiddenInformationBoundary:
         s = _switch(s, "p2", "Garchomp", 10)
         s = ObservationReducer.reduce(
             s,
-            MoveUsed(event_index=11, side_id="p2", slot=1, nickname="Garchomp",
-                     move_id="earthquake",
-                     target_side_id="p1", target_slot=1, target_nickname="Togekiss",
-                     annotations=()),
+            MoveUsed(
+                event_index=11,
+                side_id="p2",
+                slot=1,
+                nickname="Garchomp",
+                move_id="earthquake",
+                target_side_id="p1",
+                target_slot=1,
+                target_nickname="Togekiss",
+                annotations=(),
+            ),
         )
         pv = _active(s, "p2")
         assert pv is not None
@@ -61,17 +72,31 @@ class TestHiddenInformationBoundary:
         s = _switch(s, "p1", "Garchomp", 10)
         s = ObservationReducer.reduce(
             s,
-            MoveUsed(event_index=11, side_id="p1", slot=1, nickname="Garchomp",
-                     move_id="earthquake",
-                     target_side_id="p2", target_slot=1, target_nickname="Togekiss",
-                     annotations=()),
+            MoveUsed(
+                event_index=11,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                move_id="earthquake",
+                target_side_id="p2",
+                target_slot=1,
+                target_nickname="Togekiss",
+                annotations=(),
+            ),
         )
         s = ObservationReducer.reduce(
             s,
-            MoveUsed(event_index=12, side_id="p1", slot=1, nickname="Garchomp",
-                     move_id="swordsdance",
-                     target_side_id=None, target_slot=None, target_nickname=None,
-                     annotations=()),
+            MoveUsed(
+                event_index=12,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                move_id="swordsdance",
+                target_side_id=None,
+                target_slot=None,
+                target_nickname=None,
+                annotations=(),
+            ),
         )
         pv = _active(s, "p1")
         assert pv is not None
@@ -85,7 +110,10 @@ class TestHiddenInformationBoundary:
         s = ObservationReducer.reduce(
             s,
             HealthChanged(
-                event_index=11, side_id="p2", slot=1, nickname="Togekiss",
+                event_index=11,
+                side_id="p2",
+                slot=1,
+                nickname="Togekiss",
                 hp=HpToken(current=48, maximum=48, status=None),
                 annotations=(),
             ),
@@ -97,6 +125,7 @@ class TestHiddenInformationBoundary:
         # The state carries only what was visible on the wire
         # For an opponent with non-100 denominator this is pixel precision
         from battlebelief_core.domain.state.values import HpPrecision
+
         assert hp.precision == HpPrecision.PIXEL
         assert hp.current == 48
 
@@ -108,6 +137,7 @@ class TestHiddenInformationBoundary:
         hp = pv.hp
         assert hp is not None
         from battlebelief_core.domain.state.values import HpPrecision
+
         assert hp.precision == HpPrecision.EXACT
 
     def test_no_oracle_hidden_stats(self) -> None:
@@ -128,9 +158,16 @@ class TestHiddenInformationBoundary:
         assert s.p2.pokemon[0].nickname == "Togekiss"
         # Modifying one side via reduce must not bleed into the other
         from battlebelief_core.domain.events.pokemon import StatusChanged
+
         s2 = ObservationReducer.reduce(
             s,
-            StatusChanged(event_index=12, side_id="p1", slot=1, nickname="Garchomp",
-                          status="brn", annotations=()),
+            StatusChanged(
+                event_index=12,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                status="brn",
+                annotations=(),
+            ),
         )
         assert s2.p2.pokemon[0].status is None

@@ -133,7 +133,9 @@ class TestMetadataAndPlayerAssignment:
 
     def test_unmatched_player_does_not_set_our_side(self) -> None:
         s = _base_state()
-        s = ObservationReducer.reduce(s, PlayerDeclared(event_index=0, side_id="p1", username="other"))
+        s = ObservationReducer.reduce(
+            s, PlayerDeclared(event_index=0, side_id="p1", username="other")
+        )
         assert s.our_side is None
 
     def test_player_username_stored_on_side(self) -> None:
@@ -196,14 +198,16 @@ class TestMetadataAndPlayerAssignment:
     def test_preview_pokemon_stored(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, PreviewPokemonDeclared(event_index=8, side_id="p1", details="Garchomp", has_item=True)
+            s,
+            PreviewPokemonDeclared(event_index=8, side_id="p1", details="Garchomp", has_item=True),
         )
         assert "Garchomp" in s.p1.preview_roster
 
     def test_preview_cleared_empties_roster(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, PreviewPokemonDeclared(event_index=8, side_id="p1", details="Garchomp", has_item=True)
+            s,
+            PreviewPokemonDeclared(event_index=8, side_id="p1", details="Garchomp", has_item=True),
         )
         s = ObservationReducer.reduce(s, PreviewCleared(event_index=9))
         assert s.p1.preview_roster == ()
@@ -271,8 +275,12 @@ class TestSwitchDamageStatusFaint:
         s = ObservationReducer.reduce(
             s,
             PokemonDragged(
-                event_index=20, side_id="p1", slot=1, nickname="Ditto",
-                details="Ditto", hp=_make_token(),
+                event_index=20,
+                side_id="p1",
+                slot=1,
+                nickname="Ditto",
+                details="Ditto",
+                hp=_make_token(),
             ),
         )
         assert s.p1.pokemon[0].nickname == "Ditto"
@@ -284,8 +292,12 @@ class TestSwitchDamageStatusFaint:
         s = ObservationReducer.reduce(
             s,
             HealthChanged(
-                event_index=21, side_id="p2", slot=1, nickname="Togekiss",
-                hp=_make_token(50, 100), annotations=(),
+                event_index=21,
+                side_id="p2",
+                slot=1,
+                nickname="Togekiss",
+                hp=_make_token(50, 100),
+                annotations=(),
             ),
         )
         hp = _active(s, "p2").hp
@@ -298,8 +310,12 @@ class TestSwitchDamageStatusFaint:
         s = ObservationReducer.reduce(
             s,
             StatusChanged(
-                event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                status="brn", annotations=(),
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                status="brn",
+                annotations=(),
             ),
         )
         assert _active(s, "p1").status == "brn"
@@ -309,13 +325,25 @@ class TestSwitchDamageStatusFaint:
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
             s,
-            StatusChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                          status="brn", annotations=()),
+            StatusChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                status="brn",
+                annotations=(),
+            ),
         )
         s = ObservationReducer.reduce(
             s,
-            StatusChanged(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                          status=None, annotations=()),
+            StatusChanged(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                status=None,
+                annotations=(),
+            ),
         )
         assert _active(s, "p1").status is None
 
@@ -333,8 +361,15 @@ class TestSwitchDamageStatusFaint:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, StatusChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                             status="psn", annotations=()),
+            s,
+            StatusChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                status="psn",
+                annotations=(),
+            ),
         )
         s = ObservationReducer.reduce(s, TeamStatusCured(event_index=22, side_id="p1"))
         for pv in s.p1.pokemon:
@@ -351,8 +386,10 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, Terastallized(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                             tera_type="Ground")
+            s,
+            Terastallized(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", tera_type="Ground"
+            ),
         )
         assert _active(s, "p1").tera_type == "Ground"
 
@@ -360,8 +397,16 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, ItemChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                           item="choicescarf", action="set", annotations=()),
+            s,
+            ItemChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                item="choicescarf",
+                action="set",
+                annotations=(),
+            ),
         )
         pv = _active(s, "p1")
         assert len(pv.item_intervals) >= 1
@@ -371,12 +416,28 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, ItemChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                           item="rockyhelmet", action="set", annotations=()),
+            s,
+            ItemChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                item="rockyhelmet",
+                action="set",
+                annotations=(),
+            ),
         )
         s = ObservationReducer.reduce(
-            s, ItemChanged(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                           item=None, action="end", annotations=()),
+            s,
+            ItemChanged(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                item=None,
+                action="end",
+                annotations=(),
+            ),
         )
         pv = _active(s, "p1")
         assert pv.item_intervals[-1].valid_until is not None
@@ -385,8 +446,16 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, AbilityChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                              ability="roughskin", action="set", annotations=()),
+            s,
+            AbilityChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                ability="roughskin",
+                action="set",
+                annotations=(),
+            ),
         )
         pv = _active(s, "p1")
         assert len(pv.ability_intervals) >= 1
@@ -396,8 +465,10 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Rotom", 20, details="Rotom")
         s = ObservationReducer.reduce(
-            s, FormChanged(event_index=21, side_id="p1", slot=1, nickname="Rotom",
-                           details="Rotom-Wash"),
+            s,
+            FormChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Rotom", details="Rotom-Wash"
+            ),
         )
         assert _active(s, "p1").current_details == "Rotom-Wash"
 
@@ -405,8 +476,10 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p2", "Zorua", 20, details="Zorua")
         s = ObservationReducer.reduce(
-            s, IdentityChanged(event_index=21, side_id="p2", slot=1, nickname="Zoroark",
-                               details="Zoroark, L50, M"),
+            s,
+            IdentityChanged(
+                event_index=21, side_id="p2", slot=1, nickname="Zoroark", details="Zoroark, L50, M"
+            ),
         )
         pv = _active(s, "p2")
         assert pv.nickname == "Zoroark"
@@ -416,10 +489,18 @@ class TestTeraItemAbilityFormTransform:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, MoveUsed(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                        move_id="earthquake",
-                        target_side_id="p2", target_slot=1, target_nickname="Togekiss",
-                        annotations=()),
+            s,
+            MoveUsed(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                move_id="earthquake",
+                target_side_id="p2",
+                target_slot=1,
+                target_nickname="Togekiss",
+                annotations=(),
+            ),
         )
         assert "earthquake" in _active(s, "p1").revealed_moves
 
@@ -428,10 +509,18 @@ class TestTeraItemAbilityFormTransform:
         s = _switch_in(s, "p1", "Garchomp", 20)
         for i in range(3):
             s = ObservationReducer.reduce(
-                s, MoveUsed(event_index=21 + i, side_id="p1", slot=1, nickname="Garchomp",
-                            move_id="earthquake",
-                            target_side_id=None, target_slot=None, target_nickname=None,
-                            annotations=()),
+                s,
+                MoveUsed(
+                    event_index=21 + i,
+                    side_id="p1",
+                    slot=1,
+                    nickname="Garchomp",
+                    move_id="earthquake",
+                    target_side_id=None,
+                    target_slot=None,
+                    target_nickname=None,
+                    annotations=(),
+                ),
             )
         assert s.p1.pokemon[0].revealed_moves.count("earthquake") == 1
 
@@ -440,8 +529,16 @@ class TestTeraItemAbilityFormTransform:
         s = _switch_in(s, "p1", "Ditto", 20)
         s = _switch_in(s, "p2", "Garchomp", 21)
         s = ObservationReducer.reduce(
-            s, PokemonTransformed(event_index=22, side_id="p1", slot=1, nickname="Ditto",
-                                   target_side_id="p2", target_slot=1, target_nickname="Garchomp"),
+            s,
+            PokemonTransformed(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Ditto",
+                target_side_id="p2",
+                target_slot=1,
+                target_nickname="Garchomp",
+            ),
         )
         assert _active(s, "p1").transform_target == "Garchomp"
 
@@ -456,8 +553,10 @@ class TestBoosts:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=2),
+            s,
+            BoostChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+            ),
         )
         pv = _active(s, "p1")
         assert pv.boosts[0] == 2  # atk is index 0
@@ -467,8 +566,10 @@ class TestBoosts:
         s = _switch_in(s, "p1", "Garchomp", 20)
         for _ in range(5):
             s = ObservationReducer.reduce(
-                s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                                stat="atk", delta=2),
+                s,
+                BoostChanged(
+                    event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+                ),
             )
         assert _active(s, "p1").boosts[0] == 6
 
@@ -477,8 +578,10 @@ class TestBoosts:
         s = _switch_in(s, "p1", "Garchomp", 20)
         for _ in range(5):
             s = ObservationReducer.reduce(
-                s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                                stat="atk", delta=-2),
+                s,
+                BoostChanged(
+                    event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=-2
+                ),
             )
         assert _active(s, "p1").boosts[0] == -6
 
@@ -486,12 +589,14 @@ class TestBoosts:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=3),
+            s,
+            BoostChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=3
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostsCleared(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                             scope="all"),
+            s,
+            BoostsCleared(event_index=22, side_id="p1", slot=1, nickname="Garchomp", scope="all"),
         )
         assert all(b == 0 for b in _active(s, "p1").boosts)
 
@@ -499,30 +604,39 @@ class TestBoosts:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=3),
+            s,
+            BoostChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=3
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="def", delta=-2),
+            s,
+            BoostChanged(
+                event_index=22, side_id="p1", slot=1, nickname="Garchomp", stat="def", delta=-2
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostsCleared(event_index=23, side_id="p1", slot=1, nickname="Garchomp",
-                             scope="positive"),
+            s,
+            BoostsCleared(
+                event_index=23, side_id="p1", slot=1, nickname="Garchomp", scope="positive"
+            ),
         )
         pv = _active(s, "p1")
-        assert pv.boosts[0] == 0   # atk cleared
+        assert pv.boosts[0] == 0  # atk cleared
         assert pv.boosts[1] == -2  # def unchanged
 
     def test_boosts_inverted(self) -> None:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=3),
+            s,
+            BoostChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=3
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostsInverted(event_index=22, side_id="p1", slot=1, nickname="Garchomp"),
+            s,
+            BoostsInverted(event_index=22, side_id="p1", slot=1, nickname="Garchomp"),
         )
         assert _active(s, "p1").boosts[0] == -3
 
@@ -531,13 +645,23 @@ class TestBoosts:
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = _switch_in(s, "p2", "Togekiss", 21)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=2),
+            s,
+            BoostChanged(
+                event_index=22, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostsSwapped(event_index=23, side_id="p1", slot=1, nickname="Garchomp",
-                             target_side_id="p2", target_slot=1, target_nickname="Togekiss",
-                             stats=("atk",)),
+            s,
+            BoostsSwapped(
+                event_index=23,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                target_side_id="p2",
+                target_slot=1,
+                target_nickname="Togekiss",
+                stats=("atk",),
+            ),
         )
         assert _active(s, "p1").boosts[0] == 0
         assert _active(s, "p2").boosts[0] == 2
@@ -547,13 +671,23 @@ class TestBoosts:
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = _switch_in(s, "p2", "Togekiss", 21)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=22, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="spa", delta=3),
+            s,
+            BoostChanged(
+                event_index=22, side_id="p1", slot=1, nickname="Garchomp", stat="spa", delta=3
+            ),
         )
         s = ObservationReducer.reduce(
-            s, BoostsCopied(event_index=23, side_id="p2", slot=1, nickname="Togekiss",
-                            source_side_id="p1", source_slot=1, source_nickname="Garchomp",
-                            stats=("spa",)),
+            s,
+            BoostsCopied(
+                event_index=23,
+                side_id="p2",
+                slot=1,
+                nickname="Togekiss",
+                source_side_id="p1",
+                source_slot=1,
+                source_nickname="Garchomp",
+                stats=("spa",),
+            ),
         )
         # Togekiss copies Garchomp's spa boost
         assert _active(s, "p2").boosts[2] == 3  # spa is index 2
@@ -562,8 +696,10 @@ class TestBoosts:
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20)
         s = ObservationReducer.reduce(
-            s, BoostChanged(event_index=21, side_id="p1", slot=1, nickname="Garchomp",
-                            stat="atk", delta=3),
+            s,
+            BoostChanged(
+                event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=3
+            ),
         )
         s = _switch_in(s, "p1", "Togekiss", 22)
         # Garchomp's boosts should persist on its view (not reset by switch out)
@@ -580,7 +716,8 @@ class TestSideConditions:
     def test_spikes_first_layer(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, SideConditionChanged(event_index=10, side_id="p2", condition="spikes", action="start")
+            s,
+            SideConditionChanged(event_index=10, side_id="p2", condition="spikes", action="start"),
         )
         cond = dict(s.p2.side_conditions)
         assert cond.get("spikes") == 1
@@ -589,8 +726,10 @@ class TestSideConditions:
         s = _with_players("p1")
         for i in range(3):
             s = ObservationReducer.reduce(
-                s, SideConditionChanged(event_index=10 + i, side_id="p2", condition="spikes",
-                                        action="start"),
+                s,
+                SideConditionChanged(
+                    event_index=10 + i, side_id="p2", condition="spikes", action="start"
+                ),
             )
         cond = dict(s.p2.side_conditions)
         assert cond["spikes"] == 3
@@ -599,8 +738,10 @@ class TestSideConditions:
         s = _with_players("p1")
         for i in range(5):
             s = ObservationReducer.reduce(
-                s, SideConditionChanged(event_index=10 + i, side_id="p2", condition="spikes",
-                                        action="start"),
+                s,
+                SideConditionChanged(
+                    event_index=10 + i, side_id="p2", condition="spikes", action="start"
+                ),
             )
         assert dict(s.p2.side_conditions)["spikes"] == 3
 
@@ -608,8 +749,10 @@ class TestSideConditions:
         s = _with_players("p1")
         for i in range(4):
             s = ObservationReducer.reduce(
-                s, SideConditionChanged(event_index=10 + i, side_id="p2",
-                                        condition="toxicspikes", action="start"),
+                s,
+                SideConditionChanged(
+                    event_index=10 + i, side_id="p2", condition="toxicspikes", action="start"
+                ),
             )
         assert dict(s.p2.side_conditions)["toxicspikes"] == 2
 
@@ -617,8 +760,10 @@ class TestSideConditions:
         s = _with_players("p1")
         for i in range(3):
             s = ObservationReducer.reduce(
-                s, SideConditionChanged(event_index=10 + i, side_id="p2",
-                                        condition="stealthrock", action="start"),
+                s,
+                SideConditionChanged(
+                    event_index=10 + i, side_id="p2", condition="stealthrock", action="start"
+                ),
             )
         assert dict(s.p2.side_conditions)["stealthrock"] == 1
 
@@ -626,8 +771,10 @@ class TestSideConditions:
         s = _with_players("p1")
         for i in range(2):
             s = ObservationReducer.reduce(
-                s, SideConditionChanged(event_index=10 + i, side_id="p2",
-                                        condition="spikes", action="start"),
+                s,
+                SideConditionChanged(
+                    event_index=10 + i, side_id="p2", condition="spikes", action="start"
+                ),
             )
         s = ObservationReducer.reduce(
             s, SideConditionChanged(event_index=12, side_id="p2", condition="spikes", action="end")
@@ -637,8 +784,10 @@ class TestSideConditions:
     def test_side_conditions_swapped(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, SideConditionChanged(event_index=10, side_id="p1", condition="stealthrock",
-                                    action="start"),
+            s,
+            SideConditionChanged(
+                event_index=10, side_id="p1", condition="stealthrock", action="start"
+            ),
         )
         s = ObservationReducer.reduce(s, SideConditionsSwapped(event_index=11))
         assert "stealthrock" in dict(s.p2.side_conditions)
@@ -673,28 +822,32 @@ class TestWeatherAndField:
         s = ObservationReducer.reduce(
             s, WeatherChanged(event_index=10, weather="raindance", action="start")
         )
-        s = ObservationReducer.reduce(
-            s, WeatherChanged(event_index=11, weather=None, action="end")
-        )
+        s = ObservationReducer.reduce(s, WeatherChanged(event_index=11, weather=None, action="end"))
         assert s.weather is None
 
     def test_field_condition_started(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, FieldConditionChanged(event_index=10, condition="trickroom",
-                                     action="start", annotations=()),
+            s,
+            FieldConditionChanged(
+                event_index=10, condition="trickroom", action="start", annotations=()
+            ),
         )
         assert "trickroom" in s.field_conditions
 
     def test_field_condition_ended(self) -> None:
         s = _with_players("p1")
         s = ObservationReducer.reduce(
-            s, FieldConditionChanged(event_index=10, condition="trickroom",
-                                     action="start", annotations=()),
+            s,
+            FieldConditionChanged(
+                event_index=10, condition="trickroom", action="start", annotations=()
+            ),
         )
         s = ObservationReducer.reduce(
-            s, FieldConditionChanged(event_index=11, condition="trickroom",
-                                     action="end", annotations=()),
+            s,
+            FieldConditionChanged(
+                event_index=11, condition="trickroom", action="end", annotations=()
+            ),
         )
         assert "trickroom" not in s.field_conditions
 
@@ -707,8 +860,15 @@ class TestWeatherAndField:
 class TestEvidenceAndIgnored:
     def test_visible_evidence_appended(self) -> None:
         s = _with_players("p1")
-        ev = VisibleEvidence(event_index=10, kind="crit", side_id="p1", slot=1,
-                             nickname="Garchomp", effect=None, annotations=())
+        ev = VisibleEvidence(
+            event_index=10,
+            kind="crit",
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            effect=None,
+            annotations=(),
+        )
         s = ObservationReducer.reduce(s, ev)
         assert len(s.visible_evidence) == 1
         assert s.visible_evidence[0].kind == "crit"
