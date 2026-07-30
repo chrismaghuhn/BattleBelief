@@ -488,7 +488,7 @@ uv run pytest tests/tooling/test_docs.py -v
 
 Expected: beide Befehle enden mit Exitcode 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add docs/adr/ADR-0004-clean-showdown-runtime-adapter.md docs/README.md tests/fixtures/protocol/corpus.json docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md
