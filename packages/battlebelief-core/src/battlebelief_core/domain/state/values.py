@@ -46,3 +46,9 @@ class EvidenceInterval:
 class EffectCounter:
     effect_id: str
     count: int
+
+
+@dataclass(frozen=True, slots=True)
+class PreviewPokemon:
+    details: str
+    has_item: bool

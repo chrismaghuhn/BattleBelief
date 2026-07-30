@@ -15,7 +15,8 @@ class BattleInit(BattleEvent):
 class PlayerDeclared(BattleEvent):
     event_index: int
     side_id: str
-    username: str
+    user_id: str
+    display_name: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -40,8 +40,8 @@ def _base_state() -> ObservedState:
     s = ObservedState.initial(_OUR_USER)
     events = [
         BattleInit(event_index=0, room_id=_ROOM),
-        PlayerDeclared(event_index=1, side_id="p1", username=_OUR_USER),
-        PlayerDeclared(event_index=2, side_id="p2", username="trainer2"),
+        PlayerDeclared(event_index=1, side_id="p1", user_id=_OUR_USER, display_name=_OUR_USER),
+        PlayerDeclared(event_index=2, side_id="p2", user_id="trainer2", display_name="trainer2"),
         GameTypeDeclared(event_index=3, game_type="singles"),
         GenerationDeclared(event_index=4, generation=9),
         TierDeclared(event_index=5, tier="[Gen 9] OU"),
@@ -138,7 +138,8 @@ class TestReconcilerPending:
         s = ObservedState.initial(_OUR_USER)
         s = ObservationReducer.reduce(s, BattleInit(event_index=0, room_id=_ROOM))
         s = ObservationReducer.reduce(
-            s, PlayerDeclared(event_index=1, side_id="p1", username=_OUR_USER)
+            s,
+            PlayerDeclared(event_index=1, side_id="p1", user_id=_OUR_USER, display_name=_OUR_USER),
         )
         dr = _move_request(s)
         result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
@@ -409,3 +410,118 @@ class TestReconcilerAccept:
         dr = _move_request(s, active="Garchomp")
         RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
         assert s.turn == original_turn
+
+
+# ---------------------------------------------------------------------------
+# submission-kind-vs-request-kind safety regressions
+# ---------------------------------------------------------------------------
+
+
+class TestReconcilerSubmissionKindValidation:
+    def test_team_preview_rejects_move_submission(self) -> None:
+        s = _base_state()
+        sss = _sss(_move_sub(), _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.TEAM_PREVIEW,
+            side_id="p1",
+            team_member_count=6,
+            active_identity=None,
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_forced_switch_rejects_move_submission(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        sss = _sss(_move_sub(), _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.FORCED_SWITCH,
+            side_id="p1",
+            team_member_count=6,
+            active_identity="Garchomp",
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_revival_rejects_switch_submission(self) -> None:
+        s = _base_state()
+        switch_sub = BattleSubmission(
+            kind=ActionKind.SWITCH, provenance=ActionProvenance.EXPLICIT_REQUEST, slot=2
+        )
+        sss = _sss(switch_sub, _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.REVIVAL,
+            side_id="p1",
+            team_member_count=6,
+            active_identity=None,
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_move_request_accepts_move_and_switch(self) -> None:
+        s = _base_state()
+        s = _switch_in(s, "p1", "Garchomp", 10)
+        switch_sub = BattleSubmission(
+            kind=ActionKind.SWITCH, provenance=ActionProvenance.EXPLICIT_REQUEST, slot=2
+        )
+        sss = _sss(_move_sub(), switch_sub, _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.MOVE,
+            side_id="p1",
+            team_member_count=6,
+            active_identity="Garchomp",
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.ACCEPT
+
+    def test_team_order_must_match_team_member_count(self) -> None:
+        s = _base_state()
+        bad_team = BattleSubmission(
+            kind=ActionKind.TEAM,
+            provenance=ActionProvenance.EXPLICIT_REQUEST,
+            team_order=(1, 2, 3),  # only 3 of 6
+        )
+        sss = _sss(bad_team, _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.TEAM_PREVIEW,
+            side_id="p1",
+            team_member_count=6,
+            active_identity=None,
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.REJECT
+
+    def test_team_order_matching_team_member_count_is_accepted(self) -> None:
+        s = _base_state()
+        good_team = BattleSubmission(
+            kind=ActionKind.TEAM,
+            provenance=ActionProvenance.EXPLICIT_REQUEST,
+            team_order=(1, 2, 3, 4, 5, 6),
+        )
+        sss = _sss(good_team, _default())
+        dr = DecisionRequest(
+            identity=_identity(),
+            kind=RequestKind.TEAM_PREVIEW,
+            side_id="p1",
+            team_member_count=6,
+            active_identity=None,
+            safe_submissions=sss,
+            is_update=False,
+        )
+        result = RequestReconciler.reconcile(room_id=_ROOM, request=dr, state=s, latest_rqid=None)
+        assert result.status == ReconciliationStatus.ACCEPT

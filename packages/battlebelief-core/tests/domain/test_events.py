@@ -29,11 +29,13 @@ from battlebelief_core.domain.events.metadata import (
 from battlebelief_core.domain.events.pokemon import (
     AbilityChanged,
     BoostChanged,
+    BoostChangeMode,
     BoostsCleared,
     BoostsCopied,
     BoostsInverted,
     BoostsSwapped,
     FormChanged,
+    FormChangeKind,
     HealthChanged,
     IdentityChanged,
     ItemChanged,
@@ -89,8 +91,10 @@ class TestMetadataEvents:
         assert ev.room_id == "battle-gen9ou-12345"
 
     def test_player_declared(self) -> None:
-        ev = PlayerDeclared(event_index=1, side_id="p1", username="ash")
+        ev = PlayerDeclared(event_index=1, side_id="p1", user_id="ash", display_name="Ash")
         assert ev.side_id == "p1"
+        assert ev.user_id == "ash"
+        assert ev.display_name == "Ash"
 
     def test_team_size_declared(self) -> None:
         ev = TeamSizeDeclared(event_index=2, side_id="p1", size=6)
@@ -129,7 +133,7 @@ class TestMetadataEvents:
         assert ev.event_index == 10
 
     def test_metadata_events_are_frozen(self) -> None:
-        ev = PlayerDeclared(event_index=1, side_id="p1", username="ash")
+        ev = PlayerDeclared(event_index=1, side_id="p1", user_id="ash", display_name="Ash")
         with pytest.raises((dataclasses.FrozenInstanceError, AttributeError)):
             ev.side_id = "p2"  # type: ignore[misc]
 
@@ -254,9 +258,29 @@ class TestPokemonEvents:
 
     def test_boost_changed(self) -> None:
         ev = BoostChanged(
-            event_index=21, side_id="p1", slot=1, nickname="Garchomp", stat="atk", delta=2
+            event_index=21,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            stat="atk",
+            mode=BoostChangeMode.DELTA,
+            amount=2,
         )
-        assert ev.delta == 2
+        assert ev.amount == 2
+        assert ev.mode == BoostChangeMode.DELTA
+
+    def test_boost_changed_set_mode(self) -> None:
+        ev = BoostChanged(
+            event_index=21,
+            side_id="p1",
+            slot=1,
+            nickname="Garchomp",
+            stat="atk",
+            mode=BoostChangeMode.SET,
+            amount=-2,
+        )
+        assert ev.mode == BoostChangeMode.SET
+        assert ev.amount == -2
 
     def test_boosts_swapped(self) -> None:
         ev = BoostsSwapped(
@@ -294,6 +318,14 @@ class TestPokemonEvents:
         )
         assert ev.scope == "all"
 
+    def test_boosts_cleared_global(self) -> None:
+        ev = BoostsCleared(event_index=24, side_id=None, slot=None, nickname=None, scope="all")
+        assert ev.side_id is None
+
+    def test_boosts_cleared_partial_target_raises(self) -> None:
+        with pytest.raises(ValueError):
+            BoostsCleared(event_index=24, side_id="p1", slot=None, nickname="Garchomp", scope="all")
+
     def test_boosts_inverted(self) -> None:
         ev = BoostsInverted(event_index=25, side_id="p1", slot=1, nickname="Garchomp")
         assert isinstance(ev, BattleEvent)
@@ -329,18 +361,36 @@ class TestPokemonEvents:
             slot=1,
             nickname="Zoroark",
             details="Zoroark, L50, M",
+            hp=self._hp_token,
         )
         assert ev.details == "Zoroark, L50, M"
+        assert ev.hp is self._hp_token
 
-    def test_form_changed(self) -> None:
+    def test_form_changed_temporary_species(self) -> None:
         ev = FormChanged(
             event_index=29,
             side_id="p1",
             slot=1,
             nickname="Rotom",
-            details="Rotom-Wash",
+            kind=FormChangeKind.TEMPORARY_SPECIES,
+            value="Rotom-Wash",
+            hp=self._hp_token,
         )
-        assert ev.details == "Rotom-Wash"
+        assert ev.value == "Rotom-Wash"
+        assert ev.hp is self._hp_token
+
+    def test_form_changed_persistent_details(self) -> None:
+        ev = FormChanged(
+            event_index=29,
+            side_id="p1",
+            slot=1,
+            nickname="Zygarde",
+            kind=FormChangeKind.PERSISTENT_DETAILS,
+            value="Zygarde-Complete, L50",
+            hp=self._hp_token,
+        )
+        assert ev.kind == FormChangeKind.PERSISTENT_DETAILS
+        assert ev.value == "Zygarde-Complete, L50"
 
     def test_pokemon_transformed(self) -> None:
         ev = PokemonTransformed(

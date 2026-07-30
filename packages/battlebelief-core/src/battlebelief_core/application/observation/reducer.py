@@ -27,11 +27,13 @@ from battlebelief_core.domain.events.metadata import (
 from battlebelief_core.domain.events.pokemon import (
     AbilityChanged,
     BoostChanged,
+    BoostChangeMode,
     BoostsCleared,
     BoostsCopied,
     BoostsInverted,
     BoostsSwapped,
     FormChanged,
+    FormChangeKind,
     HealthChanged,
     IdentityChanged,
     ItemChanged,
@@ -55,13 +57,19 @@ from battlebelief_core.domain.events.progress import (
     TurnStarted,
 )
 from battlebelief_core.domain.state.observed_state import ObservedState
-from battlebelief_core.domain.state.pokemon_view import BOOST_STATS, ZERO_BOOSTS, PokemonView
+from battlebelief_core.domain.state.pokemon_view import (
+    BOOST_STATS,
+    ZERO_BOOSTS,
+    PokemonView,
+    normalize_identity_details,
+)
 from battlebelief_core.domain.state.side_view import SideView
 from battlebelief_core.domain.state.values import (
     EvidenceInterval,
     HpObservation,
     HpPrecision,
     HpToken,
+    PreviewPokemon,
 )
 from battlebelief_core.errors import ReducerInvariantError
 
@@ -76,28 +84,82 @@ _DEFAULT_LAYER_CAP = 1
 
 
 def _token_to_observation(token: HpToken, side_id: str, our_side: str | None) -> HpObservation:
-    if token.fainted:
-        return HpObservation(
-            current=0, maximum=max(token.maximum, 1), precision=HpPrecision.PERCENT, fainted=True
-        )
     if our_side is not None and side_id == our_side:
         precision = HpPrecision.EXACT
     elif token.maximum == 100:
         precision = HpPrecision.PERCENT
     else:
         precision = HpPrecision.PIXEL
+    if token.fainted:
+        return HpObservation(
+            current=0, maximum=max(token.maximum, 1), precision=precision, fainted=True
+        )
     return HpObservation(current=token.current, maximum=token.maximum, precision=precision)
 
 
-def _find_pokemon(side: SideView, nickname: str) -> PokemonView | None:
-    for pv in side.pokemon:
-        if pv.nickname == nickname:
+def _find_active(side: SideView) -> PokemonView | None:
+    return next((pv for pv in side.pokemon if pv.active), None)
+
+
+def _require_active(side: SideView, nickname: str, context: str) -> PokemonView:
+    pv = _find_active(side)
+    if pv is None:
+        raise ReducerInvariantError(f"{context}: no active pokemon on side {side.side_id!r}")
+    if pv.nickname != nickname:
+        raise ReducerInvariantError(
+            f"{context}: event nickname {nickname!r} does not match active pokemon "
+            f"{pv.nickname!r} on side {side.side_id!r}"
+        )
+    return pv
+
+
+def _require_health_target(side: SideView, nickname: str, slot: int | None) -> PokemonView:
+    """Resolve a HealthChanged target using the wire-level active/inactive
+    distinction (slot is None for a positionless "p1: Name" reference, e.g.
+    Revival Blessing's heal target) rather than guessing from nickname
+    collisions against current state — a same-nicknamed active pokemon must
+    never shadow the real inactive target, and vice versa.
+
+    An inactive target must be a uniquely-identified fainted bench member
+    (Revival Blessing is the only supported inactive-target path, and it can
+    only target a fainted teammate); ambiguity fails closed rather than
+    guessing.
+    """
+    if slot is not None:
+        return _require_active(side, nickname, "health")
+    candidates = [
+        pv for pv in side.pokemon if not pv.active and pv.fainted and pv.nickname == nickname
+    ]
+    if len(candidates) != 1:
+        raise ReducerInvariantError(
+            f"health: cannot uniquely resolve inactive fainted target {nickname!r} "
+            f"on side {side.side_id!r} ({len(candidates)} candidates)"
+        )
+    return candidates[0]
+
+
+def _find_for_switch_in(
+    pokemon: tuple[PokemonView, ...], nickname: str, details: str
+) -> PokemonView | None:
+    """Disambiguate bench members by (nickname, switch_identity) to avoid nickname aliasing.
+
+    Matches against the stable, tera-suffix-normalized switch_identity key
+    (not the display-only current_details), so Terastallizing does not create
+    a spurious new identity on a later switch-in. No same-nickname fallback:
+    two teammates can share a nickname but never the same switch_identity, so
+    guessing among nickname-only matches would silently merge two different
+    pokemon's evidence.
+    """
+    target_identity = normalize_identity_details(details)
+    for pv in pokemon:
+        if pv.nickname == nickname and pv.switch_identity == target_identity:
             return pv
     return None
 
 
-def _replace_pokemon(side: SideView, updated: PokemonView) -> SideView:
-    new_pokemon = tuple(updated if pv.nickname == updated.nickname else pv for pv in side.pokemon)
+def _replace_pokemon(side: SideView, original: PokemonView, updated: PokemonView) -> SideView:
+    """Replace by object identity, not nickname — same-nickname teammates must not alias."""
+    new_pokemon = tuple(updated if pv is original else pv for pv in side.pokemon)
     return dataclasses.replace(side, pokemon=new_pokemon)
 
 
@@ -115,6 +177,12 @@ def _apply_boost_delta(boosts: tuple[int, ...], stat: str, delta: int) -> tuple[
     return (*boosts[:idx], clamped, *boosts[idx + 1 :])
 
 
+def _set_boost(boosts: tuple[int, ...], stat: str, value: int) -> tuple[int, ...]:
+    idx = BOOST_STATS.index(stat)
+    clamped = max(-6, min(6, value))
+    return (*boosts[:idx], clamped, *boosts[idx + 1 :])
+
+
 def _clear_boosts(boosts: tuple[int, ...], scope: str) -> tuple[int, ...]:
     if scope == "all":
         return ZERO_BOOSTS
@@ -126,7 +194,7 @@ def _clear_boosts(boosts: tuple[int, ...], scope: str) -> tuple[int, ...]:
     if scope in BOOST_STATS:
         idx = BOOST_STATS.index(scope)
         return (*boosts[:idx], 0, *boosts[idx + 1 :])
-    return boosts
+    raise ReducerInvariantError(f"clear_boost: unknown scope {scope!r}")
 
 
 def _update_side_condition(
@@ -145,15 +213,12 @@ def _open_interval(
     intervals: tuple[EvidenceInterval, ...], value: str | None, event_index: int
 ) -> tuple[EvidenceInterval, ...]:
     # Close any currently open interval
-    closed = tuple(
-        dataclasses.replace(iv, valid_until=event_index) if iv.valid_until is None else iv
-        for iv in intervals
-    )
+    closed = _close_open_interval(intervals, event_index)
     new_iv = EvidenceInterval(value=value, source_event_index=event_index, valid_from=event_index)
     return (*closed, new_iv)
 
 
-def _close_interval(
+def _close_open_interval(
     intervals: tuple[EvidenceInterval, ...], event_index: int
 ) -> tuple[EvidenceInterval, ...]:
     return tuple(
@@ -162,12 +227,25 @@ def _close_interval(
     )
 
 
+def _end_ability_suppression_on_switch_out(
+    intervals: tuple[EvidenceInterval, ...], event_index: int
+) -> tuple[EvidenceInterval, ...]:
+    """Gastro Acid suppression (-endability -> None-valued open interval) is
+    battle-only and ends when the pokemon switches out — unlike a genuinely
+    revealed ability, which remains known evidence while benched.
+    """
+    if intervals and intervals[-1].valid_until is None and intervals[-1].value is None:
+        return _close_open_interval(intervals, event_index)
+    return intervals
+
+
 def _activate_pokemon(
     side: SideView,
     nickname: str,
     details: str,
     hp: HpObservation,
     status: str | None,
+    event_index: int,
 ) -> SideView:
     """Deactivate current active pokemon, activate (or add) the named one."""
     deactivated = tuple(
@@ -178,12 +256,15 @@ def _activate_pokemon(
             volatiles=(),
             recharging=False,
             transform_target=None,
+            ability_intervals=_end_ability_suppression_on_switch_out(
+                pv.ability_intervals, event_index
+            ),
         )
         if pv.active
         else pv
         for pv in side.pokemon
     )
-    existing = next((pv for pv in deactivated if pv.nickname == nickname), None)
+    existing = _find_for_switch_in(deactivated, nickname, details)
     if existing is None:
         new_pv = dataclasses.replace(
             PokemonView.new(side.side_id, nickname, details),
@@ -205,7 +286,7 @@ def _activate_pokemon(
         recharging=False,
         transform_target=None,
     )
-    new_pokemon = tuple(updated if pv.nickname == nickname else pv for pv in deactivated)
+    new_pokemon = tuple(updated if pv is existing else pv for pv in deactivated)
     return dataclasses.replace(side, pokemon=new_pokemon, active_slot=1)
 
 
@@ -230,10 +311,12 @@ class ObservationReducer:
 
         if isinstance(event, PlayerDeclared):
             new_our_side = state.our_side
-            if event.username == state.our_user_id and new_our_side is None:
+            if event.user_id == state.our_user_id and new_our_side is None:
                 new_our_side = event.side_id
             side = state.side(event.side_id)
-            new_side = dataclasses.replace(side, username=event.username)
+            new_side = dataclasses.replace(
+                side, user_id=event.user_id, display_name=event.display_name
+            )
             return _update_side(dataclasses.replace(state, our_side=new_our_side), new_side)
 
         if isinstance(event, TeamSizeDeclared):
@@ -257,9 +340,10 @@ class ObservationReducer:
 
         if isinstance(event, PreviewPokemonDeclared):
             side = state.side(event.side_id)
+            entry = PreviewPokemon(details=event.details, has_item=event.has_item)
             return _update_side(
                 state,
-                dataclasses.replace(side, preview_roster=(*side.preview_roster, event.details)),
+                dataclasses.replace(side, preview_roster=(*side.preview_roster, entry)),
             )
 
         if isinstance(event, PreviewCleared):
@@ -288,15 +372,13 @@ class ObservationReducer:
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             side = state.side(event.side_id)
             new_side = _activate_pokemon(
-                side, event.nickname, event.details, hp_obs, event.hp.status
+                side, event.nickname, event.details, hp_obs, event.hp.status, ei
             )
             return _update_side(state, new_side)
 
         if isinstance(event, PokemonFainted):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"faint: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "faint")
             previous_hp = pv.hp
             fainted_hp = HpObservation(
                 current=0,
@@ -313,18 +395,16 @@ class ObservationReducer:
                 recharging=False,
                 transform_target=None,
             )
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, MoveUsed):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"move: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "move")
             if event.move_id not in pv.revealed_moves:
                 updated = dataclasses.replace(
                     pv, revealed_moves=(*pv.revealed_moves, event.move_id)
                 )
-                state = _update_side(state, _replace_pokemon(side, updated))
+                state = _update_side(state, _replace_pokemon(side, pv, updated))
             evidence = VisibleEvidence(
                 event_index=ei,
                 kind="move",
@@ -350,26 +430,21 @@ class ObservationReducer:
 
         if isinstance(event, HealthChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"health: unknown pokemon {event.nickname}")
+            pv = _require_health_target(side, event.nickname, event.slot)
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             updated = dataclasses.replace(
                 pv,
                 hp=hp_obs,
                 status=event.hp.status,
                 fainted=event.hp.fainted,
-                active=pv.active,
             )
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, StatusChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"status: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "status")
             updated = dataclasses.replace(pv, status=event.status)
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, TeamStatusCured):
             side = state.side(event.side_id)
@@ -378,21 +453,20 @@ class ObservationReducer:
 
         if isinstance(event, BoostChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"boost: unknown pokemon {event.nickname}")
-            new_boosts = _apply_boost_delta(pv.boosts, event.stat, event.delta)
+            pv = _require_active(side, event.nickname, "boost")
+            if event.mode == BoostChangeMode.SET:
+                new_boosts = _set_boost(pv.boosts, event.stat, event.amount)
+            else:
+                new_boosts = _apply_boost_delta(pv.boosts, event.stat, event.amount)
             return _update_side(
-                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts))
+                state, _replace_pokemon(side, pv, dataclasses.replace(pv, boosts=new_boosts))
             )
 
         if isinstance(event, BoostsSwapped):
             src_side = state.side(event.side_id)
             tgt_side = state.side(event.target_side_id)
-            src_pv = _find_pokemon(src_side, event.nickname)
-            tgt_pv = _find_pokemon(tgt_side, event.target_nickname)
-            if src_pv is None or tgt_pv is None:
-                raise ReducerInvariantError("swap_boost: unknown pokemon")
+            src_pv = _require_active(src_side, event.nickname, "swap_boost_src")
+            tgt_pv = _require_active(tgt_side, event.target_nickname, "swap_boost_tgt")
             src_boosts = list(src_pv.boosts)
             tgt_boosts = list(tgt_pv.boosts)
             for stat in event.stats:
@@ -401,116 +475,138 @@ class ObservationReducer:
             new_src = dataclasses.replace(src_pv, boosts=tuple(src_boosts))
             new_tgt = dataclasses.replace(tgt_pv, boosts=tuple(tgt_boosts))
             # Update both sides (may be the same side)
-            new_src_side = _replace_pokemon(src_side, new_src)
+            new_src_side = _replace_pokemon(src_side, src_pv, new_src)
             if event.side_id == event.target_side_id:
-                new_tgt_side = _replace_pokemon(new_src_side, new_tgt)
+                new_tgt_side = _replace_pokemon(new_src_side, tgt_pv, new_tgt)
                 return _update_side(state, new_tgt_side)
             state = _update_side(state, new_src_side)
-            new_tgt_side = _replace_pokemon(state.side(event.target_side_id), new_tgt)
+            new_tgt_side = _replace_pokemon(state.side(event.target_side_id), tgt_pv, new_tgt)
             return _update_side(state, new_tgt_side)
 
         if isinstance(event, BoostsCopied):
             src_side = state.side(event.source_side_id)
             tgt_side = state.side(event.side_id)
-            src_pv = _find_pokemon(src_side, event.source_nickname)
-            tgt_pv = _find_pokemon(tgt_side, event.nickname)
-            if src_pv is None or tgt_pv is None:
-                raise ReducerInvariantError("copy_boost: unknown pokemon")
+            src_pv = _require_active(src_side, event.source_nickname, "copy_boost_src")
+            tgt_pv = _require_active(tgt_side, event.nickname, "copy_boost_tgt")
             tgt_boosts = list(tgt_pv.boosts)
             for stat in event.stats:
                 idx = BOOST_STATS.index(stat)
                 tgt_boosts[idx] = src_pv.boosts[idx]
             new_tgt = dataclasses.replace(tgt_pv, boosts=tuple(tgt_boosts))
-            return _update_side(state, _replace_pokemon(tgt_side, new_tgt))
+            return _update_side(state, _replace_pokemon(tgt_side, tgt_pv, new_tgt))
 
         if isinstance(event, BoostsCleared):
+            if event.side_id is None:
+                # -clearallboost: both sides' active pokemon, no target nickname to verify
+                new_p1 = state.p1
+                active_p1 = _find_active(state.p1)
+                if active_p1 is not None:
+                    cleared = _clear_boosts(active_p1.boosts, event.scope)
+                    new_p1 = _replace_pokemon(
+                        state.p1, active_p1, dataclasses.replace(active_p1, boosts=cleared)
+                    )
+                new_p2 = state.p2
+                active_p2 = _find_active(state.p2)
+                if active_p2 is not None:
+                    cleared = _clear_boosts(active_p2.boosts, event.scope)
+                    new_p2 = _replace_pokemon(
+                        state.p2, active_p2, dataclasses.replace(active_p2, boosts=cleared)
+                    )
+                return dataclasses.replace(state, p1=new_p1, p2=new_p2)
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"clear_boost: unknown pokemon {event.nickname}")
+            assert event.nickname is not None  # guaranteed by BoostsCleared.__post_init__
+            pv = _require_active(side, event.nickname, "clear_boost")
             new_boosts = _clear_boosts(pv.boosts, event.scope)
             return _update_side(
-                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=new_boosts))
+                state, _replace_pokemon(side, pv, dataclasses.replace(pv, boosts=new_boosts))
             )
 
         if isinstance(event, BoostsInverted):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"invert_boost: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "invert_boost")
             inverted = tuple(-b for b in pv.boosts)
             return _update_side(
-                state, _replace_pokemon(side, dataclasses.replace(pv, boosts=inverted))
+                state, _replace_pokemon(side, pv, dataclasses.replace(pv, boosts=inverted))
             )
 
         if isinstance(event, ItemChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"item: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "item")
             if event.action == "set":
                 new_intervals = _open_interval(pv.item_intervals, event.item, ei)
             else:
-                new_intervals = _close_interval(pv.item_intervals, ei)
+                new_intervals = _open_interval(pv.item_intervals, None, ei)
             updated = dataclasses.replace(pv, item_intervals=new_intervals)
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, AbilityChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"ability: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "ability")
             if event.action == "set":
                 new_intervals = _open_interval(pv.ability_intervals, event.ability, ei)
             else:
-                new_intervals = _close_interval(pv.ability_intervals, ei)
+                new_intervals = _open_interval(pv.ability_intervals, None, ei)
             updated = dataclasses.replace(pv, ability_intervals=new_intervals)
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, IdentityChanged):
             side = state.side(event.side_id)
-            # The nickname may change — find by slot (active pokemon)
-            pv = next((p for p in side.pokemon if p.active), None)
-            if pv is None:
-                pv = _find_pokemon(side, event.nickname)
-            if pv is None:
+            active_pv = _find_active(side)
+            if active_pv is None:
                 raise ReducerInvariantError(f"identity: no active pokemon on {event.side_id}")
-            new_intervals = _open_interval(pv.identity_intervals, event.details, ei)
-            # Replace with new nickname
+            new_intervals = _open_interval(active_pv.identity_intervals, event.details, ei)
+            hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             updated = dataclasses.replace(
-                pv,
+                active_pv,
                 nickname=event.nickname,
+                switch_identity=normalize_identity_details(event.details),
                 current_details=event.details,
                 identity_intervals=new_intervals,
+                hp=hp_obs,
+                status=event.hp.status,
+                fainted=event.hp.fainted,
             )
-            new_pokemon = tuple(updated if p.nickname == pv.nickname else p for p in side.pokemon)
+            new_pokemon = tuple(updated if p is active_pv else p for p in side.pokemon)
             return _update_side(state, dataclasses.replace(side, pokemon=new_pokemon))
 
         if isinstance(event, FormChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"form: unknown pokemon {event.nickname}")
-            updated = dataclasses.replace(pv, current_details=event.details)
-            state = _update_side(state, _replace_pokemon(side, updated))
+            pv = _require_active(side, event.nickname, "form")
+            hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
+            if event.kind == FormChangeKind.PERSISTENT_DETAILS:
+                updated = dataclasses.replace(
+                    pv,
+                    switch_identity=normalize_identity_details(event.value),
+                    current_details=event.value,
+                    hp=hp_obs,
+                    status=event.hp.status,
+                    fainted=event.hp.fainted,
+                )
+            else:
+                updated = dataclasses.replace(
+                    pv,
+                    current_details=event.value,
+                    hp=hp_obs,
+                    status=event.hp.status,
+                    fainted=event.hp.fainted,
+                )
+            state = _update_side(state, _replace_pokemon(side, pv, updated))
             evidence = VisibleEvidence(
                 event_index=ei,
                 kind="form",
                 side_id=event.side_id,
                 slot=event.slot,
                 nickname=event.nickname,
-                effect=event.details,
+                effect=event.value,
                 annotations=(),
             )
             return dataclasses.replace(state, visible_evidence=(*state.visible_evidence, evidence))
 
         if isinstance(event, PokemonTransformed):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"transform: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "transform")
             updated = dataclasses.replace(pv, transform_target=event.target_nickname)
-            state = _update_side(state, _replace_pokemon(side, updated))
+            state = _update_side(state, _replace_pokemon(side, pv, updated))
             evidence = VisibleEvidence(
                 event_index=ei,
                 kind="transform",
@@ -524,11 +620,9 @@ class ObservationReducer:
 
         if isinstance(event, Terastallized):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"tera: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "tera")
             updated = dataclasses.replace(pv, tera_type=event.tera_type)
-            state = _update_side(state, _replace_pokemon(side, updated))
+            state = _update_side(state, _replace_pokemon(side, pv, updated))
             evidence = VisibleEvidence(
                 event_index=ei,
                 kind="tera",
@@ -542,27 +636,23 @@ class ObservationReducer:
 
         if isinstance(event, VolatileChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"volatile: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "volatile")
             if event.action == "start":
                 if event.volatile not in pv.volatiles:
                     new_v = tuple(sorted((*pv.volatiles, event.volatile)))
                     updated = dataclasses.replace(pv, volatiles=new_v)
-                    return _update_side(state, _replace_pokemon(side, updated))
+                    return _update_side(state, _replace_pokemon(side, pv, updated))
             elif event.action == "end":
                 new_v = tuple(v for v in pv.volatiles if v != event.volatile)
                 updated = dataclasses.replace(pv, volatiles=new_v)
-                return _update_side(state, _replace_pokemon(side, updated))
+                return _update_side(state, _replace_pokemon(side, pv, updated))
             return state
 
         if isinstance(event, RechargeChanged):
             side = state.side(event.side_id)
-            pv = _find_pokemon(side, event.nickname)
-            if pv is None:
-                raise ReducerInvariantError(f"recharge: unknown pokemon {event.nickname}")
+            pv = _require_active(side, event.nickname, "recharge")
             updated = dataclasses.replace(pv, recharging=event.recharging)
-            return _update_side(state, _replace_pokemon(side, updated))
+            return _update_side(state, _replace_pokemon(side, pv, updated))
 
         if isinstance(event, TransientEffectObserved):
             ev = VisibleEvidence(
