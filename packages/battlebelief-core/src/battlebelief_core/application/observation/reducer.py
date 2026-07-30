@@ -33,6 +33,7 @@ from battlebelief_core.domain.events.pokemon import (
     BoostsInverted,
     BoostsSwapped,
     FormChanged,
+    FormChangeKind,
     HealthChanged,
     IdentityChanged,
     ItemChanged,
@@ -572,13 +573,23 @@ class ObservationReducer:
             side = state.side(event.side_id)
             pv = _require_active(side, event.nickname, "form")
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
-            updated = dataclasses.replace(
-                pv,
-                current_details=event.details,
-                hp=hp_obs,
-                status=event.hp.status,
-                fainted=event.hp.fainted,
-            )
+            if event.kind == FormChangeKind.PERSISTENT_DETAILS:
+                updated = dataclasses.replace(
+                    pv,
+                    switch_identity=normalize_identity_details(event.value),
+                    current_details=event.value,
+                    hp=hp_obs,
+                    status=event.hp.status,
+                    fainted=event.hp.fainted,
+                )
+            else:
+                updated = dataclasses.replace(
+                    pv,
+                    current_details=event.value,
+                    hp=hp_obs,
+                    status=event.hp.status,
+                    fainted=event.hp.fainted,
+                )
             state = _update_side(state, _replace_pokemon(side, pv, updated))
             evidence = VisibleEvidence(
                 event_index=ei,
@@ -586,7 +597,7 @@ class ObservationReducer:
                 side_id=event.side_id,
                 slot=event.slot,
                 nickname=event.nickname,
-                effect=event.details,
+                effect=event.value,
                 annotations=(),
             )
             return dataclasses.replace(state, visible_evidence=(*state.visible_evidence, evidence))

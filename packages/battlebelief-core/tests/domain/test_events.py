@@ -35,6 +35,7 @@ from battlebelief_core.domain.events.pokemon import (
     BoostsInverted,
     BoostsSwapped,
     FormChanged,
+    FormChangeKind,
     HealthChanged,
     IdentityChanged,
     ItemChanged,
@@ -365,17 +366,31 @@ class TestPokemonEvents:
         assert ev.details == "Zoroark, L50, M"
         assert ev.hp is self._hp_token
 
-    def test_form_changed(self) -> None:
+    def test_form_changed_temporary_species(self) -> None:
         ev = FormChanged(
             event_index=29,
             side_id="p1",
             slot=1,
             nickname="Rotom",
-            details="Rotom-Wash",
+            kind=FormChangeKind.TEMPORARY_SPECIES,
+            value="Rotom-Wash",
             hp=self._hp_token,
         )
-        assert ev.details == "Rotom-Wash"
+        assert ev.value == "Rotom-Wash"
         assert ev.hp is self._hp_token
+
+    def test_form_changed_persistent_details(self) -> None:
+        ev = FormChanged(
+            event_index=29,
+            side_id="p1",
+            slot=1,
+            nickname="Zygarde",
+            kind=FormChangeKind.PERSISTENT_DETAILS,
+            value="Zygarde-Complete, L50",
+            hp=self._hp_token,
+        )
+        assert ev.kind == FormChangeKind.PERSISTENT_DETAILS
+        assert ev.value == "Zygarde-Complete, L50"
 
     def test_pokemon_transformed(self) -> None:
         ev = PokemonTransformed(

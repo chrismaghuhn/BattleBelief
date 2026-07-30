@@ -12,6 +12,16 @@ class BoostChangeMode(StrEnum):
     SET = "set"
 
 
+class FormChangeKind(StrEnum):
+    # detailschange: permanent form change carrying full DETAILS; updates
+    # the pokemon's switch-identity key (e.g. Power Construct's Zygarde
+    # Complete Forme, Shaymin's Sky/Land forme).
+    PERSISTENT_DETAILS = "persistent_details"
+    # -formechange: temporary/cosmetic change carrying SPECIES only; display
+    # only, must not affect switch-identity (e.g. Mimikyu Busted, Zen Mode).
+    TEMPORARY_SPECIES = "temporary_species"
+
+
 @dataclass(frozen=True, slots=True)
 class PokemonSwitched(BattleEvent):
     event_index: int
@@ -191,7 +201,8 @@ class FormChanged(BattleEvent):
     side_id: str
     slot: int
     nickname: str
-    details: str
+    kind: FormChangeKind
+    value: str  # full details for PERSISTENT_DETAILS, bare species for TEMPORARY_SPECIES
     hp: HpToken
 
 

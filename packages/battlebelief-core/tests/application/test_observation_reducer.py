@@ -33,6 +33,7 @@ from battlebelief_core.domain.events.pokemon import (
     BoostsInverted,
     BoostsSwapped,
     FormChanged,
+    FormChangeKind,
     HealthChanged,
     IdentityChanged,
     ItemChanged,
@@ -568,7 +569,8 @@ class TestTeraItemAbilityFormTransform:
                 side_id="p1",
                 slot=1,
                 nickname="Rotom",
-                details="Rotom-Wash",
+                kind=FormChangeKind.TEMPORARY_SPECIES,
+                value="Rotom-Wash",
                 hp=_make_token(183, 183),
             ),
         )
@@ -586,7 +588,8 @@ class TestTeraItemAbilityFormTransform:
                 side_id="p1",
                 slot=1,
                 nickname="Rotom",
-                details="Rotom-Wash",
+                kind=FormChangeKind.TEMPORARY_SPECIES,
+                value="Rotom-Wash",
                 hp=_make_token(150, 183, "brn"),
             ),
         )
@@ -1403,11 +1406,11 @@ class TestContractGapRegressions:
         assert garchomp.active is True
         assert "earthquake" in garchomp.revealed_moves
 
-    def test_temporary_form_switch_back_does_not_duplicate_view(self) -> None:
-        # parse_battle_line(payload, event_index) is stateless per the M1 plan
-        # and cannot enrich -formechange's SPECIES-only payload with level or
-        # gender. FormChanged.details may therefore be species-only; it must
-        # only update the display field, never the switch-identity key.
+    def test_formechange_does_not_update_switch_identity(self) -> None:
+        # -formechange (TEMPORARY_SPECIES) carries SPECIES only — no level or
+        # gender, and parse_battle_line(payload, event_index) is stateless per
+        # the M1 plan, so it cannot be enriched. It must only update the
+        # display field, never the switch-identity key.
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Rotom", 20, details="Rotom, L50")
         s = ObservationReducer.reduce(
@@ -1431,7 +1434,8 @@ class TestContractGapRegressions:
                 side_id="p1",
                 slot=1,
                 nickname="Rotom",
-                details="Rotom-Wash",  # species only — no level/gender
+                kind=FormChangeKind.TEMPORARY_SPECIES,
+                value="Rotom-Wash",  # species only — no level/gender
                 hp=_make_token(100, 100),
             ),
         )
@@ -1441,6 +1445,109 @@ class TestContractGapRegressions:
         rotom = s.p1.pokemon[0]
         assert rotom.active is True
         assert "voltswitch" in rotom.revealed_moves
+
+    def test_detailschange_updates_switch_identity(self) -> None:
+        # detailschange (PERSISTENT_DETAILS) carries the full new DETAILS
+        # string for a permanent form change and must become the pokemon's
+        # new switch-identity key.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Zygarde", 20, details="Zygarde, L50")
+        s = ObservationReducer.reduce(
+            s,
+            FormChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Zygarde",
+                kind=FormChangeKind.PERSISTENT_DETAILS,
+                value="Zygarde-Complete, L50",
+                hp=_make_token(100, 100),
+            ),
+        )
+        zygarde = next(pv for pv in s.p1.pokemon if pv.nickname == "Zygarde")
+        assert zygarde.switch_identity == "Zygarde-Complete, L50"
+        assert zygarde.current_details == "Zygarde-Complete, L50"
+
+    def test_detailschange_switch_back_reuses_view(self) -> None:
+        # After a permanent detailschange, a later switch-in carrying the new
+        # full details must resolve to the same PokemonView, not create a
+        # duplicate.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Zygarde", 20, details="Zygarde, L50")
+        s = ObservationReducer.reduce(
+            s,
+            MoveUsed(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Zygarde",
+                move_id="landswrath",
+                target_side_id=None,
+                target_slot=None,
+                target_nickname=None,
+                annotations=(),
+            ),
+        )
+        s = ObservationReducer.reduce(
+            s,
+            FormChanged(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Zygarde",
+                kind=FormChangeKind.PERSISTENT_DETAILS,
+                value="Zygarde-Complete, L50",
+                hp=_make_token(100, 100),
+            ),
+        )
+        s = _switch_in(s, "p2", "Togekiss", 23, details="Togekiss, L50, F")
+        s = _switch_in(
+            s, "p1", "Zygarde", 24, details="Zygarde-Complete, L50", current=100, maximum=100
+        )
+        assert len(s.p1.pokemon) == 1
+        zygarde = s.p1.pokemon[0]
+        assert zygarde.active is True
+        assert "landswrath" in zygarde.revealed_moves
+
+    def test_replace_remains_distinct_from_detailschange(self) -> None:
+        # replace (Illusion broken -> IdentityChanged) and detailschange
+        # (permanent form -> FormChanged/PERSISTENT_DETAILS) are different
+        # wire events and must stay independently representable.
+        s = _with_players("p2")
+        s = _switch_in(s, "p2", "Zorua", 20, details="Zorua, L50")
+        s = ObservationReducer.reduce(
+            s,
+            IdentityChanged(
+                event_index=21,
+                side_id="p2",
+                slot=1,
+                nickname="Zoroark",
+                details="Zoroark, L50",
+                hp=_make_token(100, 100),
+            ),
+        )
+        zoroark = next(pv for pv in s.p2.pokemon if pv.nickname == "Zoroark")
+        assert zoroark.switch_identity == "Zoroark, L50"
+        assert len(zoroark.identity_intervals) >= 1
+
+        s2 = _with_players("p1")
+        s2 = _switch_in(s2, "p1", "Zygarde", 20, details="Zygarde, L50")
+        s2 = ObservationReducer.reduce(
+            s2,
+            FormChanged(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Zygarde",
+                kind=FormChangeKind.PERSISTENT_DETAILS,
+                value="Zygarde-Complete, L50",
+                hp=_make_token(100, 100),
+            ),
+        )
+        zygarde = next(pv for pv in s2.p1.pokemon if pv.nickname == "Zygarde")
+        assert zygarde.switch_identity == "Zygarde-Complete, L50"
+        # detailschange does not open an identity_interval — only replace does
+        assert zygarde.identity_intervals == ()
 
     def test_revival_ambiguity_limited_to_fainted_candidates(self) -> None:
         # Two same-nicknamed, currently-inactive bench members: one healthy,
