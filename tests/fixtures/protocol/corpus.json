@@ -1,0 +1,13 @@
+{
+  "corpus_id": "gen9ou-protocol-m1-v1",
+  "format": "gen9ou",
+  "showdown_commit": "59da482eabc87245eb62313593e468e81ca537d9",
+  "captured_at": "2026-07-30",
+  "fixtures": [
+    "metadata-and-preview.txt",
+    "state-transitions.txt",
+    "evidence-and-display.txt"
+  ],
+  "fixture_kind": "synthetic-minimized",
+  "contains_private_replays": false
+}
