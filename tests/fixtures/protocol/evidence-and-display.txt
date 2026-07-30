@@ -1,0 +1,38 @@
+|init|battle
+|title|ash vs. misty
+|player|p1|ash|1|
+|player|p2|misty|2|
+|teamsize|p1|6
+|teamsize|p2|6
+|gametype|singles
+|gen|9
+|tier|[Gen 9] OU
+|start
+|turn|1
+|switch|p1a: Garchomp|Garchomp, L50, M|183/183
+|switch|p2a: Togekiss|Togekiss, L50, F|100/100
+|move|p1a: Garchomp|Earthquake|p2a: Togekiss
+|-crit|p2a: Togekiss
+|-supereffective|p2a: Togekiss
+|
+|-resisted|p2a: Togekiss
+|-immune|p2a: Togekiss
+|-miss|p1a: Garchomp|p2a: Togekiss
+|-fail|p2a: Togekiss
+|-activate|p2a: Togekiss|move: Protect
+|-block|p2a: Togekiss|move: Protect
+|-notarget
+|-nothing
+|-hitcount|p2a: Togekiss|2
+|-prepare|p1a: Garchomp|Solar Beam
+|-fieldactivate|move: Perish Song
+|upkeep
+|t:|1700000000
+|-anim|p1a: Garchomp|Earthquake|p2a: Togekiss
+|-hint|Sleep Clause Mod prevents a second foe from falling asleep.
+|-center
+|-combine
+|-waiting|p1a: Garchomp|p2a: Togekiss
+|message|Sand Stream whipped up a sandstorm!
+|-message|Custom message
+|win|ash

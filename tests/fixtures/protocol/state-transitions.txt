@@ -1,0 +1,57 @@
+|init|battle
+|title|ash vs. misty
+|player|p1|ash|1|
+|player|p2|misty|2|
+|teamsize|p1|6
+|teamsize|p2|6
+|gametype|singles
+|gen|9
+|tier|[Gen 9] OU
+|start
+|turn|1
+|switch|p1a: Garchomp|Garchomp, L50, M|183/183
+|switch|p2a: Togekiss|Togekiss, L50, F|100/100
+|move|p1a: Garchomp|Earthquake|p2a: Togekiss
+|-terastallize|p1a: Garchomp|Ground
+|-ability|p1a: Garchomp|Rough Skin
+|-item|p1a: Garchomp|Rocky Helmet
+|-boost|p1a: Garchomp|atk|1
+|-unboost|p2a: Togekiss|spe|1
+|-setboost|p1a: Garchomp|atk|3
+|-swapboost|p1a: Garchomp|p2a: Togekiss|atk
+|-copyboost|p2a: Togekiss|p1a: Garchomp|atk
+|-invertboost|p1a: Garchomp
+|-clearboost|p1a: Garchomp
+|-clearpositiveboost|p2a: Togekiss
+|-clearnegativeboost|p2a: Togekiss
+|-clearallboost
+|-weather|SunnyDay
+|-weather|SunnyDay|[upkeep]
+|-weather|none
+|-fieldstart|Trick Room
+|-fieldend|Trick Room
+|-sidestart|p1|Stealth Rock
+|-sideend|p1|Stealth Rock
+|-swapsideconditions
+|-start|p1a: Garchomp|confusion
+|-end|p1a: Garchomp|confusion
+|-singleturn|p1a: Garchomp|Protect
+|-singlemove|p1a: Garchomp|Destiny Bond
+|-mustrecharge|p1a: Garchomp
+|-damage|p2a: Togekiss|50/100
+|-heal|p2a: Togekiss|80/100
+|-sethp|p2a: Togekiss|60/100
+|-status|p2a: Togekiss|brn
+|-curestatus|p2a: Togekiss|brn
+|cant|p1a: Garchomp|flinch
+|detailschange|p1a: Garchomp|Garchomp-Mega, L50, M|183/183
+|-formechange|p1a: Garchomp|Garchomp, L50, M|183/183
+|-endability|p1a: Garchomp
+|-enditem|p1a: Garchomp
+|faint|p1a: Garchomp
+|switch|p1a: Rotom|Rotom, L50|100/100
+|drag|p2a: Zorua|Zorua, L50, M|100/100
+|replace|p2a: Zoroark|Zoroark, L50, M|100/100
+|-transform|p2a: Zoroark|p1a: Rotom
+|-cureteam|p2a: Zoroark
+|tie
