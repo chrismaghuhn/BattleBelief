@@ -1,0 +1,9 @@
+|updateuser| ash|1|0|{}
+|challstr|4|abcdef0123456789
+>battle-gen9ou-1
+|init|battle
+|title|ash vs. misty
+|join|ash
+|join|misty
+|player|p1|ash|1|
+|player|p2|misty|2|
