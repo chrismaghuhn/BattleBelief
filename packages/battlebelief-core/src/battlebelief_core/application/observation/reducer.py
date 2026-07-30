@@ -56,7 +56,12 @@ from battlebelief_core.domain.events.progress import (
     TurnStarted,
 )
 from battlebelief_core.domain.state.observed_state import ObservedState
-from battlebelief_core.domain.state.pokemon_view import BOOST_STATS, ZERO_BOOSTS, PokemonView
+from battlebelief_core.domain.state.pokemon_view import (
+    BOOST_STATS,
+    ZERO_BOOSTS,
+    PokemonView,
+    normalize_identity_details,
+)
 from battlebelief_core.domain.state.side_view import SideView
 from battlebelief_core.domain.state.values import (
     EvidenceInterval,
@@ -107,18 +112,26 @@ def _require_active(side: SideView, nickname: str, context: str) -> PokemonView:
     return pv
 
 
-def _require_health_target(side: SideView, nickname: str) -> PokemonView:
-    """Resolve a HealthChanged target: the active pokemon in the common case,
-    or a uniquely-identified fainted bench member for Revival Blessing's heal
-    on an inactive target. Fails closed on ambiguity rather than guessing.
+def _require_health_target(side: SideView, nickname: str, slot: int | None) -> PokemonView:
+    """Resolve a HealthChanged target using the wire-level active/inactive
+    distinction (slot is None for a positionless "p1: Name" reference, e.g.
+    Revival Blessing's heal target) rather than guessing from nickname
+    collisions against current state — a same-nicknamed active pokemon must
+    never shadow the real inactive target, and vice versa.
+
+    An inactive target must be a uniquely-identified fainted bench member
+    (Revival Blessing is the only supported inactive-target path, and it can
+    only target a fainted teammate); ambiguity fails closed rather than
+    guessing.
     """
-    active_pv = _find_active(side)
-    if active_pv is not None and active_pv.nickname == nickname:
-        return active_pv
-    candidates = [pv for pv in side.pokemon if not pv.active and pv.nickname == nickname]
+    if slot is not None:
+        return _require_active(side, nickname, "health")
+    candidates = [
+        pv for pv in side.pokemon if not pv.active and pv.fainted and pv.nickname == nickname
+    ]
     if len(candidates) != 1:
         raise ReducerInvariantError(
-            f"health: cannot uniquely resolve inactive target {nickname!r} "
+            f"health: cannot uniquely resolve inactive fainted target {nickname!r} "
             f"on side {side.side_id!r} ({len(candidates)} candidates)"
         )
     return candidates[0]
@@ -127,16 +140,18 @@ def _require_health_target(side: SideView, nickname: str) -> PokemonView:
 def _find_for_switch_in(
     pokemon: tuple[PokemonView, ...], nickname: str, details: str
 ) -> PokemonView | None:
-    """Disambiguate bench members by (nickname, details) to avoid nickname aliasing.
+    """Disambiguate bench members by (nickname, switch_identity) to avoid nickname aliasing.
 
-    Every PokemonView is created with `details` already known (only switch/drag
-    create entries), so an exact (nickname, details) match is always sufficient.
-    No same-nickname fallback: two teammates can share a nickname but never
-    (nickname, details) together, so guessing among nickname-only matches would
-    silently merge two different pokemon's evidence.
+    Matches against the stable, tera-suffix-normalized switch_identity key
+    (not the display-only current_details), so Terastallizing does not create
+    a spurious new identity on a later switch-in. No same-nickname fallback:
+    two teammates can share a nickname but never the same switch_identity, so
+    guessing among nickname-only matches would silently merge two different
+    pokemon's evidence.
     """
+    target_identity = normalize_identity_details(details)
     for pv in pokemon:
-        if pv.nickname == nickname and pv.current_details == details:
+        if pv.nickname == nickname and pv.switch_identity == target_identity:
             return pv
     return None
 
@@ -414,7 +429,7 @@ class ObservationReducer:
 
         if isinstance(event, HealthChanged):
             side = state.side(event.side_id)
-            pv = _require_health_target(side, event.nickname)
+            pv = _require_health_target(side, event.nickname, event.slot)
             hp_obs = _token_to_observation(event.hp, event.side_id, state.our_side)
             updated = dataclasses.replace(
                 pv,
@@ -543,6 +558,7 @@ class ObservationReducer:
             updated = dataclasses.replace(
                 active_pv,
                 nickname=event.nickname,
+                switch_identity=normalize_identity_details(event.details),
                 current_details=event.details,
                 identity_intervals=new_intervals,
                 hp=hp_obs,

@@ -67,7 +67,10 @@ class MovePrevented(BattleEvent):
 class HealthChanged(BattleEvent):
     event_index: int
     side_id: str
-    slot: int
+    # None when the wire POKEMON identifier carries no position letter
+    # (e.g. "p1: Name" for a Revival Blessing target) — distinct from an
+    # active-slot reference ("p1a: Name"), which always carries a position.
+    slot: int | None
     nickname: str
     hp: HpToken
     annotations: tuple[str, ...]

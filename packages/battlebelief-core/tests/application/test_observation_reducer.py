@@ -1302,7 +1302,7 @@ class TestContractGapRegressions:
             HealthChanged(
                 event_index=23,
                 side_id="p1",
-                slot=1,
+                slot=None,  # "p1: Rabsca" — no position letter, inactive target
                 nickname="Rabsca",
                 hp=HpToken(current=80, maximum=160, status=None, fainted=False),
                 annotations=(),
@@ -1368,44 +1368,109 @@ class TestContractGapRegressions:
             )
 
     def test_tera_switch_back_reuses_existing_view(self) -> None:
-        # Given a compliant Runtime parser, the details string on a subsequent
-        # switch-in for a terastallized pokemon is unchanged from the original
-        # reveal (species/level/gender only) — tera state is tracked via
-        # tera_type, not embedded in the details string.
+        # After Terastallizing, Showdown appends ", tera:TYPE" to the visible
+        # details string on later switch lines. The switch_identity key must
+        # be normalized so this does not create a spurious second entity.
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Garchomp", 20, details="Garchomp, L50, M")
         s = ObservationReducer.reduce(
             s,
-            Terastallized(
-                event_index=21, side_id="p1", slot=1, nickname="Garchomp", tera_type="Ground"
+            MoveUsed(
+                event_index=21,
+                side_id="p1",
+                slot=1,
+                nickname="Garchomp",
+                move_id="earthquake",
+                target_side_id=None,
+                target_slot=None,
+                target_nickname=None,
+                annotations=(),
             ),
         )
-        s = _switch_in(s, "p1", "Togekiss", 22, details="Togekiss, L50, F")
-        s = _switch_in(s, "p1", "Garchomp", 23, details="Garchomp, L50, M")
+        s = ObservationReducer.reduce(
+            s,
+            Terastallized(
+                event_index=22, side_id="p1", slot=1, nickname="Garchomp", tera_type="Ground"
+            ),
+        )
+        s = _switch_in(s, "p1", "Togekiss", 23, details="Togekiss, L50, F")
+        s = _switch_in(
+            s, "p1", "Garchomp", 24, details="Garchomp, L50, M, tera:Ground", current=100
+        )
         assert len(s.p1.pokemon) == 2
         garchomp = next(pv for pv in s.p1.pokemon if pv.nickname == "Garchomp")
         assert garchomp.tera_type == "Ground"
         assert garchomp.active is True
+        assert "earthquake" in garchomp.revealed_moves
 
     def test_temporary_form_switch_back_does_not_duplicate_view(self) -> None:
-        # Given a compliant Runtime parser, -formechange carries the full
-        # details string (species, level, gender), not species alone.
+        # parse_battle_line(payload, event_index) is stateless per the M1 plan
+        # and cannot enrich -formechange's SPECIES-only payload with level or
+        # gender. FormChanged.details may therefore be species-only; it must
+        # only update the display field, never the switch-identity key.
         s = _with_players("p1")
         s = _switch_in(s, "p1", "Rotom", 20, details="Rotom, L50")
         s = ObservationReducer.reduce(
             s,
-            FormChanged(
+            MoveUsed(
                 event_index=21,
                 side_id="p1",
                 slot=1,
                 nickname="Rotom",
-                details="Rotom-Wash, L50",
+                move_id="voltswitch",
+                target_side_id=None,
+                target_slot=None,
+                target_nickname=None,
+                annotations=(),
+            ),
+        )
+        s = ObservationReducer.reduce(
+            s,
+            FormChanged(
+                event_index=22,
+                side_id="p1",
+                slot=1,
+                nickname="Rotom",
+                details="Rotom-Wash",  # species only — no level/gender
                 hp=_make_token(100, 100),
             ),
         )
-        s = _switch_in(s, "p2", "Togekiss", 22, details="Togekiss, L50, F")
-        s = _switch_in(s, "p1", "Rotom", 23, details="Rotom-Wash, L50", current=100, maximum=100)
+        s = _switch_in(s, "p2", "Togekiss", 23, details="Togekiss, L50, F")
+        s = _switch_in(s, "p1", "Rotom", 24, details="Rotom, L50", current=100, maximum=100)
         assert len(s.p1.pokemon) == 1
         rotom = s.p1.pokemon[0]
-        assert rotom.current_details == "Rotom-Wash, L50"
         assert rotom.active is True
+        assert "voltswitch" in rotom.revealed_moves
+
+    def test_revival_ambiguity_limited_to_fainted_candidates(self) -> None:
+        # Two same-nicknamed, currently-inactive bench members: one healthy,
+        # one fainted. Only the fainted one is a legal Revival target, so it
+        # must resolve unambiguously despite the nickname collision.
+        s = _with_players("p1")
+        s = _switch_in(s, "p1", "Bob", 20, details="Garchomp, L50, M", current=180, maximum=180)
+        s = ObservationReducer.reduce(
+            s, PokemonFainted(event_index=21, side_id="p1", slot=1, nickname="Bob")
+        )
+        s = _switch_in(s, "p1", "Bob", 22, details="Rotom, L50", current=100, maximum=100)
+        s = _switch_in(s, "p1", "Wartortle", 23, details="Wartortle, L50, M", current=90)
+        # Now: Garchomp-Bob (fainted, inactive), Rotom-Bob (healthy, inactive),
+        # Wartortle (active). Both Bobs are inactive at once.
+        s = ObservationReducer.reduce(
+            s,
+            HealthChanged(
+                event_index=24,
+                side_id="p1",
+                slot=None,  # "p1: Bob" — inactive Revival target
+                nickname="Bob",
+                hp=HpToken(current=90, maximum=180, status=None, fainted=False),
+                annotations=(),
+            ),
+        )
+        garchomp_bob = next(pv for pv in s.p1.pokemon if pv.current_details == "Garchomp, L50, M")
+        rotom_bob = next(pv for pv in s.p1.pokemon if pv.current_details == "Rotom, L50")
+        assert garchomp_bob.fainted is False
+        assert garchomp_bob.hp is not None
+        assert garchomp_bob.hp.current == 90
+        assert rotom_bob.hp is not None
+        assert rotom_bob.hp.current == 100  # untouched
+        assert rotom_bob.active is False
