@@ -618,12 +618,12 @@ class EffectCounter:
     count: int
 ```
 
-- [ ] **Step 1: Failing Tests für Immutability und HP-Invarianten schreiben**
+- [x] **Step 1: Failing Tests für Immutability und HP-Invarianten schreiben**
 
 Tests versuchen eine Feldmutation, prüfen exakte/Prozent-HP getrennt und
 verwerfen negative oder inkonsistente HP-Werte.
 
-- [ ] **Step 2: Fokustests ausführen**
+- [x] **Step 2: Fokustests ausführen**
 
 Run:
 
@@ -633,18 +633,18 @@ uv run pytest packages/battlebelief-core/tests/domain/test_events.py packages/ba
 
 Expected: FAIL wegen fehlender Module.
 
-- [ ] **Step 3: Events und Werte minimal vollständig implementieren**
+- [x] **Step 3: Events und Werte minimal vollständig implementieren**
 
 Jede Tabellezeile erhält einen exportierten Typ. Generische
 `VisibleEvidence(kind, actor, target, effect, annotations)` und
 `IgnoredDisplayEvent(kind)` sind erlaubt; state-bearing Gruppen dürfen nicht
 in diese beiden Typen umgeleitet werden.
 
-- [ ] **Step 4: Fokustests erneut ausführen**
+- [x] **Step 4: Fokustests erneut ausführen**
 
 Expected: PASS.
 
-- [ ] **Step 5: Core-Suite und Architekturcheck ausführen**
+- [x] **Step 5: Core-Suite und Architekturcheck ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-core/tests -v
@@ -654,7 +654,7 @@ uv run mypy
 
 Expected: alle Befehle enden mit Exitcode 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add packages/battlebelief-core
@@ -754,7 +754,7 @@ Kein state-bearing Event darf unverändert zurückgegeben werden. Ein Event, das
 eine unmögliche Reihenfolge oder Form erzeugt, wirft
 `ReducerInvariantError`; Runtime mappt dies später genau einmal.
 
-- [ ] **Step 1: Failing Reducer-Tests schreiben**
+- [x] **Step 1: Failing Reducer-Tests schreiben**
 
 Die Tests decken mindestens ab:
 
@@ -768,7 +768,7 @@ Die Tests decken mindestens ab:
 - keine Mutation des Eingangszustands;
 - kein gegnerisches Hidden Set, Stats oder unrevealed Moves im State.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-core/tests/application/test_observation_reducer.py packages/battlebelief-core/tests/application/test_hidden_information_boundary.py -v
@@ -776,16 +776,16 @@ uv run pytest packages/battlebelief-core/tests/application/test_observation_redu
 
 Expected: FAIL wegen fehlender State-/Reducer-Typen.
 
-- [ ] **Step 3: State und Reducer implementieren**
+- [x] **Step 3: State und Reducer implementieren**
 
 Alle Update-Helfer sind pure Funktionen. Kein Helper liest Uhrzeit,
 Umgebungsvariablen, globale Zufallsquellen oder Runtime-Module.
 
-- [ ] **Step 4: Tests grün ausführen**
+- [x] **Step 4: Tests grün ausführen**
 
 Expected: PASS.
 
-- [ ] **Step 5: Gesamten Core prüfen und committen**
+- [x] **Step 5: Gesamten Core prüfen und committen**
 
 ```powershell
 uv run pytest packages/battlebelief-core/tests -v
