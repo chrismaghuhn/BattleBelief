@@ -16,8 +16,12 @@ _OPP = "misty"
 
 def _base() -> ObservedState:
     s = ObservedState.initial(_OWN)
-    s = ObservationReducer.reduce(s, PlayerDeclared(event_index=0, side_id="p1", username=_OWN))
-    s = ObservationReducer.reduce(s, PlayerDeclared(event_index=1, side_id="p2", username=_OPP))
+    s = ObservationReducer.reduce(
+        s, PlayerDeclared(event_index=0, side_id="p1", user_id=_OWN, display_name=_OWN)
+    )
+    s = ObservationReducer.reduce(
+        s, PlayerDeclared(event_index=1, side_id="p2", user_id=_OPP, display_name=_OPP)
+    )
     return s
 
 

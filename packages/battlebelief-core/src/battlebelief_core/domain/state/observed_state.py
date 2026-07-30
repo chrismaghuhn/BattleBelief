@@ -10,7 +10,8 @@ from battlebelief_core.errors import ReducerInvariantError
 def _empty_side(side_id: str) -> SideView:
     return SideView(
         side_id=side_id,
-        username=None,
+        user_id=None,
+        display_name=None,
         team_size=None,
         preview_roster=(),
         active_slot=None,

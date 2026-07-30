@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from battlebelief_core.domain.events.base import BattleEvent
 from battlebelief_core.domain.state.values import HpToken
+
+
+class BoostChangeMode(StrEnum):
+    DELTA = "delta"
+    SET = "set"
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +96,8 @@ class BoostChanged(BattleEvent):
     slot: int
     nickname: str
     stat: str
-    delta: int
+    mode: BoostChangeMode
+    amount: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,11 +126,18 @@ class BoostsCopied(BattleEvent):
 
 @dataclass(frozen=True, slots=True)
 class BoostsCleared(BattleEvent):
+    """side_id/slot/nickname are all None for -clearallboost (both sides' active pokemon)."""
+
     event_index: int
-    side_id: str
-    slot: int
-    nickname: str
+    side_id: str | None
+    slot: int | None
+    nickname: str | None
     scope: str
+
+    def __post_init__(self) -> None:
+        target = (self.side_id, self.slot, self.nickname)
+        if not (all(f is None for f in target) or all(f is not None for f in target)):
+            raise ValueError("BoostsCleared target fields must be all-None or all-set")
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +177,7 @@ class IdentityChanged(BattleEvent):
     slot: int
     nickname: str
     details: str
+    hp: HpToken
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +187,7 @@ class FormChanged(BattleEvent):
     slot: int
     nickname: str
     details: str
+    hp: HpToken
 
 
 @dataclass(frozen=True, slots=True)

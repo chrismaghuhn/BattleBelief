@@ -17,6 +17,14 @@ _TIER_ALIASES = {
     "gen 9 ou",
 }
 
+_ALLOWED_KINDS: dict[RequestKind, frozenset[ActionKind]] = {
+    RequestKind.MOVE: frozenset({ActionKind.MOVE, ActionKind.SWITCH, ActionKind.DEFAULT}),
+    RequestKind.FORCED_SWITCH: frozenset({ActionKind.SWITCH, ActionKind.DEFAULT}),
+    RequestKind.REVIVAL: frozenset({ActionKind.REVIVE, ActionKind.DEFAULT}),
+    RequestKind.TEAM_PREVIEW: frozenset({ActionKind.TEAM, ActionKind.DEFAULT}),
+    RequestKind.WAIT: frozenset(),
+}
+
 
 def _tier_matches(tier: str | None) -> bool:
     if tier is None:
@@ -144,6 +152,31 @@ class RequestReconciler:
                 status=ReconciliationStatus.REJECT,
                 reason="decision request must contain default",
             )
+
+        # Every submission kind must be legal for this request kind — the legal-action-safety
+        # contract requires checking team/slot/switch/tera relation before every dispatch.
+        allowed_kinds = _ALLOWED_KINDS[request.kind]
+        for sub in submissions:
+            if sub.kind not in allowed_kinds:
+                return ReconciliationResult(
+                    status=ReconciliationStatus.REJECT,
+                    reason=(
+                        f"submission kind {sub.kind!r} is not allowed for request kind "
+                        f"{request.kind!r}"
+                    ),
+                )
+
+        if request.kind == RequestKind.TEAM_PREVIEW:
+            expected_order = frozenset(range(1, request.team_member_count + 1))
+            for sub in submissions:
+                if sub.kind == ActionKind.TEAM and frozenset(sub.team_order) != expected_order:
+                    return ReconciliationResult(
+                        status=ReconciliationStatus.REJECT,
+                        reason=(
+                            f"team_order {sub.team_order} is not a permutation of "
+                            f"1..{request.team_member_count}"
+                        ),
+                    )
 
         # For move/forced-switch/revival requests, active identity must be known.
         _needs_active = {RequestKind.MOVE, RequestKind.FORCED_SWITCH, RequestKind.REVIVAL}
