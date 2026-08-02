@@ -14,6 +14,7 @@ PACKAGE_DIRS = (
     ROOT / "packages/battlebelief-runtime",
     ROOT / "packages/battlebelief-lab",
 )
+EXTERNAL_WHEELS = ("websockets==16.1.1",)
 
 
 def run(arguments: list[str]) -> None:
@@ -30,6 +31,14 @@ def entrypoint(venv_dir: Path, name: str) -> Path:
     suffix = ".exe" if sys.platform == "win32" else ""
     directory = "Scripts" if sys.platform == "win32" else "bin"
     return venv_dir / directory / f"{name}{suffix}"
+
+
+def host_python() -> Path:
+    if sys.platform == "win32":
+        candidate = Path(sys.base_prefix) / "python.exe"
+    else:
+        candidate = Path(sys.base_prefix) / "bin/python"
+    return candidate if candidate.exists() else Path(sys.executable)
 
 
 def install_profile(
@@ -68,6 +77,20 @@ def main() -> int:
         dist.mkdir()
         for package_dir in PACKAGE_DIRS:
             run([uv, "build", str(package_dir), "--out-dir", str(dist)])
+        run(
+            [
+                str(host_python()),
+                "-m",
+                "pip",
+                "download",
+                "--disable-pip-version-check",
+                "--no-deps",
+                "--only-binary=:all:",
+                "--dest",
+                str(dist),
+                *EXTERNAL_WHEELS,
+            ]
+        )
 
         core_env = temp / "core"
         install_profile(
