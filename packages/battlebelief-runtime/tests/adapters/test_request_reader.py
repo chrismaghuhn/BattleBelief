@@ -139,6 +139,41 @@ class TestRevival:
 
 
 class TestNormalMove:
+    def test_locked_move_without_disabled_is_accepted(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"][0]["moves"] = [{"move": "Recharge", "id": "recharge"}]
+        request = read_request(_ROOM, json.dumps(raw))
+        move_ids = [
+            submission.move_id
+            for submission in request.safe_submissions.submissions
+            if submission.kind == ActionKind.MOVE
+        ]
+        assert move_ids == ["recharge"]
+
+    def test_missing_disabled_defaults_to_enabled(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"][0]["moves"] = [{"move": "Recharge", "id": "recharge"}]
+        request = read_request(_ROOM, json.dumps(raw))
+        assert any(
+            submission.kind == ActionKind.MOVE and submission.move_id == "recharge"
+            for submission in request.safe_submissions.submissions
+        )
+
+    def test_nonempty_string_disabled_excludes_the_move(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"][0]["moves"] = [{"move": "Recharge", "id": "recharge", "disabled": "locked"}]
+        request = read_request(_ROOM, json.dumps(raw))
+        assert not any(
+            submission.kind == ActionKind.MOVE and submission.move_id == "recharge"
+            for submission in request.safe_submissions.submissions
+        )
+
+    def test_numeric_disabled_value_is_malformed(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"][0]["moves"] = [{"move": "Recharge", "id": "recharge", "disabled": 1}]
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
     def test_disabled_moves_are_excluded(self) -> None:
         dr = read_request(_ROOM, _load("move.json"))
         assert dr.kind == RequestKind.MOVE

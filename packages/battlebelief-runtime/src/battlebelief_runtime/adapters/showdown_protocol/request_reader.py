@@ -197,7 +197,15 @@ def _parse_active_request(payload: dict[str, Any]) -> _ActiveRequest:
     for index, value in enumerate(moves_value):
         move = _require_object(value, f"active[0].moves[{index}]")
         move_id = _require_string(move.get("id"), f"active[0].moves[{index}].id")
-        disabled = _require_bool(move.get("disabled"), f"active[0].moves[{index}].disabled")
+        raw_disabled = move.get("disabled", False)
+        if isinstance(raw_disabled, bool):
+            disabled = raw_disabled
+        elif isinstance(raw_disabled, str):
+            disabled = bool(raw_disabled)
+        else:
+            raise MalformedProtocolMessage(
+                f"active[0].moves[{index}].disabled must be a boolean or string"
+            )
         if "move" in move:
             _require_string(move["move"], f"active[0].moves[{index}].move")
         if "target" in move:
