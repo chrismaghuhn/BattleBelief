@@ -214,7 +214,10 @@ class BattleSession:
         if reconciliation.status == ReconciliationStatus.REJECT:
             raise RequestStateReconciliationMismatch(f"{reason}: {reconciliation.reason}")
         if reconciliation.status == ReconciliationStatus.PENDING_PUBLIC_STATE:
-            if strict:
+            active_identity_pending = reconciliation.reason == (
+                "active pokemon not yet known from public state"
+            )
+            if strict or (self._state.battle_started and not active_identity_pending):
                 raise RequestStateReconciliationMismatch(f"{reason}: {reconciliation.reason}")
             return
 

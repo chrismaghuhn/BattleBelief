@@ -282,6 +282,21 @@ def test_request_before_matching_switch_resolves_once() -> None:
     assert connection.sent_room == [(_ROOM, "move 1|5")]
 
 
+def test_request_after_battle_start_does_not_wait_for_missing_metadata() -> None:
+    result, connection = _run(
+        [
+            _line("|init|battle"),
+            _line("|player|p1|ash|1|"),
+            _line("|player|p2|misty|1|"),
+            _line("|start|"),
+            _line(_request("move.json", 5)),
+        ]
+    )
+
+    assert isinstance(result.primary_error, RequestStateReconciliationMismatch)
+    assert connection.sent_room == []
+
+
 def test_pending_request_with_contradictory_side_aborts_without_send() -> None:
     lines = [
         _line("|init|battle"),
