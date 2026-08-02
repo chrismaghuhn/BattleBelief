@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+import asyncio
+import functools
+from collections import deque
+from collections.abc import Awaitable, Callable
+
+import pytest
+
+from battlebelief_runtime.adapters.showdown_client.connection import ShowdownConnection
+from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
+from battlebelief_runtime.errors.protocol import Disconnect, TransportTimeout
+
+
+def _async_test[**P, T](function: Callable[P, Awaitable[T]]) -> Callable[P, T]:
+    @functools.wraps(function)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        return asyncio.run(function(*args, **kwargs))
+
+    return wrapper
+
+
+_URL = "wss://sim.smogon.com/showdown/websocket"
+_ROOM = "battle-gen9ou-1"
+
+
+class _FakeSocket:
+    def __init__(self, frames: list[str]) -> None:
+        self.frames = deque(frames)
+        self.sent: list[str] = []
+        self.closed = False
+
+    async def send(self, message: str) -> None:
+        self.sent.append(message)
+
+    async def recv(self) -> str:
+        if not self.frames:
+            raise StopAsyncIteration
+        return self.frames.popleft()
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _ReadTimeoutSocket(_FakeSocket):
+    async def recv(self) -> str:
+        if not self.frames:
+            raise TimeoutError("timed out")
+        return await super().recv()
+
+
+class _WriteTimeoutSocket(_FakeSocket):
+    async def send(self, message: str) -> None:
+        if self.sent:
+            raise TimeoutError("timed out")
+        await super().send(message)
+
+
+class _FakeAssertionProvider:
+    def __init__(self, assertion: str = "assertion-token") -> None:
+        self.assertion_value = assertion
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def assertion(self, username: str, password: str, challstr: str) -> str:
+        self.calls.append((username, password, challstr))
+        return self.assertion_value
+
+
+def _connector_for(
+    socket: _FakeSocket,
+    captured: dict[str, object] | None = None,
+) -> Callable[..., Awaitable[_FakeSocket]]:
+    async def connector(url: str, *, open_timeout: float) -> _FakeSocket:
+        if captured is not None:
+            captured["url"] = url
+            captured["open_timeout"] = open_timeout
+        return socket
+
+    return connector
+
+
+def _connection(
+    socket: _FakeSocket,
+    provider: _FakeAssertionProvider | None = None,
+    captured: dict[str, object] | None = None,
+) -> ShowdownConnection:
+    return ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password",
+        assertion_provider=provider or _FakeAssertionProvider(),
+        socket_connector=_connector_for(socket, captured),
+    )
+
+
+@_async_test
+async def test_connection_sends_exact_login_command_and_preserves_challstr() -> None:
+    socket = _FakeSocket(
+        [
+            "|updateuser| ash|1|0|{}\n|challstr|4|abc|def",
+            "|updateuser| ash|1|0|{}",
+        ]
+    )
+    provider = _FakeAssertionProvider()
+    captured: dict[str, object] = {}
+    connection = _connection(socket, provider, captured)
+
+    await connection.connect()
+
+    assert captured == {"url": _URL, "open_timeout": 10.0}
+    assert socket.sent == ["|/trn Ash,0,assertion-token"]
+    assert provider.calls == [("Ash", "password", "4|abc|def")]
+
+
+@_async_test
+@pytest.mark.parametrize(
+    "updateuser",
+    ["|updateuser| ash|0|0|{}", "|updateuser| ashley|1|0|{}"],
+)
+async def test_connection_does_not_accept_non_matching_login(
+    updateuser: str,
+) -> None:
+    socket = _FakeSocket(["|challstr|4|abc", updateuser])
+    connection = _connection(socket)
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+
+
+@_async_test
+async def test_connection_classifies_nametaken_as_disconnect() -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|nametaken|ash"])
+    connection = _connection(socket)
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+
+
+@_async_test
+async def test_connection_classifies_open_timeout() -> None:
+    async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
+        raise TimeoutError("timed out")
+
+    connection = ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password",
+        assertion_provider=_FakeAssertionProvider(),
+        socket_connector=connector,
+    )
+
+    with pytest.raises(TransportTimeout):
+        await connection.connect()
+
+
+@_async_test
+async def test_login_buffer_preserves_battle_room_line_and_room_prefix() -> None:
+    socket = _FakeSocket(
+        [
+            "|challstr|4|abc\n|updateuser| ash|1|0|{}\n>battle-gen9ou-1\n|init|battle",
+        ]
+    )
+    connection = _connection(socket)
+
+    await connection.connect()
+    line = await connection.lines().__anext__()
+
+    assert line == RoomLine(room_id=_ROOM, payload="|init|battle")
+
+
+@_async_test
+async def test_lines_yields_queued_lines_before_later_socket_frames() -> None:
+    socket = _FakeSocket(
+        [
+            "|challstr|4|abc\n|updateuser| ash|1|0|{}\n>battle-gen9ou-1\n|init|battle",
+            ">battle-gen9ou-1\n|turn|1",
+        ]
+    )
+    connection = _connection(socket)
+    await connection.connect()
+    lines = connection.lines()
+
+    assert await lines.__anext__() == RoomLine(room_id=_ROOM, payload="|init|battle")
+    assert await lines.__anext__() == RoomLine(room_id=_ROOM, payload="|turn|1")
+
+
+@_async_test
+async def test_socket_close_is_classified_as_disconnect() -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket)
+    await connection.connect()
+
+    with pytest.raises(Disconnect):
+        await connection.lines().__anext__()
+
+
+@_async_test
+async def test_socket_read_timeout_is_classified() -> None:
+    socket = _ReadTimeoutSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket)
+    await connection.connect()
+
+    with pytest.raises(TransportTimeout):
+        await connection.lines().__anext__()
+
+
+@_async_test
+async def test_socket_write_timeout_is_classified() -> None:
+    socket = _WriteTimeoutSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket)
+    await connection.connect()
+
+    with pytest.raises(TransportTimeout):
+        await connection.send_room(_ROOM, "/choose move 1")
+
+
+@_async_test
+async def test_send_room_prefixes_command_exactly() -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket)
+    await connection.connect()
+
+    await connection.send_room(_ROOM, "/choose move 1|5")
+
+    assert socket.sent == ["|/trn Ash,0,assertion-token", "battle-gen9ou-1|/choose move 1|5"]
