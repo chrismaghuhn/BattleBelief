@@ -6,6 +6,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 
 import pytest
+from websockets.exceptions import InvalidHandshake, InvalidProxy, InvalidURI
 
 from battlebelief_runtime.adapters.showdown_client.connection import ShowdownConnection
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
@@ -56,6 +57,25 @@ class _WriteTimeoutSocket(_FakeSocket):
         await super().send(message)
 
 
+class _DelayedReadSocket(_FakeSocket):
+    async def recv(self) -> str:
+        if not self.frames:
+            await asyncio.sleep(0.05)
+        return await super().recv()
+
+
+class _DelayedWriteSocket(_FakeSocket):
+    async def send(self, message: str) -> None:
+        if self.sent:
+            await asyncio.sleep(0.05)
+        await super().send(message)
+
+
+class _CloseErrorSocket(_FakeSocket):
+    async def close(self) -> None:
+        raise OSError("cleanup failed")
+
+
 class _FakeAssertionProvider:
     def __init__(self, assertion: str = "assertion-token") -> None:
         self.assertion_value = assertion
@@ -83,6 +103,9 @@ def _connection(
     socket: _FakeSocket,
     provider: _FakeAssertionProvider | None = None,
     captured: dict[str, object] | None = None,
+    *,
+    read_timeout: float = 60.0,
+    write_timeout: float = 10.0,
 ) -> ShowdownConnection:
     return ShowdownConnection(
         url=_URL,
@@ -90,6 +113,8 @@ def _connection(
         password="password",
         assertion_provider=provider or _FakeAssertionProvider(),
         socket_connector=_connector_for(socket, captured),
+        read_timeout=read_timeout,
+        write_timeout=write_timeout,
     )
 
 
@@ -134,6 +159,123 @@ async def test_connection_classifies_nametaken_as_disconnect() -> None:
 
     with pytest.raises(Disconnect):
         await connection.connect()
+    assert socket.closed
+
+
+@_async_test
+@pytest.mark.parametrize(
+    "handshake_error",
+    [
+        InvalidHandshake("handshake failed"),
+        InvalidProxy("http://proxy", "proxy failed"),
+        InvalidURI("not-a-websocket", "invalid URI"),
+    ],
+)
+async def test_connection_classifies_websocket_handshake_errors(
+    handshake_error: Exception,
+) -> None:
+    async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
+        raise handshake_error
+
+    connection = ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password",
+        assertion_provider=_FakeAssertionProvider(),
+        socket_connector=connector,
+    )
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+
+
+@_async_test
+async def test_authentication_error_closes_socket_and_preserves_error() -> None:
+    socket = _FakeSocket(["|challstr|4|abc"])
+
+    class _FailingProvider:
+        async def assertion(self, *_args: str) -> str:
+            raise RuntimeError("assertion provider failed")
+
+    connection = _connection(socket, _FailingProvider())  # type: ignore[arg-type]
+
+    with pytest.raises(RuntimeError, match="assertion provider failed"):
+        await connection.connect()
+    assert socket.closed
+
+
+@_async_test
+async def test_authentication_timeout_closes_socket() -> None:
+    socket = _FakeSocket(["|challstr|4|abc"])
+
+    class _TimingOutProvider:
+        async def assertion(self, *_args: str) -> str:
+            raise TransportTimeout("assertion timed out")
+
+    connection = _connection(socket, _TimingOutProvider())  # type: ignore[arg-type]
+
+    with pytest.raises(TransportTimeout):
+        await connection.connect()
+    assert socket.closed
+
+
+@_async_test
+async def test_failed_authentication_resets_connection_for_retry() -> None:
+    failed_socket = _FakeSocket(["|challstr|4|abc", "|nametaken|ash"])
+    successful_socket = _FakeSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    sockets = deque([failed_socket, successful_socket])
+
+    async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
+        return sockets.popleft()
+
+    connection = ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password",
+        assertion_provider=_FakeAssertionProvider(),
+        socket_connector=connector,
+    )
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+    await connection.connect()
+
+    assert failed_socket.closed
+    assert successful_socket.sent == ["|/trn Ash,0,assertion-token"]
+
+
+@_async_test
+async def test_cleanup_error_does_not_mask_authentication_error() -> None:
+    socket = _CloseErrorSocket(["|challstr|4|abc"])
+
+    class _FailingProvider:
+        async def assertion(self, *_args: str) -> str:
+            raise RuntimeError("authentication failed")
+
+    connection = _connection(socket, _FailingProvider())  # type: ignore[arg-type]
+
+    with pytest.raises(RuntimeError, match="authentication failed"):
+        await connection.connect()
+
+
+@_async_test
+async def test_configured_read_deadline_is_classified() -> None:
+    socket = _DelayedReadSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket, read_timeout=0.001)
+    await connection.connect()
+
+    with pytest.raises(TransportTimeout):
+        await connection.lines().__anext__()
+
+
+@_async_test
+async def test_configured_write_deadline_is_classified() -> None:
+    socket = _DelayedWriteSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    connection = _connection(socket, write_timeout=0.001)
+    await connection.connect()
+
+    with pytest.raises(TransportTimeout):
+        await connection.send_room(_ROOM, "/choose move 1")
 
 
 @_async_test

@@ -51,8 +51,15 @@ class ShowdownAssertionProvider:
             raise Disconnect("Showdown assertion request failed") from exc
 
         try:
-            response_data: Any = json.loads(body.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            response_text = body.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise Disconnect("Showdown assertion response was malformed") from exc
+        if not response_text.startswith("]"):
+            raise Disconnect("Showdown assertion response was malformed")
+
+        try:
+            response_data: Any = json.loads(response_text[1:])
+        except json.JSONDecodeError as exc:
             raise Disconnect("Showdown assertion response was malformed") from exc
 
         if not isinstance(response_data, dict):

@@ -45,7 +45,7 @@ async def test_assertion_provider_preserves_pipe_separated_challstr(
     def fake_urlopen(request: urllib.request.Request, *, timeout: float) -> _Response:
         captured["request"] = request
         captured["timeout"] = timeout
-        return _Response(json.dumps({"assertion": "assertion-token"}).encode("utf-8"))
+        return _Response(b"]" + json.dumps({"assertion": "assertion-token"}).encode("utf-8"))
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     provider = ShowdownAssertionProvider(timeout=3.5)
@@ -63,6 +63,46 @@ async def test_assertion_provider_preserves_pipe_separated_challstr(
     }
     assert captured["timeout"] == 3.5
     assert assertion == "assertion-token"
+
+
+@_async_test
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"assertion":"assertion-token"}',
+        b"]",
+        b"]not-json",
+    ],
+)
+async def test_assertion_provider_rejects_non_prefixed_or_malformed_responses(
+    monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+) -> None:
+    def fake_urlopen(*_args: object, **_kwargs: object) -> _Response:
+        return _Response(body)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(Disconnect):
+        await ShowdownAssertionProvider().assertion("Ash", "password", "4|abc")
+
+
+@_async_test
+@pytest.mark.parametrize(
+    "body",
+    [b"]{}", b']{"assertion":""}', b']{"assertion":null}'],
+)
+async def test_assertion_provider_rejects_missing_or_empty_assertion(
+    monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+) -> None:
+    def fake_urlopen(*_args: object, **_kwargs: object) -> _Response:
+        return _Response(body)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(Disconnect):
+        await ShowdownAssertionProvider().assertion("Ash", "password", "4|abc")
 
 
 @_async_test

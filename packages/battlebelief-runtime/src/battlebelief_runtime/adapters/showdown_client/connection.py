@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
+from contextlib import suppress
 from typing import Protocol, cast
 
 from websockets.asyncio.client import connect
-from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import (
+    ConnectionClosed,
+    InvalidHandshake,
+    InvalidProxy,
+    InvalidURI,
+)
 
 from battlebelief_runtime.adapters.showdown_client.types import AssertionProvider
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import (
@@ -30,7 +37,11 @@ SocketConnector = Callable[..., Awaitable[_Socket]]
 
 
 class ShowdownConnection:
-    """One authenticated, room-preserving Showdown WebSocket connection."""
+    """One authenticated, room-preserving Showdown WebSocket connection.
+
+    Read and write operations use configurable outer deadlines. Passing
+    ``None`` delegates timeout responsibility to the socket implementation.
+    """
 
     def __init__(
         self,
@@ -40,6 +51,8 @@ class ShowdownConnection:
         password: str,
         assertion_provider: AssertionProvider,
         open_timeout: float = 10.0,
+        read_timeout: float | None = 60.0,
+        write_timeout: float | None = 10.0,
         socket_connector: SocketConnector | None = None,
     ) -> None:
         self._url = url
@@ -47,6 +60,8 @@ class ShowdownConnection:
         self._password = password
         self._assertion_provider = assertion_provider
         self._open_timeout = open_timeout
+        self._read_timeout = read_timeout
+        self._write_timeout = write_timeout
         self._socket_connector: SocketConnector = (
             socket_connector if socket_connector is not None else cast(SocketConnector, connect)
         )
@@ -59,16 +74,27 @@ class ShowdownConnection:
             raise Disconnect("Showdown connection is already open")
 
         try:
-            self._socket = await self._socket_connector(
-                self._url,
-                open_timeout=self._open_timeout,
-            )
-        except TimeoutError as exc:
-            raise TransportTimeout("Showdown connection open timed out") from exc
-        except (ConnectionClosed, OSError, StopAsyncIteration) as exc:
-            raise Disconnect("Showdown connection could not be opened") from exc
+            try:
+                self._socket = await self._socket_connector(
+                    self._url,
+                    open_timeout=self._open_timeout,
+                )
+            except TimeoutError as exc:
+                raise TransportTimeout("Showdown connection open timed out") from exc
+            except (
+                ConnectionClosed,
+                InvalidHandshake,
+                InvalidProxy,
+                InvalidURI,
+                OSError,
+                StopAsyncIteration,
+            ) as exc:
+                raise Disconnect("Showdown connection could not be opened") from exc
 
-        await self._authenticate()
+            await self._authenticate()
+        except BaseException:
+            await self._cleanup_failed_connect()
+            raise
 
     def lines(self) -> AsyncIterator[RoomLine]:
         return self._line_stream()
@@ -147,6 +173,15 @@ class ShowdownConnection:
 
                 pending.append(line)
 
+    async def _cleanup_failed_connect(self) -> None:
+        socket = self._socket
+        self._socket = None
+        self._authenticated = False
+        self._queued_lines.clear()
+        if socket is not None:
+            with suppress(BaseException):
+                await socket.close()
+
     def _finish_authentication(
         self,
         pending: Iterable[RoomLine],
@@ -169,7 +204,10 @@ class ShowdownConnection:
     async def _receive(self) -> str | bytes:
         socket = self._require_socket()
         try:
-            return await socket.recv()
+            if self._read_timeout is None:
+                return await socket.recv()
+            async with asyncio.timeout(self._read_timeout):
+                return await socket.recv()
         except TimeoutError as exc:
             raise TransportTimeout("Showdown read timed out") from exc
         except (ConnectionClosed, OSError, StopAsyncIteration) as exc:
@@ -178,7 +216,11 @@ class ShowdownConnection:
     async def _send(self, message: str) -> None:
         socket = self._require_socket()
         try:
-            await socket.send(message)
+            if self._write_timeout is None:
+                await socket.send(message)
+            else:
+                async with asyncio.timeout(self._write_timeout):
+                    await socket.send(message)
         except TimeoutError as exc:
             raise TransportTimeout("Showdown write timed out") from exc
         except (ConnectionClosed, OSError, StopAsyncIteration) as exc:
