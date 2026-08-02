@@ -1,0 +1,22 @@
+{
+  "active": [
+    {
+      "moves": [
+        {"move": "Earthquake", "id": "earthquake", "pp": 16, "maxpp": 16, "target": "normal", "disabled": false},
+        {"move": "Swords Dance", "id": "swordsdance", "pp": 32, "maxpp": 32, "target": "self", "disabled": false},
+        {"move": "Stone Edge", "id": "stoneedge", "pp": 8, "maxpp": 8, "target": "normal", "disabled": true},
+        {"move": "Fire Fang", "id": "firefang", "pp": 24, "maxpp": 24, "target": "normal", "disabled": false}
+      ],
+      "canTerastallize": ""
+    }
+  ],
+  "side": {
+    "name": "ash",
+    "id": "p1",
+    "pokemon": [
+      {"ident": "p1: Garchomp", "details": "Garchomp, L50, M", "condition": "183/183", "active": true, "moves": ["earthquake", "swordsdance", "stoneedge", "firefang"], "item": "rockyhelmet", "ability": "roughskin", "reviving": false},
+      {"ident": "p1: Rotom", "details": "Rotom, L50", "condition": "100/100", "active": false, "moves": ["voltswitch"], "item": "", "ability": "levitate", "reviving": false}
+    ]
+  },
+  "rqid": 5
+}

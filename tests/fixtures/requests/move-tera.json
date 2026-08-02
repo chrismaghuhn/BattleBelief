@@ -1,0 +1,18 @@
+{
+  "active": [
+    {
+      "moves": [
+        {"move": "Earthquake", "id": "earthquake", "pp": 16, "maxpp": 16, "target": "normal", "disabled": false}
+      ],
+      "canTerastallize": "Ground"
+    }
+  ],
+  "side": {
+    "name": "ash",
+    "id": "p1",
+    "pokemon": [
+      {"ident": "p1: Garchomp", "details": "Garchomp, L50, M", "condition": "183/183", "active": true, "moves": ["earthquake"], "item": "rockyhelmet", "ability": "roughskin", "reviving": false}
+    ]
+  },
+  "rqid": 6
+}

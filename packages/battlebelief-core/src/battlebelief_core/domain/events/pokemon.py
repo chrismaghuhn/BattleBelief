@@ -238,16 +238,6 @@ class VolatileChanged(BattleEvent):
 
 
 @dataclass(frozen=True, slots=True)
-class TransientEffectObserved(BattleEvent):
-    event_index: int
-    side_id: str
-    slot: int
-    nickname: str
-    effect_id: str
-    annotations: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class RechargeChanged(BattleEvent):
     event_index: int
     side_id: str

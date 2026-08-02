@@ -49,7 +49,6 @@ from battlebelief_core.domain.events.pokemon import (
     StatusChanged,
     TeamStatusCured,
     Terastallized,
-    TransientEffectObserved,
     VolatileChanged,
 )
 from battlebelief_core.domain.events.progress import (
@@ -425,17 +424,6 @@ class TestPokemonEvents:
             annotations=(),
         )
         assert ev.action == "start"
-
-    def test_transient_effect_observed(self) -> None:
-        ev = TransientEffectObserved(
-            event_index=33,
-            side_id="p1",
-            slot=1,
-            nickname="Garchomp",
-            effect_id="lifeorb",
-            annotations=(),
-        )
-        assert ev.effect_id == "lifeorb"
 
     def test_recharge_changed(self) -> None:
         ev = RechargeChanged(

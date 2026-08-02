@@ -1,0 +1,7 @@
+>battle-gen9ou-1
+|title|Ash vs. Misty
+|J|ash
+|c:|1700000000|ash|check this |request|{} nice
+|move|p1a: Garchomp|Earthquake|p2a: Togekiss
+|request|{"active":[{"moves":[]}]}
+|L|ash

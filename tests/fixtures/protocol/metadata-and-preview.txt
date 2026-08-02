@@ -1,0 +1,19 @@
+|init|battle
+|title|ash vs. misty
+|player|p1|ash|1|
+|player|p2|misty|2|
+|teamsize|p1|6
+|teamsize|p2|6
+|gametype|singles
+|gen|9
+|tier|[Gen 9] OU
+|rated|
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|clearpoke
+|poke|p1|Garchomp, L50, M|item
+|poke|p1|Rotom, L50|
+|poke|p2|Togekiss, L50, F|item
+|poke|p2|Zorua, L50, M|
+|teampreview
+|start
+|turn|1

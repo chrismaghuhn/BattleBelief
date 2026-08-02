@@ -1,0 +1,6 @@
+>battle-gen9ou-1
+|init|battle
+|turn|1
+>battle-gen9ou-2
+|init|battle
+|turn|1

@@ -525,7 +525,7 @@ State-bearing Eventklassen:
 |---|---|
 | Metadaten | `BattleInit`, `PlayerDeclared`, `TeamSizeDeclared`, `GameTypeDeclared`, `GenerationDeclared`, `TierDeclared`, `BattleRated`, `RuleDeclared`, `PreviewPokemonDeclared`, `PreviewCleared`, `TeamPreviewStarted` |
 | Verlauf | `BattleStarted`, `TurnStarted`, `BattleWon`, `BattleTied` |
-| Pokémon | `PokemonSwitched`, `PokemonDragged`, `PokemonFainted`, `MoveUsed`, `MovePrevented`, `HealthChanged`, `StatusChanged`, `TeamStatusCured`, `BoostChanged`, `BoostsSwapped`, `BoostsCopied`, `BoostsCleared`, `BoostsInverted`, `ItemChanged`, `AbilityChanged`, `IdentityChanged`, `FormChanged`, `PokemonTransformed`, `Terastallized`, `VolatileChanged`, `TransientEffectObserved`, `RechargeChanged` |
+| Pokémon | `PokemonSwitched`, `PokemonDragged`, `PokemonFainted`, `MoveUsed`, `MovePrevented`, `HealthChanged`, `StatusChanged`, `TeamStatusCured`, `BoostChanged`, `BoostsSwapped`, `BoostsCopied`, `BoostsCleared`, `BoostsInverted`, `ItemChanged`, `AbilityChanged`, `IdentityChanged`, `FormChanged`, `PokemonTransformed`, `Terastallized`, `VolatileChanged`, `RechargeChanged` |
 | Feld | `WeatherChanged`, `FieldConditionChanged`, `SideConditionChanged`, `SideConditionsSwapped` |
 
 Gemeinsame Felder:
@@ -1138,16 +1138,16 @@ Der Konstruktor akzeptiert nur die drei in Task 11 festgelegten Subcodes.
 Freitext `message` wird für Logs sanitiert; die Klassifikation hängt niemals
 von einem nachträglich interpretierten Teilstring ab.
 
-- [ ] **Step 1: Failing Frame- und Taxonomie-Tests schreiben**
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 1: Failing Frame- und Taxonomie-Tests schreiben**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_frame_decoder.py packages/battlebelief-runtime/tests/test_error_taxonomy.py -v
 ```
 
-- [ ] **Step 3: Decoder und Fehler implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: Commit**
+- [x] **Step 3: Decoder und Fehler implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/battlebelief-runtime tests/fixtures/frames
@@ -1221,9 +1221,18 @@ Definition, die Klassifikator und Parser gemeinsam verwenden.
 ### Parserregeln
 
 ```python
-def parse_battle_line(payload: str, event_index: int) -> BattleEvent:
+def parse_battle_line(
+    payload: str, event_index: int, *, room_id: str | None = None
+) -> BattleEvent:
     ...
 ```
+
+`room_id` ist ausschließlich für `init` erforderlich: `|init|battle` enthält
+selbst keine Raum-ID, und `BattleInit` ist das einzige Eventfeld, das eine
+benötigt. Der Aufrufer besitzt sie bereits aus der `RoomLine` aus Task 6 und
+reicht sie an dieser einen Stelle durch. Fehlt `room_id` bei `init`, wirft der
+Parser `MalformedProtocolMessage`. Kein anderer Eventtyp liest dieses
+Schlüsselwortargument.
 
 - akzeptiert ausschließlich eine einzelne Battle-Payload;
 - validiert Feldzahl und Feldtypen vor Konstruktion;
@@ -1309,7 +1318,7 @@ observed live protocol coverage:
 
 Sie ist kein Claim über die vollständige reale Gen-9-OU-Protokolloberfläche.
 
-- [ ] **Step 1: Fixture- und Unit-Tests schreiben**
+- [x] **Step 1: Fixture- und Unit-Tests schreiben**
 
 Unit-Tests prüfen mindestens:
 
@@ -1337,15 +1346,15 @@ Unit-Tests prüfen mindestens:
   Endzustand;
 - parserfremdes `|request|` wird abgelehnt.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_room_payload_classifier.py packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/contracts/test_protocol_contract.py -v
 ```
 
-- [ ] **Step 3: Parser implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: Commit**
+- [x] **Step 3: Parser implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/battlebelief-runtime tests/fixtures/protocol tests/fixtures/frames/battle-room-multiplex.txt tests/contracts/test_protocol_contract.py
@@ -1481,7 +1490,7 @@ Der Loader behauptet keine vollständige Teamlegalität. Der Challenge-
 Coordinator behandelt spätere Showdown-Validierungsfehler als Startupfehler;
 lokale Oracle-Validierung kommt in M2.
 
-- [ ] **Step 1: Failing Request-, Encoder- und Loader-Tests schreiben**
+- [x] **Step 1: Failing Request-, Encoder- und Loader-Tests schreiben**
 
 Pflichtfälle:
 
@@ -1501,15 +1510,15 @@ Pflichtfälle:
 - Exportformat und newline-joined Pseudopacked werden abgelehnt;
 - Teamdigest ist stabil.
 
-- [ ] **Step 2: Tests rot ausführen**
+- [x] **Step 2: Tests rot ausführen**
 
 ```powershell
 uv run pytest packages/battlebelief-runtime/tests/adapters/test_request_reader.py packages/battlebelief-runtime/tests/adapters/test_command_encoder.py packages/battlebelief-runtime/tests/adapters/test_team_loader.py -v
 ```
 
-- [ ] **Step 3: Reader, Encoder und Loader implementieren**
-- [ ] **Step 4: Tests grün ausführen**
-- [ ] **Step 5: PR-3-Gates ausführen und committen**
+- [x] **Step 3: Reader, Encoder und Loader implementieren**
+- [x] **Step 4: Tests grün ausführen**
+- [x] **Step 5: PR-3-Gates ausführen und committen**
 
 ```powershell
 uv run ruff format --check .

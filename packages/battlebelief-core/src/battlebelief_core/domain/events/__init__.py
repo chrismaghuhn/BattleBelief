@@ -40,7 +40,6 @@ from battlebelief_core.domain.events.pokemon import (
     StatusChanged,
     TeamStatusCured,
     Terastallized,
-    TransientEffectObserved,
     VolatileChanged,
 )
 from battlebelief_core.domain.events.progress import (
@@ -89,7 +88,6 @@ __all__ = [
     "TeamStatusCured",
     "Terastallized",
     "TierDeclared",
-    "TransientEffectObserved",
     "TurnStarted",
     "VisibleEvidence",
     "VolatileChanged",
