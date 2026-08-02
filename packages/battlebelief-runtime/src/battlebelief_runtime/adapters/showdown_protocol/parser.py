@@ -682,7 +682,8 @@ def parse_inactive_line(payload: str, event_index: int) -> BattleEvent:
             annotations=(),
         )
     if wire_type == "inactive":
-        if "forfeit" in message.lower():
+        lowered = message.lower()
+        if "forfeit" in lowered or "lost due to inactivity" in lowered:
             raise TimerOrForfeit(message)
         return VisibleEvidence(
             event_index=event_index,

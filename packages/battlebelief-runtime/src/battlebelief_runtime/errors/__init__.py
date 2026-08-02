@@ -4,6 +4,7 @@ from battlebelief_runtime.errors.actions import ServerInvalidChoice, ServerUnava
 from battlebelief_runtime.errors.protocol import (
     Disconnect,
     MalformedProtocolMessage,
+    ReducerInvariantFailure,
     RequestStateReconciliationMismatch,
     TimerOrForfeit,
     TransportTimeout,
@@ -15,6 +16,7 @@ __all__ = [
     "ChallengeSetupError",
     "Disconnect",
     "MalformedProtocolMessage",
+    "ReducerInvariantFailure",
     "RequestStateReconciliationMismatch",
     "ServerInvalidChoice",
     "ServerUnavailableChoice",
