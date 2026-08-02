@@ -8,6 +8,7 @@ from battlebelief_runtime.errors.setup import TeamValidationError
 
 _MIN_MEMBERS = 1
 _MAX_MEMBERS = 6
+_PACKED_FIELDS = 12
 
 
 def load_packed_team(text: str) -> PackedTeam:
@@ -29,7 +30,7 @@ def load_packed_team(text: str) -> PackedTeam:
             f"packed team must have {_MIN_MEMBERS}-{_MAX_MEMBERS} members, got {len(entries)}"
         )
     for entry in entries:
-        if entry == "" or "|" not in entry:
+        if entry == "" or len(entry.split("|")) != _PACKED_FIELDS:
             raise TeamValidationError(f"invalid packed team entry: {entry!r}")
 
     digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()

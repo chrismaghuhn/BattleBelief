@@ -73,6 +73,13 @@ class TestRejectedInputs:
         with pytest.raises(TeamValidationError):
             load_packed_team("justaname\n")
 
+    def test_packed_team_requires_exactly_twelve_fields_per_member(self) -> None:
+        with pytest.raises(TeamValidationError):
+            load_packed_team("Mon|species\n")
+
+        with pytest.raises(TeamValidationError):
+            load_packed_team("|\n")
+
     def test_human_export_format_is_not_line_joined(self) -> None:
         human_export = (
             "Garchomp @ Rocky Helmet\n"

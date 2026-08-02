@@ -6,6 +6,7 @@ from battlebelief_runtime.errors.actions import ServerInvalidChoice, ServerUnava
 from battlebelief_runtime.errors.protocol import (
     Disconnect,
     MalformedProtocolMessage,
+    RequestStateReconciliationMismatch,
     TimerOrForfeit,
     TransportTimeout,
     UnknownProtocolEvent,
@@ -20,6 +21,9 @@ class TestProtocolErrors:
 
     def test_malformed_protocol_message_code(self) -> None:
         assert MalformedProtocolMessage.code == "malformed_protocol_message"
+
+    def test_request_state_reconciliation_mismatch_code(self) -> None:
+        assert RequestStateReconciliationMismatch.code == "request_state_reconciliation_mismatch"
 
     def test_transport_timeout_code(self) -> None:
         assert TransportTimeout.code == "transport_timeout"

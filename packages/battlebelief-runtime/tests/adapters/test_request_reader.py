@@ -26,6 +26,64 @@ class TestWait:
         assert dr.safe_submissions.submissions == ()
         assert dr.active_identity is None
 
+    def test_wait_fixture_has_the_pinned_side_shape(self) -> None:
+        raw = json.loads(_load("wait.json"))
+        assert raw["wait"] is True
+        assert raw["side"]["id"] == "p1"
+        assert len(raw["side"]["pokemon"]) == 6
+
+
+class TestRequestShapeValidation:
+    def test_missing_active_ident_is_malformed(self) -> None:
+        raw = json.loads(_load("move.json"))
+        del raw["side"]["pokemon"][0]["ident"]
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
+    def test_non_string_condition_is_malformed(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["side"]["pokemon"][0]["condition"] = 183
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
+    def test_non_boolean_active_is_malformed(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["side"]["pokemon"][0]["active"] = "false"
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
+    @pytest.mark.parametrize("force_switch", ["no", [], [True, False], [False, False]])
+    def test_force_switch_requires_a_singles_boolean_array(self, force_switch: object) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["forceSwitch"] = force_switch
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
+    def test_false_force_switch_flag_keeps_normal_move_request(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["forceSwitch"] = [False]
+        request = read_request(_ROOM, json.dumps(raw))
+        assert request.kind == RequestKind.MOVE
+
+    def test_doubles_active_array_is_rejected(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"].append(raw["active"][0].copy())
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
+    def test_update_flag_is_preserved(self) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["update"] = True
+        request = read_request(_ROOM, json.dumps(raw))
+        assert request.is_update is True
+
+    def test_bring_n_team_preview_is_rejected_as_reconciliation_mismatch(self) -> None:
+        raw = json.loads(_load("team-preview.json"))
+        raw["maxChosenTeamSize"] = 3
+        with pytest.raises(RuntimeError) as exc_info:
+            read_request(_ROOM, json.dumps(raw))
+        assert getattr(exc_info.value, "code", None) == "request_state_reconciliation_mismatch"
+
 
 class TestTeamPreview:
     def test_team_preview_has_720_permutations_plus_default(self) -> None:

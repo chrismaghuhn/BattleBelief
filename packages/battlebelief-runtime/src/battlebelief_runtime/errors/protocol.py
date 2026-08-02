@@ -9,6 +9,10 @@ class MalformedProtocolMessage(RuntimeError):
     code = "malformed_protocol_message"
 
 
+class RequestStateReconciliationMismatch(RuntimeError):
+    code = "request_state_reconciliation_mismatch"
+
+
 class TransportTimeout(RuntimeError):
     code = "transport_timeout"
 
