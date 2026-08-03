@@ -3,6 +3,7 @@ import json
 from collections.abc import Sequence
 from typing import TypedDict
 
+from battlebelief_lab import __version__
 from battlebelief_runtime.public_api import runtime_status
 
 
@@ -21,7 +22,7 @@ def lab_status() -> LabStatus:
         raise RuntimeError("battlebelief-runtime entrypoint is not ready")
     return {
         "package": "battlebelief-lab",
-        "version": "0.1.0",
+        "version": __version__,
         "phase": "M0",
         "entrypoint": "ready",
         "oracle_capability": "absent",

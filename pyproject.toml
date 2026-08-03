@@ -1,6 +1,6 @@
 [project]
 name = "battlebelief-workspace"
-version = "0.1.0"
+version = "0.2.0"
 description = "Development workspace for BattleBelief"
 requires-python = ">=3.12,<3.15"
 dependencies = []

@@ -4,7 +4,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-PACKAGES = {
+PROJECTS = {
+    "battlebelief-workspace": Path("pyproject.toml"),
     "battlebelief-core": Path("packages/battlebelief-core/pyproject.toml"),
     "battlebelief-runtime": Path("packages/battlebelief-runtime/pyproject.toml"),
     "battlebelief-lab": Path("packages/battlebelief-lab/pyproject.toml"),
@@ -13,7 +14,7 @@ PACKAGES = {
 
 def collect_version_errors(root: Path) -> list[str]:
     metadata: dict[str, dict[str, object]] = {}
-    for expected_name, relative_path in PACKAGES.items():
+    for expected_name, relative_path in PROJECTS.items():
         project = tomllib.loads((root / relative_path).read_text(encoding="utf-8"))["project"]
         if project["name"] != expected_name:
             return [f"{relative_path}: expected name {expected_name!r}"]
@@ -21,7 +22,7 @@ def collect_version_errors(root: Path) -> list[str]:
 
     versions = {str(project["version"]) for project in metadata.values()}
     if len(versions) != 1:
-        return [f"package versions are not lockstep: {sorted(versions)}"]
+        return [f"workspace and package versions are not lockstep: {sorted(versions)}"]
     version = versions.pop()
 
     errors: list[str] = []

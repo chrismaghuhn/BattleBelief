@@ -108,13 +108,13 @@ def _runner_factory(
     return factory
 
 
-def test_runtime_status_is_m0_entrypoint_only() -> None:
+def test_runtime_status_reports_m1_direct_challenge_capability() -> None:
     assert runtime_status() == {
         "package": "battlebelief-runtime",
-        "version": "0.1.0",
-        "phase": "M0",
+        "version": "0.2.0",
+        "phase": "M1",
         "entrypoint": "ready",
-        "battle_capability": "absent",
+        "battle_capability": "heuristic_direct_challenge",
     }
 
 
@@ -126,7 +126,7 @@ def test_doctor_prints_canonical_status(capsys: pytest.CaptureFixture[str]) -> N
 
 def test_version_prints_version(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--version"]) == 0
-    assert capsys.readouterr().out.strip() == "0.1.0"
+    assert capsys.readouterr().out.strip() == "0.2.0"
 
 
 def test_challenge_help_describes_outgoing_flow_without_password(
