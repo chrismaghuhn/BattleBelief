@@ -60,10 +60,10 @@ def _canonical_digest(payload: dict[str, Any]) -> str:
 
 def _require_rqid(payload: dict[str, Any]) -> int:
     if "rqid" not in payload:
-        raise MalformedProtocolMessage("request missing rqid")
+        raise RequestStateReconciliationMismatch("request missing rqid")
     rqid = payload["rqid"]
     if not isinstance(rqid, int) or isinstance(rqid, bool) or rqid < 0:
-        raise MalformedProtocolMessage(f"invalid rqid: {rqid!r}")
+        raise RequestStateReconciliationMismatch(f"invalid rqid: {rqid!r}")
     return rqid
 
 
@@ -193,6 +193,8 @@ def _parse_active_request(payload: dict[str, Any]) -> _ActiveRequest:
     moves_value = active_info.get("moves")
     if not isinstance(moves_value, list):
         raise MalformedProtocolMessage("active[0].moves must be a list")
+    if not 1 <= len(moves_value) <= 4:
+        raise MalformedProtocolMessage("active[0].moves must contain 1-4 entries")
     moves: list[_RequestMove] = []
     for index, value in enumerate(moves_value):
         move = _require_object(value, f"active[0].moves[{index}]")

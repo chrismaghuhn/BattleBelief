@@ -8,7 +8,10 @@ import pytest
 from battlebelief_core.domain.actions.decision_request import RequestKind
 from battlebelief_core.domain.actions.submission import ActionKind, ActionProvenance
 from battlebelief_runtime.adapters.showdown_protocol.request_reader import read_request
-from battlebelief_runtime.errors.protocol import MalformedProtocolMessage
+from battlebelief_runtime.errors.protocol import (
+    MalformedProtocolMessage,
+    RequestStateReconciliationMismatch,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _REQUESTS_DIR = _REPO_ROOT / "tests" / "fixtures" / "requests"
@@ -139,6 +142,15 @@ class TestRevival:
 
 
 class TestNormalMove:
+    @pytest.mark.parametrize("move_count", [0, 5])
+    def test_active_moves_requires_one_to_four_entries(self, move_count: int) -> None:
+        raw = json.loads(_load("move.json"))
+        raw["active"][0]["moves"] = [
+            {"move": f"Move {index}", "id": f"move{index}"} for index in range(1, move_count + 1)
+        ]
+        with pytest.raises(MalformedProtocolMessage):
+            read_request(_ROOM, json.dumps(raw))
+
     def test_locked_move_without_disabled_is_accepted(self) -> None:
         raw = json.loads(_load("move.json"))
         raw["active"][0]["moves"] = [{"move": "Recharge", "id": "recharge"}]
@@ -239,19 +251,19 @@ class TestRqidValidation:
     def test_missing_rqid_is_rejected(self) -> None:
         raw = json.loads(_load("wait.json"))
         del raw["rqid"]
-        with pytest.raises(MalformedProtocolMessage):
+        with pytest.raises(RequestStateReconciliationMismatch):
             read_request(_ROOM, json.dumps(raw))
 
     def test_negative_rqid_is_rejected(self) -> None:
         raw = json.loads(_load("wait.json"))
         raw["rqid"] = -1
-        with pytest.raises(MalformedProtocolMessage):
+        with pytest.raises(RequestStateReconciliationMismatch):
             read_request(_ROOM, json.dumps(raw))
 
     def test_string_rqid_is_rejected(self) -> None:
         raw = json.loads(_load("wait.json"))
         raw["rqid"] = "5"
-        with pytest.raises(MalformedProtocolMessage):
+        with pytest.raises(RequestStateReconciliationMismatch):
             read_request(_ROOM, json.dumps(raw))
 
 

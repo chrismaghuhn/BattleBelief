@@ -221,10 +221,6 @@ class BattleSession:
                 raise RequestStateReconciliationMismatch(f"{reason}: {reconciliation.reason}")
             return
 
-        # A request observed before BattleStarted remains pending until the
-        # start event has supplied the minimum public battle boundary.
-        if not self._state.battle_started:
-            return
         await self._submit(request)
 
     async def _submit(self, request: DecisionRequest) -> None:
@@ -243,7 +239,7 @@ class BattleSession:
             request.identity,
             request.safe_submissions,
         )
-        command = f"{encode_submission(authorized)}|{request.identity.rqid}"
+        command = f"/choose {encode_submission(authorized)}|{request.identity.rqid}"
         # The session is intentionally synchronous with respect to the fake
         # and real connection: identity is marked submitted only after send.
         await self._connection.send_room(self._room_id, command)

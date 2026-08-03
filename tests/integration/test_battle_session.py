@@ -89,11 +89,19 @@ class _FixedPolicy:
         return self.submission
 
 
+class _FailingSendConnection(FakeConnection):
+    async def send_room(self, room_id: str, command: str) -> None:
+        raise Disconnect("send failed")
+
+
 def test_request_before_turn_sends_exactly_one_action() -> None:
     result, connection = _run([*_metadata(), _line(_request("move.json", 5))])
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
+    assert [f"{room_id}|{command}" for room_id, command in connection.sent_room] == [
+        "battle-gen9ou-1|/choose move 1|5"
+    ]
     assert result.explicit_request_submissions == 1
 
 
@@ -101,14 +109,14 @@ def test_turn_before_request_still_sends_after_request() -> None:
     result, connection = _run([*_metadata(), _line("|turn|1"), _line(_request("move.json", 5))])
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
 
 
 def test_forced_switch_sends_alive_switch_slot() -> None:
     result, connection = _run([*_metadata(), _line(_request("forced-switch.json", 8))])
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "switch 2|8")]
+    assert connection.sent_room == [(_ROOM, "/choose switch 2|8")]
 
 
 def test_wait_sends_nothing() -> None:
@@ -132,7 +140,20 @@ def test_identical_request_is_not_submitted_twice() -> None:
     )
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
+
+
+def test_same_rqid_with_changed_digest_aborts_without_second_send() -> None:
+    result, connection = _run(
+        [
+            *_metadata(),
+            _line(_request("move.json", 5)),
+            _line(_request("move.json", 5, update=True)),
+        ]
+    )
+
+    assert isinstance(result.primary_error, RequestStateReconciliationMismatch)
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
 
 
 @pytest.mark.parametrize("missing_rqid", [False, True])
@@ -141,7 +162,7 @@ def test_stale_or_missing_rqid_is_never_sent(missing_rqid: bool) -> None:
         missing = json.loads((_REQUESTS / "move.json").read_text(encoding="utf-8"))
         del missing["rqid"]
         lines = [*_metadata(), _line("|request|" + json.dumps(missing))]
-        expected = MalformedProtocolMessage
+        expected = RequestStateReconciliationMismatch
     else:
         lines = [*_metadata(), _line(_request("move.json", 5)), _line(_request("wait.json", 4))]
         expected = RuntimeError
@@ -154,7 +175,7 @@ def test_stale_or_missing_rqid_is_never_sent(missing_rqid: bool) -> None:
     if missing_rqid:
         assert connection.sent_room == []
     else:
-        assert connection.sent_room == [(_ROOM, "move 1|5")]
+        assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
 
 
 def test_policy_out_of_set_is_blocked_by_action_gate() -> None:
@@ -186,7 +207,7 @@ def test_policy_out_of_set_is_blocked_by_action_gate() -> None:
                 move_id="earthquake",
                 terastallize=True,
             ),
-            "move 1 terastallize|6",
+            "/choose move 1 terastallize|6",
         ),
         (
             "team-preview.json",
@@ -195,7 +216,7 @@ def test_policy_out_of_set_is_blocked_by_action_gate() -> None:
                 provenance=ActionProvenance.EXPLICIT_REQUEST,
                 team_order=(1, 2, 3, 4, 5, 6),
             ),
-            "team 123456|6",
+            "/choose team 123456|6",
         ),
     ],
 )
@@ -209,6 +230,15 @@ def test_tera_and_team_preview_actions_are_encodable(
 
     assert result.primary_error is None
     assert connection.sent_room == [(_ROOM, wire)]
+
+
+def test_team_preview_before_battle_start_is_submitted_immediately() -> None:
+    result, connection = _run(
+        [*_metadata(start=False, active=False), _line(_request("team-preview.json", 1))]
+    )
+
+    assert result.primary_error is None
+    assert connection.sent_room == [(_ROOM, "/choose team 123456|1")]
 
 
 @pytest.mark.parametrize(
@@ -266,7 +296,7 @@ def test_request_before_player_declaration_resolves_after_metadata() -> None:
     result, connection = _run(lines)
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
 
 
 def test_request_before_matching_switch_resolves_once() -> None:
@@ -279,7 +309,29 @@ def test_request_before_matching_switch_resolves_once() -> None:
     )
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
+
+
+def test_unresolved_pending_request_fails_closed_at_battle_start() -> None:
+    result, connection = _run(
+        [
+            _line("|init|battle"),
+            _line(_request("move.json", 5)),
+            _line("|start|"),
+        ]
+    )
+
+    assert isinstance(result.primary_error, RequestStateReconciliationMismatch)
+    assert connection.sent_room == []
+
+
+def test_active_identity_pending_request_fails_closed_at_turn_start() -> None:
+    result, connection = _run(
+        [*_metadata(active=False), _line(_request("move.json", 5)), _line("|turn|1")]
+    )
+
+    assert isinstance(result.primary_error, RequestStateReconciliationMismatch)
+    assert connection.sent_room == []
 
 
 def test_request_after_battle_start_does_not_wait_for_missing_metadata() -> None:
@@ -325,7 +377,7 @@ def test_two_pending_requests_execute_only_the_newest_rqid() -> None:
     )
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
 
 
 def test_battle_end_discards_pending_request() -> None:
@@ -342,7 +394,7 @@ def test_revival_sends_only_fainted_inactive_target() -> None:
     result, connection = _run([*_metadata(), _line(_request("reviving.json", 9))])
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "switch 3|9")]
+    assert connection.sent_room == [(_ROOM, "/choose switch 3|9")]
 
 
 def test_explicit_and_default_submissions_are_counted_separately() -> None:
@@ -354,14 +406,23 @@ def test_explicit_and_default_submissions_are_counted_separately() -> None:
                 _request(
                     "move.json",
                     6,
-                    active=[{"moves": [], "canTerastallize": "", "maybeDisabled": True}],
+                    active=[
+                        {
+                            "moves": [{"move": "Earthquake", "id": "earthquake"}],
+                            "canTerastallize": "",
+                            "maybeDisabled": True,
+                        }
+                    ],
                 )
             ),
         ]
     )
 
     assert result.primary_error is None
-    assert connection.sent_room == [(_ROOM, "move 1|5"), (_ROOM, "default|6")]
+    assert connection.sent_room == [
+        (_ROOM, "/choose move 1|5"),
+        (_ROOM, "/choose default|6"),
+    ]
     assert result.explicit_request_submissions == 1
     assert result.default_submissions == 1
 
@@ -381,7 +442,19 @@ def test_room_controls_and_embedded_request_text_do_not_trigger_actions() -> Non
 
     assert result.primary_error is None
     assert result.room_control_or_chat_count == 4
-    assert connection.sent_room == [(_ROOM, "move 1|5")]
+    assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
+
+
+def test_send_error_does_not_increment_submission_counters() -> None:
+    connection = _FailingSendConnection([*_metadata(), _line(_request("move.json", 5))])
+    session = BattleSession(connection=connection, room_id=_ROOM, our_user_id="ash")
+
+    result = asyncio.run(session.run())
+
+    assert isinstance(result.primary_error, Disconnect)
+    assert result.explicit_request_submissions == 0
+    assert result.default_submissions == 0
+    assert connection.sent_room == []
 
 
 def test_spacer_before_battle_start_only_increments_ignored_display_count() -> None:
