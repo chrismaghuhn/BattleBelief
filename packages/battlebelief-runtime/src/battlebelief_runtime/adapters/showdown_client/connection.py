@@ -35,8 +35,16 @@ class _Socket(Protocol):
 
 
 SocketConnector = Callable[..., Awaitable[_Socket]]
+
+
+class _SuppressWebSocketDebugFrames(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno > logging.DEBUG
+
+
 _WEBSOCKET_LOGGER = logging.getLogger("battlebelief_runtime.showdown.websocket")
 _WEBSOCKET_LOGGER.setLevel(logging.INFO)
+_WEBSOCKET_LOGGER.addFilter(_SuppressWebSocketDebugFrames())
 
 
 class ShowdownConnection:

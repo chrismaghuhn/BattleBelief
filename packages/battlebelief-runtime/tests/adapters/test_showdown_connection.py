@@ -170,7 +170,10 @@ async def test_websocket_debug_logging_cannot_expose_authentication_or_team_fram
         socket.logger = logger
         return socket
 
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(
+        logging.DEBUG,
+        logger=connection_module._WEBSOCKET_LOGGER.name,
+    )
     monkeypatch.setattr(connection_module, "connect", connector)
     connection = ShowdownConnection(
         url=_URL,

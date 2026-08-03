@@ -501,6 +501,28 @@ def test_core_safety_errors_keep_their_stable_code_without_leaking_messages(
     assert secret_message not in captured.err
 
 
+def test_unclassified_error_exits_one_with_opaque_code(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret_message = "unclassified-error-secret"
+    runner = _FakeRunner(error=RuntimeError(secret_message))
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path)),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 1
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == "runtime_error"
+    assert secret_message not in captured.err
+
+
 def test_challenge_runner_has_injectable_connection_and_coordinator_seams(
     tmp_path: Path,
 ) -> None:

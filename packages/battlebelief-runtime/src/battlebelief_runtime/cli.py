@@ -139,7 +139,8 @@ def main(
     environment: Mapping[str, str] | None = None,
     runner_factory: RunnerFactory | None = None,
 ) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     if args.version:
         print(runtime_status()["version"])
         return 0
@@ -147,7 +148,7 @@ def main(
         print(json.dumps(runtime_status(), sort_keys=True, separators=(",", ":")))
         return 0
     if args.command != "challenge":
-        build_parser().print_help()
+        parser.print_help()
         return 0
 
     active_environment = os.environ if environment is None else environment
