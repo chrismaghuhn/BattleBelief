@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:record:measurement-run:v1",
+  "title": "BattleBelief measurement run context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evaluation_run_binding_digest",
+    "run_scope_digest",
+    "battle_id_digest",
+    "battle_ordinal",
+    "run_context_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evaluation_run_binding_digest": {"$ref": "#/$defs/digest"},
+    "run_scope_digest": {"$ref": "#/$defs/digest"},
+    "battle_id_digest": {"$ref": "#/$defs/digest"},
+    "battle_ordinal": {"type": "integer", "minimum": 0},
+    "run_context_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

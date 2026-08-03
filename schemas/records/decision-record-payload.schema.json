@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:record:decision-record-payload:v1",
+  "title": "BattleBelief Decision Record payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_schema_version",
+    "record_status",
+    "run_context_digest",
+    "decision_index",
+    "request_identity",
+    "observed_state_digest",
+    "safe_submission_set_digest",
+    "selected_submission",
+    "submission_provenance",
+    "fallback_or_error_class",
+    "policy_or_arm_id",
+    "runtime_and_contract_digests"
+  ],
+  "properties": {
+    "record_schema_version": {"const": 1},
+    "record_status": {
+      "enum": [
+        "submitted",
+        "wait_noop",
+        "policy_rejected",
+        "action_gate_rejected",
+        "command_encoding_failed",
+        "send_failed",
+        "session_aborted",
+        "superseded_before_selection",
+        "terminally_discarded",
+        "reconciliation_rejected"
+      ]
+    },
+    "run_context_digest": {"$ref": "#/$defs/digest"},
+    "decision_index": {"type": "integer", "minimum": 0},
+    "request_identity": {"$ref": "#/$defs/requestIdentity"},
+    "observed_state_digest": {"$ref": "#/$defs/digest"},
+    "safe_submission_set_digest": {"$ref": "#/$defs/digest"},
+    "selected_submission": {"anyOf": [{"$ref": "#/$defs/submission"}, {"type": "null"}]},
+    "submission_provenance": {
+      "anyOf": [
+        {"enum": ["explicit_request", "server_default"]},
+        {"type": "null"}
+      ]
+    },
+    "fallback_or_error_class": {
+      "anyOf": [
+        {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"},
+        {"type": "null"}
+      ]
+    },
+    "policy_or_arm_id": {"type": "string", "minLength": 1},
+    "runtime_and_contract_digests": {"$ref": "#/$defs/runtimeAndContractDigests"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "requestIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rqid", "request_digest"],
+      "properties": {
+        "rqid": {"type": "integer", "minimum": 0},
+        "request_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
+      "properties": {
+        "kind": {"enum": ["move", "switch", "revive", "team", "default"]},
+        "provenance": {"enum": ["explicit_request", "server_default"]},
+        "slot": {"type": ["integer", "null"], "minimum": 1},
+        "move_id": {"type": ["string", "null"]},
+        "terastallize": {"type": "boolean"},
+        "team_order": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1, "maximum": 6}
+        }
+      }
+    },
+    "runtimeAndContractDigests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_digest",
+        "contract_set_digest",
+        "policy_digest",
+        "fallback_and_safety_digest"
+      ],
+      "properties": {
+        "runtime_digest": {"$ref": "#/$defs/digest"},
+        "contract_set_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "fallback_and_safety_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

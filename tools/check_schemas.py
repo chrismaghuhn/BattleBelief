@@ -37,7 +37,23 @@ EXAMPLE_SCHEMA_MAP = {
     "budget-calibration-evidence.example.json": "budget-calibration-evidence.schema.json",
     "search-execution-spec.example.json": "search-execution-spec.schema.json",
     "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
+    "decision-record.example.json": "decision-record.schema.json",
+    "decision-record-payload.example.json": "decision-record-payload.schema.json",
+    "measurement-run.example.json": "measurement-run.schema.json",
 }
+
+RECORD_SCHEMA_NAMES = frozenset(
+    {
+        "decision-record.schema.json",
+        "decision-record-payload.schema.json",
+        "measurement-run.schema.json",
+    }
+)
+
+
+def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
+    directory = "records" if schema_name in RECORD_SCHEMA_NAMES else "manifests"
+    return schema_root / directory / schema_name
 
 
 def collect_schema_errors(root: Path) -> list[str]:
@@ -74,7 +90,7 @@ def collect_schema_errors(root: Path) -> list[str]:
         schema_name = EXAMPLE_SCHEMA_MAP.get(example_path.name)
         if schema_name is None:
             continue
-        schema_path = schema_root / "manifests" / schema_name
+        schema_path = _schema_path_for_example(schema_root, schema_name)
         if not schema_path.exists():
             errors.append(f"{example_path.relative_to(root)}: schema missing")
             continue
