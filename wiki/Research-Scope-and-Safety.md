@@ -4,11 +4,12 @@ BattleBelief is a research project, not a finished competitive bot. Its central 
 
 ## Research thesis
 
-The project investigates whether all three of the following improve Gen 9 OU decisions over simpler registered baselines:
+The project investigates whether the following improve Gen 9 OU decisions over simpler registered baselines:
 
 1. an explicit **open-world belief** over complete hidden Pokémon sets;
-2. **information-set DUCT** search over uncertain worlds;
-3. an authoritative, independent **Showdown action-safety gate**.
+2. **information-set DUCT** search over uncertain worlds.
+
+The authoritative, independent **Showdown action-safety gate** is evaluated separately as an invariant dispatch control. It preserves legal, request-bound execution and is not credited as a source of decision-quality improvement.
 
 The comparison is intended to use fixed CPU, wall-time, data, seed, and reproducibility budgets. Additional complexity is not considered successful merely because it is technically sophisticated.
 
