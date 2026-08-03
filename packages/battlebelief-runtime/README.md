@@ -38,8 +38,9 @@ The team file must be UTF-8 and contain exactly one structurally valid Showdown
 packed-team line. Showdown performs Gen 9 OU legality validation later during
 challenge setup. Local argument, configuration, secret, and team-file failures
 return exit code `2` before connection construction. Setup, transport, and
-battle failures return `1`; a completed win or tie without a primary error
-returns `0`.
+battle failures return `1`; an interrupted run returns `1` without exposing a
+traceback. Any completed battle outcome (win, loss, or tie) without a primary
+error returns `0`.
 
 Public-network execution is not part of automated validation and requires
 separate maintainer approval with a dedicated test account.

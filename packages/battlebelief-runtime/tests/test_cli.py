@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -521,6 +522,59 @@ def test_unclassified_error_exits_one_with_opaque_code(
     assert captured.out == ""
     assert captured.err.strip() == "runtime_error"
     assert secret_message not in captured.err
+
+
+@pytest.mark.parametrize("error_type", [KeyboardInterrupt, asyncio.CancelledError])
+def test_interruption_exits_one_without_a_traceback_or_message_leak(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    error_type: type[BaseException],
+) -> None:
+    secret_message = "interruption-secret-must-not-leak"
+    runner = _FakeRunner(error=error_type(secret_message))
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path)),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 1
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == "runtime_error"
+    assert secret_message not in captured.err
+
+
+def test_completed_loss_exits_zero(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    lost_state = dataclasses.replace(ObservedState.initial("ash"), winner="misty")
+    runner = _FakeRunner(
+        result=BattleSessionResult(
+            state=lost_state,
+            primary_error=None,
+            room_control_or_chat_count=0,
+            explicit_request_submissions=0,
+            default_submissions=0,
+        )
+    )
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path)),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 0
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
 
 
 def test_challenge_runner_has_injectable_connection_and_coordinator_seams(

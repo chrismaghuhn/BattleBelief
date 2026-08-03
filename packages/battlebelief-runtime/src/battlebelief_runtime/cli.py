@@ -171,6 +171,9 @@ def main(
     factory = runner_factory or ChallengeRunner
     try:
         result = asyncio.run(factory().run(config, team))
+    except (KeyboardInterrupt, asyncio.CancelledError) as exc:
+        print(_runtime_error_code(exc), file=sys.stderr)
+        return 1
     except Exception as exc:
         print(_runtime_error_code(exc), file=sys.stderr)
         return 1
