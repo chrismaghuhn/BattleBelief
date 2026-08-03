@@ -65,6 +65,40 @@ jobs:
       - name: Run isolated wheel smokes
         run: python tools/smoke_packages.py
 
+  protocol-smoke:
+    name: protocol-smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Sync locked workspace
+        run: uv sync --frozen --all-packages --group dev
+      - name: Run protocol smoke
+        run: uv run pytest tests/smokes/test_protocol_smoke.py -v
+
+  safety-smoke:
+    name: safety-smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Sync locked workspace
+        run: uv sync --frozen --all-packages --group dev
+      - name: Run safety smoke
+        run: uv run pytest tests/smokes/test_safety_smoke.py -v
+
   dependency-review:
     name: dependency-review
     if: github.event_name == 'pull_request'
@@ -79,7 +113,12 @@ jobs:
   pr-gate:
     name: pr-gate
     if: always()
-    needs: [quality, package-smoke, dependency-review]
+    needs:
+      - quality
+      - package-smoke
+      - dependency-review
+      - protocol-smoke
+      - safety-smoke
     runs-on: ubuntu-24.04
     steps:
       - name: Evaluate required jobs
@@ -87,9 +126,11 @@ jobs:
           QUALITY: ${{ needs.quality.result }}
           PACKAGE_SMOKE: ${{ needs.package-smoke.result }}
           DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
+          PROTOCOL_SMOKE: ${{ needs['protocol-smoke'].result }}
+          SAFETY_SMOKE: ${{ needs['safety-smoke'].result }}
         shell: bash
         run: |
-          for result in "$QUALITY" "$PACKAGE_SMOKE" "$DEPENDENCY_REVIEW"; do
+          for result in "$QUALITY" "$PACKAGE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE"; do
             case "$result" in
               success|skipped) ;;
               *) echo "Required job result: $result"; exit 1 ;;

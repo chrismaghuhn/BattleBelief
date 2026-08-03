@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "battlebelief-runtime"
-version = "0.1.0"
+version = "0.2.0"
 description = "Public runtime adapters and CLI for BattleBelief"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 license = "Apache-2.0"
 authors = [{ name = "BattleBelief contributors" }]
 dependencies = [
-    "battlebelief-core==0.1.0",
+    "battlebelief-core==0.2.0",
     "websockets==16.1.1",
 ]
 

@@ -62,12 +62,12 @@ wheels = [
 
 [[package]]
 name = "battlebelief-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/battlebelief-core" }
 
 [[package]]
 name = "battlebelief-lab"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/battlebelief-lab" }
 dependencies = [
     { name = "battlebelief-core" },
@@ -82,7 +82,7 @@ requires-dist = [
 
 [[package]]
 name = "battlebelief-runtime"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/battlebelief-runtime" }
 dependencies = [
     { name = "battlebelief-core" },
@@ -97,7 +97,7 @@ requires-dist = [
 
 [[package]]
 name = "battlebelief-workspace"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
