@@ -256,7 +256,7 @@ def _is_valid_updateuser(payload: str, expected_username: str) -> bool:
     return parts[3] == "1" and _to_id(parts[2]) == _to_id(expected_username)
 
 
-def _to_id(value: str) -> str:
+def _to_id(text: str) -> str:
     return "".join(
-        character.lower() for character in value if character.isascii() and character.isalnum()
+        character for character in text.lower() if character.isascii() and character.isalnum()
     )

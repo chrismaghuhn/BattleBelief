@@ -104,12 +104,13 @@ def _connection(
     provider: _FakeAssertionProvider | None = None,
     captured: dict[str, object] | None = None,
     *,
+    username: str = "Ash",
     read_timeout: float = 60.0,
     write_timeout: float = 10.0,
 ) -> ShowdownConnection:
     return ShowdownConnection(
         url=_URL,
-        username="Ash",
+        username=username,
         password="password",
         assertion_provider=provider or _FakeAssertionProvider(),
         socket_connector=_connector_for(socket, captured),
@@ -150,6 +151,26 @@ async def test_connection_does_not_accept_non_matching_login(
 
     with pytest.raises(Disconnect):
         await connection.connect()
+
+
+@_async_test
+async def test_connection_accepts_updateuser_with_kelvin_sign_as_matching_identity() -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| Misty\u212a|1|0|{}"])
+    connection = _connection(socket, username="MistyK")
+
+    await connection.connect()
+
+    assert socket.sent == ["|/trn MistyK,0,assertion-token"]
+
+
+@_async_test
+async def test_connection_rejects_updateuser_with_kelvin_sign_as_different_identity() -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| Misty\u212a|1|0|{}"])
+    connection = _connection(socket, username="Misty")
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+    assert socket.closed
 
 
 @_async_test
