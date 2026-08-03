@@ -4,7 +4,7 @@ title: BattleBelief-Dokumentation
 document_type: guide
 status: accepted
 normative: false
-version: 3
+version: 4
 applies_to:
   - repository
 effective_from: 2026-08-03
@@ -98,6 +98,10 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [M0-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m0-foundation.md)
 - [M1-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
 - [Quellenbasis](research/sources.md)
+
+## Evidenz und Audits
+
+- [M1 Protocol-safe Prototype Evidence](operations/m1-protocol-safe-evidence.md)
 
 ## Archiv
 

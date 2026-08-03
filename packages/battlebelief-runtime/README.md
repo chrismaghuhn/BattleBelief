@@ -3,9 +3,10 @@
 Public runtime package and CLI for BattleBelief. Its boundaries are defined in
 [`docs/architecture/code-boundaries.md`](../../docs/architecture/code-boundaries.md).
 
-The package status remains version `0.1.0`, phase `M0`, with
-`battle_capability: absent` until the atomic M1 activation task. The Task 12 CLI
-path is therefore not yet an M1 release or capability claim.
+The package status is version `0.2.0`, phase `M1`, with
+`battle_capability: heuristic_direct_challenge`. This identifies the tested M1
+runtime path; it is not a strength, engine-parity, ladder-readiness, release, or
+MVP claim. Observed live public-protocol coverage is not established.
 
 ## Outgoing direct challenge
 
