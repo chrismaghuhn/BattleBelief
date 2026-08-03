@@ -2,7 +2,7 @@
 document_id: research-strategy-and-experiments
 title: BattleBelief Forschungsstrategie und Experimentfolge
 document_type: research
-status: proposed
+status: accepted
 normative: false
 version: 1
 applies_to:
