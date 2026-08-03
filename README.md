@@ -3,26 +3,55 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** M0 repository foundation complete. Battle play, search,
-> training, and strength claims are not implemented.
+> **Status:** The M0 repository foundation is complete. M1 is in progress:
+> `main` contains immutable protocol and observed-state modeling,
+> request-derived action safety, Showdown protocol and request adapters,
+> packed-team loading, and an authenticated room-preserving connection. The
+> complete battle-session and direct-challenge path is not yet finished. Live
+> battle, belief, search, training, strength, parity, release, and MVP claims
+> are not made.
 
 BattleBelief targets current Smogon Gen 9 OU first. Teams are fixed before a
 battle; offline team-building and in-battle decision-making are separate
 systems.
 
+## Current milestone
+
+M1 is building a protocol-safe, heuristic Gen 9 OU prototype. The current
+implementation on `main` includes:
+
+- immutable battle events, visible state, and deterministic reduction;
+- normalized decision requests and conservative safe submission sets;
+- request reconciliation, deterministic heuristic selection, and an
+  independent action-safety gate;
+- room-preserving frame decoding and strict Showdown protocol parsing;
+- request reading, command encoding, and packed-team loading; and
+- authenticated Showdown WebSocket connectivity with classified transport
+  failures.
+
+Battle-session execution, direct challenge coordination, and the remaining M1
+validation and evidence work are still in progress. See the
+[M1 protocol-safe prototype plan](docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
+for the detailed scope and task sequence.
+
 ## Packages
 
-- `battlebelief-core`: pure domain, belief, search, safety, and ports
-- `battlebelief-runtime`: public live adapters and CLI
+- `battlebelief-core`: pure immutable domain and application logic; currently
+  includes protocol-state reduction, decision requests, reconciliation,
+  deterministic policy, and action safety
+- `battlebelief-runtime`: public live adapters and CLI; currently includes
+  Showdown framing, parsing, requests, command encoding, packed teams, and the
+  authenticated connection layer
 - `battlebelief-lab`: offline oracle, data, training, evaluation, and reporting
+  work for later milestones
 
-The current package boundaries are defined in
+The package boundaries are defined in
 [`docs/architecture/code-boundaries.md`](docs/architecture/code-boundaries.md).
 
 ## Documentation
 
 Start with [`docs/README.md`](docs/README.md). A green `main` is an integration
-claim only; it is not a strength, parity, or MVP claim.
+claim only; it is not a strength, parity, release, or MVP claim.
 
 ## License
 
