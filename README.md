@@ -165,7 +165,7 @@ on `main` includes:
   failures;
 - request-driven `BattleSession` execution with freshness checks, pending-state
   reconciliation, and `rqid`-bound `/choose` dispatch;
-- direct Gen 9 OU challenge coordination with single-reader room handoff; and
+- direct Gen 9 OU challenge coordination with single-reader room handoff;
 - a secrets-safe outgoing challenge CLI with pre-network validation;
 - visible protocol- and action-safety acceptance smokes in the stable
   `pr-gate`; and

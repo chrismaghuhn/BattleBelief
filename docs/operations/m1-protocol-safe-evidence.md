@@ -50,7 +50,7 @@ CPython 3.14.5. Jeder aufgeführte Befehl endete mit Exitcode 0.
 | Befehl | Gemessenes Ergebnis |
 |---|---|
 | `uv lock --check` | Lockfile konsistent; 27 Pakete aufgelöst |
-| `uv run ruff format --check .` | 122 Dateien formatiert |
+| `uv run ruff format --check .` | 122 Dateien bereits formatiert |
 | `uv run ruff check .` | keine Lintfehler |
 | `uv run mypy` | keine Fehler in 63 Source-Dateien |
 | `uv run pytest` | 827 Tests bestanden |
@@ -60,15 +60,19 @@ CPython 3.14.5. Jeder aufgeführte Befehl endete mit Exitcode 0.
 | `uv run python tools/check_schemas.py` | Schemas, Beispiele, IDs und Kanonisierung bestanden |
 | `uv run python tools/smoke_packages.py` | isolierte Core-, Runtime- und Lab-Wheels gebaut, installiert und geprüft |
 | `uv run battlebelief doctor` | `0.2.0`, Phase `M1`, Entry-Point ready, Capability `heuristic_direct_challenge` |
-| fokussierter Protocol-Smoke | 2 Tests bestanden |
-| fokussierter Safety-Smoke | 29 Tests bestanden |
-| Challenge-Coordinator-Integration | 183 Tests bestanden |
+| `uv run pytest tests/smokes/test_protocol_smoke.py -v` | 2 Tests bestanden |
+| `uv run pytest tests/smokes/test_safety_smoke.py -v` | 29 Tests bestanden |
+| `uv run pytest tests/integration/test_challenge_coordinator.py -v` | 183 Tests bestanden |
 
-Die negative Scope-Suche nach `poke_engine`, `poke-engine`, `DUCT`, `MCTS`,
-`BeliefState`, `duckdb`, `pyarrow`, `torch`, `onnx` und `/search` fand in
-`packages`, `tests` und `.github` genau einen Treffer. Dieser Treffer ist der
-Negativtest, der `/search` und weitere nicht erlaubte Challenge-Kommandos
-ausdrücklich ausschließt; ein ausführbarer M2+-Pfad wurde nicht gefunden.
+Die negative Scope-Suche wurde mit diesem Befehl ausgeführt:
+
+```powershell
+rg -n "poke_engine|poke-engine|DUCT|MCTS|BeliefState|duckdb|pyarrow|torch|onnx|/search" packages tests .github
+```
+
+Sie fand genau einen Treffer. Dieser Treffer ist der Negativtest, der `/search`
+und weitere nicht erlaubte Challenge-Kommandos ausdrücklich ausschließt; ein
+ausführbarer M2+-Pfad wurde nicht gefunden.
 
 ## GitHub-Actions-Matrix
 
@@ -116,7 +120,7 @@ geprüft.
 | explizite Submission, danach serverdelegiertes `default` | 1 | Erfolg | 1 | 1 | 0 | 0 |
 | Room-Control/Chat vor Reconciliation | 1 | Erfolg | 1 | 0 | 4 | 0 |
 | Chat nach erfolgreicher Submission | 1 | Erfolg, Duplicate unterdrückt | 1 | 0 | 1 | 0 |
-| nackter `|`-Spacer | 1 | Erfolg ohne Send | 0 | 0 | 0 | 1 |
+| nackter Pipe-Spacer | 1 | Erfolg ohne Send | 0 | 0 | 0 | 1 |
 | nichtterminale `-message`-Anzeige | 1 | Erfolg ohne Send | 0 | 0 | 0 | 1 |
 | stale Request nach gültiger Submission | 1 | `stale_rqid` | 1 | 0 | 0 | 0 |
 | Server Invalid/Unavailable nach gültiger Submission | 2 | klassifizierter Serverfehler | 1 je Fall | 0 | 0 | 0 |
@@ -130,6 +134,10 @@ Submission, senden aber keine weitere Aktion nach dem primären Fehler.
 
 Ein fokussierter Lauf mit 28 Fällen bestätigte die drei beobachtbaren
 Challenge-Setup-Subcodes:
+
+```powershell
+uv run pytest tests/integration/test_challenge_coordinator.py -v -k "test_each_allowlisted_global_message_is_a_fully_matched_explicit_rejection or test_setup_deadline_classifies_only_the_observed_challenge_state or test_initial_not_pending_without_a_room_is_a_setup_timeout"
+```
 
 | Subcode | Gemessene Fälle | Beobachtung |
 |---|---:|---|
@@ -151,7 +159,7 @@ observed live protocol coverage: not established
 ```
 
 Es wurde kein öffentlicher Showdown-Login und keine öffentliche Challenge
-ausgeführt. Es wurden keine Credentials verwendet oder aufgezeichnet. Der
+ausgeführt. Es wurden keine realen Credentials verwendet oder aufgezeichnet. Der
 Runtimepfad ist auf eine ausgehende direkte Gen-9-OU-Challenge begrenzt; der
 Gegner muss sie annehmen. Die kontrollierte Wiederholbarkeit ist für den
 synthetischen Corpus, Fake-Transport und die deklarierte M1-Zuordnung belegt,
