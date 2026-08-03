@@ -123,22 +123,31 @@ registration cannot be rewritten after results are observed.
    not compatible with the Task 18 requirement that Core expose digest
    functions unless that requirement is changed before implementation.
 
-Task 18 cannot start until Decision A is selected. If Option 1 is selected,
-its PR scope additionally includes:
+Task 18 cannot start until Decision A is selected. Task 17 always extracts the
+existing manifest JCS implementation into an installable Core module because
+the semantic validator must work from an isolated Lab wheel. Its scope
+therefore includes:
 
 ```text
 packages/battlebelief-core/pyproject.toml
+packages/battlebelief-lab/pyproject.toml
 uv.lock
 tools/smoke_packages.py
 tools/canonicalize_manifest.py
 tests/tooling/test_canonicalization.py
+tests/tooling/test_pr_workflow.py
+packages/battlebelief-lab/README.md
 docs/architecture/dependency-matrix.md, when the Core runtime dependency is
 listed there
 ```
 
+The installable runtime dependencies are exactly `rfc8785` for Core and
+`jsonschema` for Lab; the lockfile must not update unrelated dependencies.
+
 The JCS implementation must be moved into one installable Core module and the
 existing manifest tool must delegate to that module; two independent JCS
-implementations are forbidden. Option 2 additionally includes a separately
+implementations are forbidden. If Option 1 is selected, Task 18 reuses this
+module for Decision Records. Option 2 additionally includes a separately
 versioned Core record encoder, its schema/byte-vector documentation, and its
 cross-platform test vectors. Option 3 is not implementable under the current
 Task 18 requirement for Core digest functions and must either be rejected or
@@ -261,13 +270,15 @@ M2 code exists in the PR.
 - Create: `schemas/manifests/evaluation-run-binding.schema.json`
 - Create: `schemas/manifests/budget-calibration-spec.schema.json`
 - Create: `schemas/manifests/budget-calibration-evidence.schema.json`
+- Create: `schemas/manifests/search-execution-spec.schema.json`
 - Create: `schemas/examples/experiment-registration.example.json`
 - Create: `schemas/examples/evaluation-arm-binding.example.json`
 - Create: `schemas/examples/evaluation-run-binding.example.json`
 - Create: `schemas/examples/budget-calibration-spec.example.json`
 - Create: `schemas/examples/budget-calibration-evidence.example.json`
+- Create: `schemas/examples/search-execution-spec.example.json`
 - Modify: `docs/contracts/manifest-schemas.md` with a new version and entries
-  for all five manifest schemas, their `$id` values, validation order, and
+  for all six manifest schemas, their `$id` values, validation order, and
   evolution rules
 - Create: `docs/contracts/experiment-registration.md` as the normative owner
   of registration, implementation-binding, run-binding, freeze, supersession,
@@ -282,8 +293,26 @@ M2 code exists in the PR.
 - Create: `tests/tooling/test_m15_registration_schemas.py`
 - Create: `tools/validate_m15_registration.py`
 - Create: `tests/tooling/test_m15_registration_validation.py`
+- Create: `packages/battlebelief-core/src/battlebelief_core/canonicalization.py`
+- Modify: `packages/battlebelief-core/pyproject.toml` to add the runtime
+  `rfc8785` dependency
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/registration_validation.py`
+- Modify: `packages/battlebelief-lab/pyproject.toml` to add the runtime
+  `jsonschema` dependency
 - Create: `packages/battlebelief-lab/tests/test_registration_validation.py`
+- Modify: `uv.lock` for only these internal runtime dependencies
+- Modify: `tools/canonicalize_manifest.py` to delegate to the installable Core
+  canonicalizer
+- Modify: `tools/smoke_packages.py` to verify the isolated Core/Lab wheels
+  can import and use their declared canonicalization/validation dependencies
+- Modify: `tests/tooling/test_canonicalization.py`
+- Modify: `tests/tooling/test_pr_workflow.py` to require the validator command
+  in the Repository contracts step
+- Modify: `docs/architecture/dependency-matrix.md` with the approved runtime
+  dependency edges
+- Modify: `packages/battlebelief-lab/README.md` to describe the new offline
+  validation seam while keeping Search, Oracle, engine, and dataset
+  capabilities absent
 - Modify: `tools/check_schemas.py` to validate record schemas under
   `schemas/records/` as well as manifest schemas, while keeping the existing
   canonicalization checks unchanged
@@ -320,6 +349,17 @@ must support explicit schema-to-example mappings rather than assuming that
 every `schemas/examples/NAME.example.json` maps to
 `schemas/manifests/NAME.schema.json`; this is required for record schemas under
 `schemas/records/`.
+
+Task 17 has two explicit validation modes. `validate examples` processes the
+six explicit example-to-schema mappings listed in the contract. `validate
+repository artifacts` additionally scans `registrations/` and any existing
+bindings; a missing `registrations/` directory is a valid no-op until Task 21,
+while every artifact that exists is fully validated. A missing
+`schemas/records/` directory is likewise a valid no-op in Task 17. Task 18
+creates that directory and activates record-schema scanning with negative
+tests; Task 21 activates registration-artifact validation. The CI command must
+run both modes without treating either preconditioned absence as success by
+accident.
 
 Before the schemas are frozen, the maintainer must approve stable IDs in the
 normative metric and statistical documents. The initial candidate set is:
@@ -440,7 +480,8 @@ TDD sequence:
 
 - [ ] Add invalid instances for each rejection and run the focused test to
   prove the validator rejects them.
-- [ ] Add the three valid examples and run JSON Schema validation.
+- [ ] Add the six valid examples and run the explicit example-to-schema
+  validation.
 - [ ] Add metric, estimand, and analysis-procedure IDs to their normative
   owners without changing the meaning of an existing metric or procedure.
 - [ ] Implement the strict loader, semantic validator, explicit schema mapping,
@@ -455,8 +496,10 @@ TDD sequence:
 - [ ] Run `uv run python tools/check_docs.py` after the contract version and
   links are updated.
 
-**Acceptance criteria:** All three artifacts validate through the repository
-schema gate; cross-field identity and arm rules are tested; the contract is the only
+**Acceptance criteria:** All six manifest artifacts and examples validate
+through the repository schema gate; preconditioned missing directories are
+explicit no-ops and existing artifacts are fully checked; cross-field identity
+and arm rules are tested; the contract is the only
 normative owner of the new schema list; and no concrete pool or implementation
 artifact is represented as already existing.
 
@@ -486,6 +529,12 @@ artifact is represented as already existing.
 - Create: `packages/battlebelief-core/tests/domain/records/test_public_projection.py`
 - Create: `tests/contracts/test_decision_record_contract.py`
 
+Task 18 changes the previously valid no-op state: it creates
+`schemas/records/`, registers the explicit payload/envelope/measurement-run
+example mappings, and adds negative tests proving malformed record schemas are
+reported. It must not weaken the Task 17 example validator or silently skip
+records once the directory exists.
+
 The new `docs/contracts/decision-records.md` is the sole normative owner for
 the durable meaning of these records. It must receive a document ID, version,
 frontmatter, and an entry in `docs/README.md`. The plan, examples, Runtime
@@ -512,10 +561,10 @@ runtime_and_contract_digests
 ```
 
 The envelope schema adds `record_id` and `record_digest` around the validated
-payload. `record_digest` is the SHA-256 digest of the canonical bytes of the
-payload only; the digest is then compared with the envelope value. The
-payload and envelope are separate schema levels so the digest can never hash
-itself.
+payload. `record_digest` is the SHA-256 digest of canonical bytes for
+`{record_id, payload}`; only `record_digest` itself remains outside the hashed
+value. The payload and envelope are separate schema levels so the digest can
+never hash itself, while a changed record identity is still detected.
 
 The status enum is:
 
@@ -524,6 +573,7 @@ submitted
 wait_noop
 policy_rejected
 action_gate_rejected
+command_encoding_failed
 send_failed
 superseded_before_selection
 terminally_discarded
@@ -537,35 +587,41 @@ packed-team content, raw room ID, account ID, user ID, display name, private
 opponent request, sampled hidden world, absolute path, hostname, wall-clock
 timestamp, or unbounded free-form payload.
 
-The record is bound to a `measurement-run` context. First construct the
-non-circular scope payload:
+`command_encoding_failed` is distinct from both `action_gate_rejected` and
+`send_failed`: the candidate passed the independent safety gate, encoding
+failed, and no socket send was attempted. In that terminal record,
+`selected_submission` and `submission_provenance` are set,
+`fallback_or_error_class` is a stable sanitized code, and submission counters
+remain unchanged.
+
+The record is bound to an `EvaluationRunBinding` through a
+`measurement-run` context. The public context carries these primary
+references:
 
 ```text
-registration_digest
-arm_binding_digest
-schedule_digest
-schedule_row_id
-budget_profile_digest
-seed_family_digest
-runtime_digest
-contract_set_digest
+evaluation_run_binding_digest
+run_scope_digest
+battle_id_digest
 ```
 
-`run_scope_digest` is the SHA-256 digest of that canonical scope payload. A
-synthetic harness then derives `battle_id_digest` from
+The validator resolves the Run Binding and verifies that its implementation
+binding and registration, schedule, seed family, budget, runtime environment,
+ruleset, and pool-access state agree with the registered run. The resolved
+non-circular `RunScopePayload` contains those fields and is hashed as
+`run_scope_digest`. A synthetic harness then derives `battle_id_digest` from
 `{run_scope_digest, schedule_row_id, battle_ordinal}`. The final
-`RunContextPayload` contains the scope payload, `battle_ordinal`, and
-`battle_id_digest`, and its digest is `run_context_digest`. The raw Showdown
-room ID is never an input or
+`RunContextPayload` contains `evaluation_run_binding_digest`, the scope
+references, `battle_ordinal`, and `battle_id_digest`; its digest is
+`run_context_digest`. The raw Showdown room ID is never an input or
 serialized field in this offline identity scheme. The bot and opponent
 identities are not projected. Tests must use concrete room IDs and usernames
 to prove that they do not appear in canonical bytes or JSONL.
 
 `record_id` is non-circular. It is derived from the run-context digest,
 `battle_id_digest`, a zero-based `decision_index`, and the public
-request-identity projection. `record_digest` is computed over the complete
-payload excluding both envelope identifiers, then stored in the envelope;
-neither digest is an input to its own derivation. A run, schedule row,
+request-identity projection. `record_digest` is then computed over the
+canonical envelope payload `{record_id, payload}`, with only the digest field
+excluded; neither digest is an input to its own derivation. A run, schedule row,
 repetition, and request can therefore be resolved without relying on an
 implicit process or timestamp.
 
@@ -619,6 +675,8 @@ TDD sequence:
 - [ ] Add tests for run-context binding, non-circular `record_id`, decision
   index uniqueness, and the exact fresh-request cardinality/terminal-state
   matrix.
+- [ ] Add the command-encoding failure to that matrix and prove it emits one
+  terminal record without a socket send or counter increment.
 - [ ] Implement the record dataclass, projections, canonical bytes, and digest
   helpers against the selected byte contract.
 - [ ] Run the focused Core and contract tests, then `uv run python
@@ -672,9 +730,11 @@ fresh request reconciled
 → one terminal Decision Record
 ```
 
-The record for a send failure is `send_failed` and never claims a successful
-dispatch. Duplicate requests are suppressed before selection and do not create
-a second record. A pending public-state request creates `wait_noop` only when
+The record for an encoding failure is `command_encoding_failed`: the selected
+candidate and provenance are present, no socket send occurs, and submission
+counters do not change. A send failure is `send_failed` and never claims a
+successful dispatch. Duplicate requests are suppressed before selection and do
+not create a second record. A pending public-state request creates `wait_noop` only when
 that is the declared decision outcome, not for every ignored wire line. A
 superseded pending request uses `superseded_before_selection`; a request
 discarded by `win`/`tie` uses `terminally_discarded`; and reconciliation failure
@@ -705,6 +765,8 @@ TDD sequence:
   emits one record per fresh accepted request and no record for a duplicate.
 - [ ] Add a failing test for a rejected action, a send failure, a wait/no-op,
   and terminal battle abort, checking the exact status and nullability rules.
+- [ ] Add a failing command-encoding test after a successful safety gate,
+  proving no send or submission-counter increment occurs.
 - [ ] Add a failing test for a trace-sink failure before and after a primary
   battle/send failure, checking `trace_sink_failure` classification and error
   precedence.
@@ -743,9 +805,6 @@ output is safe, newline-stable, and deterministic.
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/matchup_blocks.py`
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/registration.py`
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/measurement_runner.py`
-- Modify: `packages/battlebelief-lab/README.md` to describe the M1.5 offline
-  measurement harness while keeping Oracle, dataset, Search, and training
-  capabilities explicitly absent
 - Create: `packages/battlebelief-lab/tests/evaluation/test_budget_profiles.py`
 - Create: `packages/battlebelief-lab/tests/evaluation/test_seed_families.py`
 - Create: `packages/battlebelief-lab/tests/evaluation/test_pool_partitioning.py`
@@ -852,8 +911,10 @@ budget needs neither a Calibration Specification nor Evidence; a
 only after the applicable implementation exists. No calibration artifact may
 inspect actions, wins, quality metrics, or holdout rows.
 
-`measurement_runner.py` composes a `ScheduleRow`, Run Context, the approved
-Runtime testing seam, and Decision Records into one immutable
+`measurement_runner.py` begins at the Battle-Room Handoff, after challenge
+setup has succeeded. It composes an already validated `EvaluationRunBinding`,
+a `ScheduleRow`, Run Context, the approved Runtime testing seam, and Decision
+Records into one immutable
 `measurement-run-result` artifact. Its schema records at minimum:
 
 ```text
@@ -871,9 +932,18 @@ trace_status
 
 It preserves setup/transport failures before the first request, timer/forfeit,
 unknown wire events, a battle with no Decision Record, and trace-sink failure
-as explicit result states. It owns sink flush and close; the Runtime session
-does not close an injected sink. A close failure is classified without
-rewriting an earlier primary battle error.
+as explicit result states. Challenge-Coordinator setup errors remain in the
+Coordinator seam and are not misrepresented as a BattleSession run result. It
+owns sink flush and close; the Runtime session does not close an injected sink.
+A close failure is classified without rewriting an earlier primary battle
+error.
+
+The result validator requires every listed Decision Record to exist, to share
+the run context, and to have unique IDs in `decision_index` order. It checks
+that explicit/default/room-control/ignored-display counters agree with the
+records, that `trace_status` matches the actual emit outcome, and that
+`battle_outcome` is one of `our_win`, `opponent_win`, `tie`, `void`, or
+`incomplete`. Winner values are side labels, never usernames.
 
 TDD sequence:
 
@@ -892,6 +962,9 @@ TDD sequence:
 - [ ] Add tests that the Calibration Specification is stable in M1.5, that
   fixed profiles require no evidence, and that later Calibration Evidence
   changes a run-binding identity without rewriting the registration.
+- [ ] Add result-validation tests for Run Binding resolution, record existence
+  and shared context, decision ordering, duplicate IDs, counter agreement,
+  trace status, side-based outcomes, and pre-request dispositions.
 - [ ] Implement the pure Lab modules with immutable return values.
 - [ ] Run focused Lab tests, architecture checks, and the isolated Lab package
   smoke; no public network access is permitted.
@@ -907,6 +980,10 @@ offline M1.5 harness rather than a Search or Oracle package.
 
 - Create: `registrations/gen9ou/m1-5-core-comparisons-v1.json`
 - Create: `registrations/gen9ou/bindings/heuristic_v0-implementation.json`
+- Create: `registrations/gen9ou/bindings/heuristic_v0-m15-synthetic-run.json`
+- Create: `registrations/gen9ou/arm-specs/determinization-search-v0.json`
+- Create conditionally for Decision C `calibrated_grid` or
+  `hardware_normalized`: `registrations/gen9ou/budgets/m15-search-work-calibration-v1.json`
 - Create: `tests/tooling/test_m15_registration_artifacts.py`
 - Modify: `tools/validate_m15_registration.py` only for artifact-specific
   checks that are not already covered by Task 17
@@ -940,7 +1017,13 @@ opponent, Search, engine, model, or holdout digest. The
 `model_or_hybrid_v0` arm may be present as `lifecycle: "deferred"`, but it is
 not part of a comparison in this first registration. A later model experiment
 requires a new immutable registration with a concrete baseline arm selected
-before its results are observed.
+before its results are observed. The registration includes the digest and
+version of `determinization-search-v0.json`, which freezes world-sampling
+count/distribution, lookahead, value/action aggregation, tie-break, budget
+consumption, and fail-closed fallback without implementing Search. Decision C
+uses a fixed selected work value directly, or references the concrete budget
+Calibration Specification artifact when `calibrated_grid` or
+`hardware_normalized` is selected; measured evidence is still deferred.
 
 The first binding is an `ArmImplementationBinding` for `heuristic_v0`, not an
 evaluation-run binding. It records the actual source commit selected for the
@@ -955,6 +1038,13 @@ concrete run is sealed. No component is represented as a false null digest.
 The registration digest is computed before the binding and must match exactly;
 the registration file is never edited to accommodate the binding or any
 observed result.
+
+The second binding is a synthetic acceptance `EvaluationRunBinding` with
+`run_purpose: "synthetic_acceptance"`. It uses small fixture digests only;
+those fixtures are not Selection, Power Pilot, Release Holdout, or any other
+evaluation pool. It binds the implementation binding, schedule, seed family,
+budget profile, runtime environment, ruleset, and permitted pool-access state
+so Task 22 cannot bypass the formal Run Binding layer.
 
 Before any future binding of `determinization_search_v0`, the registration
 must also reference a versioned execution specification covering world
@@ -972,6 +1062,9 @@ TDD sequence:
 - [ ] Add tests that the heuristic binding resolves to the registration
   digest, binds only an implemented arm, and leaves non-existent arms
   unsealed.
+- [ ] Add tests that the synthetic run binding resolves through the
+  implementation binding and registration, uses only fixture digests, and
+  cannot open any protected pool.
 - [ ] Add tests that Selection, Power Pilot, and Release Holdout remain
   unopened and no concrete pool digest appears in the registration.
 - [ ] Add tests that `model_or_hybrid_v0` is deferred and has no comparison in
@@ -1020,6 +1113,8 @@ records:
 
 - schema and example validation results;
 - registration and heuristic-binding digest checks;
+- the synthetic `EvaluationRunBinding` digest and its resolution to the
+  implementation binding and frozen registration;
 - two identical synthetic M1 runs with byte-identical Decision Records;
 - seed, schedule, and budget reproducibility;
 - immutable Calibration Specification contents and budget-profile digest
@@ -1059,7 +1154,7 @@ TDD and evidence sequence:
 - [ ] Add a failing evidence check for an unlinked registration digest, an
   opened holdout, and a secret or hidden-state field.
 - [ ] Run the full M1.5 synthetic harness twice from a clean checkout and
-  capture the actual outputs and counts.
+  capture the actual outputs and counts through the synthetic Run Binding;
 - [ ] Write the audit from those outputs, preserving the existing M1 status
   and avoiding claims about public live coverage.
 - [ ] Run the focused evidence/documentation checks.
