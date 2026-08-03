@@ -58,19 +58,21 @@ def test_bound_component_requires_digest_and_unbound_component_forbids_it() -> N
 
 
 def test_m15_schema_ids_use_the_repository_convention() -> None:
-    for path in (ROOT / "schemas/manifests").glob("*.schema.json"):
+    expected = {
+        "experiment-registration.schema.json",
+        "evaluation-arm-binding.schema.json",
+        "evaluation-run-binding.schema.json",
+        "budget-calibration-spec.schema.json",
+        "budget-calibration-evidence.schema.json",
+        "synthetic-fixture-manifest.schema.json",
+        "search-execution-spec.schema.json",
+    }
+    for name in sorted(expected):
+        path = ROOT / "schemas/manifests" / name
+        assert path.exists(), name
         schema = json.loads(path.read_text())
-        if path.name in {
-            "experiment-registration.schema.json",
-            "evaluation-arm-binding.schema.json",
-            "evaluation-run-binding.schema.json",
-            "budget-calibration-spec.schema.json",
-            "budget-calibration-evidence.schema.json",
-            "synthetic-fixture-manifest.schema.json",
-            "search-execution-spec.schema.json",
-        }:
-            assert schema["$id"].startswith("urn:battlebelief:schema:")
-            assert ":v" in schema["$id"]
+        assert schema["$id"].startswith("urn:battlebelief:schema:")
+        assert ":v" in schema["$id"]
 
 
 def test_synthetic_run_requires_a_non_null_fixture_and_no_evaluation_pools() -> None:
@@ -93,13 +95,16 @@ def test_registration_requires_pool_and_comparison_analysis_fields() -> None:
     schema = json.loads(
         (ROOT / "schemas/manifests/experiment-registration.schema.json").read_text()
     )
-    example = json.loads(
-        (ROOT / "schemas/examples/experiment-registration.example.json").read_text()
-    )
-    example["pool_rules"] = {}
-    example["comparisons"][0].pop("direction", None)
-    example["budget_profiles"]["deployment_utility"].pop("work_unit", None)
-    assert list(Draft202012Validator(schema).iter_errors(example))
+    for mutation in (
+        lambda candidate: candidate.__setitem__("pool_rules", {}),
+        lambda candidate: candidate["comparisons"][0].pop("direction", None),
+        lambda candidate: candidate["budget_profiles"]["deployment_utility"].pop("work_unit", None),
+    ):
+        candidate = json.loads(
+            (ROOT / "schemas/examples/experiment-registration.example.json").read_text()
+        )
+        mutation(candidate)
+        assert list(Draft202012Validator(schema).iter_errors(candidate))
 
 
 def test_calibration_examples_bind_a_measurement_profile_and_measurements() -> None:

@@ -107,6 +107,13 @@ def test_comparison_references_must_be_declared() -> None:
         validate_registration_semantics(registration)
 
 
+def test_malformed_reference_lists_fail_closed_without_type_error() -> None:
+    registration = _registration()
+    registration["metric_references"] = None
+    with pytest.raises(RegistrationValidationError, match="primary_metric_id"):
+        validate_registration_semantics(registration)
+
+
 def test_search_execution_schema_classification_is_structural() -> None:
     root = Path(__file__).resolve().parents[2]
     value = {
@@ -268,6 +275,7 @@ def test_run_binding_must_use_an_implementation_from_the_same_registration(
     }
     (root / "registrations/run-a.json").write_text(json.dumps(run))
     errors = validate_repository_artifacts(root)
+    assert not any("schema violation" in error for error in errors)
     assert any(
         "implementation binding belongs to another registration" in error for error in errors
     )

@@ -235,26 +235,27 @@ def validate_registration_semantics(
     if not isinstance(comparisons, list):
         raise RegistrationValidationError("comparisons must be a list")
     comparison_ids: set[str] = set()
-    metric_ids = {
-        reference.get("metric_id")
-        for reference in registration.get("metric_references", [])
-        if isinstance(reference, Mapping)
-    }
-    estimand_ids = {
-        reference.get("estimand_id")
-        for reference in registration.get("estimand_references", [])
-        if isinstance(reference, Mapping)
-    }
-    analysis_procedure_ids = {
-        reference.get("analysis_procedure_id")
-        for reference in registration.get("analysis_procedure_references", [])
-        if isinstance(reference, Mapping)
-    }
+
+    def declared_ids(value: Any, field: str) -> set[str]:
+        if not isinstance(value, list):
+            return set()
+        return {
+            reference[field]
+            for reference in value
+            if isinstance(reference, Mapping) and isinstance(reference.get(field), str)
+        }
+
+    metric_ids = declared_ids(registration.get("metric_references"), "metric_id")
+    estimand_ids = declared_ids(registration.get("estimand_references"), "estimand_id")
+    analysis_procedure_ids = declared_ids(
+        registration.get("analysis_procedure_references"), "analysis_procedure_id"
+    )
     metric_roles: dict[str, set[str]] = {}
     metric_directions: dict[str, str] = {}
     if root is not None:
         metric_registry = _metric_registry(root)
-        for reference in registration.get("metric_references", []):
+        metric_references = registration.get("metric_references")
+        for reference in metric_references if isinstance(metric_references, list) else []:
             if isinstance(reference, Mapping) and isinstance(reference.get("metric_id"), str):
                 metric_id = reference["metric_id"]
                 if metric_id in metric_registry:
@@ -530,7 +531,11 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
     errors: list[str] = []
     documents = _document_index(root)
 
-    for reference in registration.get("contract_references", []):
+    for reference in (
+        registration.get("contract_references", [])
+        if isinstance(registration.get("contract_references"), list)
+        else []
+    ):
         if isinstance(reference, Mapping):
             _validate_document_reference(
                 reference,
@@ -539,7 +544,11 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
                 expected_document_type="contract",
                 expected_normative=True,
             )
-    for reference in registration.get("metric_references", []):
+    for reference in (
+        registration.get("metric_references", [])
+        if isinstance(registration.get("metric_references"), list)
+        else []
+    ):
         if isinstance(reference, Mapping):
             _validate_document_reference(
                 reference,
@@ -549,7 +558,11 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
                 expected_normative=True,
                 identifier_field="metric_id",
             )
-    for reference in registration.get("estimand_references", []):
+    for reference in (
+        registration.get("estimand_references", [])
+        if isinstance(registration.get("estimand_references"), list)
+        else []
+    ):
         if isinstance(reference, Mapping):
             _validate_document_reference(
                 reference,
@@ -559,7 +572,11 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
                 expected_normative=True,
                 identifier_field="estimand_id",
             )
-    for reference in registration.get("analysis_procedure_references", []):
+    for reference in (
+        registration.get("analysis_procedure_references", [])
+        if isinstance(registration.get("analysis_procedure_references"), list)
+        else []
+    ):
         if isinstance(reference, Mapping):
             _validate_document_reference(
                 reference,
@@ -710,15 +727,23 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             errors.append(
                 f"{path.relative_to(repository_root)}: superseded artifact has multiple successors"
             )
+    settled: set[str] = set()
     for digest in supersession:
         visited: set[str] = set()
         current: str | None = digest
-        while current is not None and current in supersession:
+        while current is not None and current in supersession and current not in settled:
             if current in visited:
-                errors.append("artifact supersession cycle detected")
+                cycle_path = by_digest.get(current)
+                location = (
+                    cycle_path[0].relative_to(repository_root)
+                    if cycle_path is not None
+                    else current
+                )
+                errors.append(f"{location}: artifact supersession cycle detected")
                 break
             visited.add(current)
             current = supersession[current]
+        settled.update(visited)
 
     for path, value, kind in artifacts:
         relative = path.relative_to(repository_root)
