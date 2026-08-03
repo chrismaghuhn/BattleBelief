@@ -17,7 +17,7 @@
     "tie_break": {"type": "string", "minLength": 1},
     "budget_consumption": {"type": "string", "minLength": 1},
     "fallback": {"type": "string", "minLength": 1},
-    "research_reference": {"type": "object", "additionalProperties": false, "required": ["document_id", "document_version", "document_digest"], "properties": {"document_id": {"type": "string", "minLength": 1}, "document_version": {"type": "integer", "minimum": 1}, "document_digest": {"$ref": "#/$defs/digest"}}}
+    "research_reference": {"type": "object", "additionalProperties": false, "required": ["document_id", "document_version", "document_digest"], "properties": {"document_id": {"const": "roadmap-research-strategy-and-experiments"}, "document_version": {"type": "integer", "minimum": 1}, "document_digest": {"$ref": "#/$defs/digest"}}}
   },
   "$defs": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}

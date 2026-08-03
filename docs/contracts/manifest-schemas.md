@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 6
 applies_to:
   - manifests
   - release
@@ -27,6 +27,7 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Manifest | Schema |
 |---|---|
 | Dokument-Frontmatter | [`frontmatter.schema.json`](../../schemas/documents/frontmatter.schema.json) |
+| Contract-Snapshot-Metadaten | [`contract-snapshot-metadata.schema.json`](../../schemas/documents/contract-snapshot-metadata.schema.json) |
 | Search-Ausführung | [`search-contract.schema.json`](../../schemas/manifests/search-contract.schema.json) |
 | Engine-Capabilities | [`engine-capability.schema.json`](../../schemas/manifests/engine-capability.schema.json) |
 | Evaluation-Claim | [`evaluation-claim.schema.json`](../../schemas/manifests/evaluation-claim.schema.json) |
@@ -85,9 +86,10 @@ Unbekannte Schema-Versionen werden fail-closed abgelehnt, nicht heuristisch
 interpretiert.
 
 Document references bind the document ID and version to the SHA-256 digest of
-the exact UTF-8 file. Older frozen references resolve from versioned files
-under `docs/contracts/snapshots/`; changing the current Markdown file must not
-retroactively change an existing document digest.
+the exact UTF-8 file. Older frozen references resolve through sidecar metadata
+and byte-identical files under `docs/archive/contract-snapshots/`; changing the
+current Markdown file must not retroactively change an existing document
+digest. Archived snapshot bytes are not revalidated as current documents.
 
 Beispieldateien unter `/schemas/examples` werden im `pr-gate` über eine
 explizite Beispiel-zu-Schema-Zuordnung geprüft; die Zuordnung wird nicht aus

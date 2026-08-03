@@ -107,6 +107,30 @@ def test_registration_requires_pool_and_comparison_analysis_fields() -> None:
         assert list(Draft202012Validator(schema).iter_errors(candidate))
 
 
+def test_reference_document_owners_are_schema_bound() -> None:
+    registration_schema = json.loads(
+        (ROOT / "schemas/manifests/experiment-registration.schema.json").read_text()
+    )
+    registration = json.loads(
+        (ROOT / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["metric_references"][0]["document_id"] = "experiment-registration"
+    assert list(Draft202012Validator(registration_schema).iter_errors(registration))
+
+    registration = json.loads(
+        (ROOT / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["estimand_references"][0]["document_id"] = "evaluation-metrics"
+    assert list(Draft202012Validator(registration_schema).iter_errors(registration))
+
+    search_schema = json.loads(
+        (ROOT / "schemas/manifests/search-execution-spec.schema.json").read_text()
+    )
+    search = json.loads((ROOT / "schemas/examples/search-execution-spec.example.json").read_text())
+    search["research_reference"]["document_id"] = "evaluation-metrics"
+    assert list(Draft202012Validator(search_schema).iter_errors(search))
+
+
 def test_calibration_examples_bind_a_measurement_profile_and_measurements() -> None:
     schema = json.loads(
         (ROOT / "schemas/manifests/budget-calibration-spec.schema.json").read_text()

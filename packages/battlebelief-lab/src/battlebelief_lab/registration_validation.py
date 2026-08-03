@@ -213,6 +213,49 @@ def validate_registration_semantics(
     """Validate cross-field invariants not expressible in JSON Schema."""
 
     _reject_placeholders(registration)
+
+    def require_unique_reference_ids(value: Any, field: str, label: str) -> None:
+        if not isinstance(value, list):
+            return
+        seen: set[str] = set()
+        for reference in value:
+            if not isinstance(reference, Mapping):
+                continue
+            identifier = reference.get(field)
+            if not isinstance(identifier, str):
+                continue
+            if identifier in seen:
+                raise RegistrationValidationError(f"duplicate {label}: {identifier}")
+            seen.add(identifier)
+
+    require_unique_reference_ids(
+        registration.get("contract_references"), "document_id", "contract reference"
+    )
+    require_unique_reference_ids(registration.get("metric_references"), "metric_id", "metric_id")
+    require_unique_reference_ids(
+        registration.get("estimand_references"), "estimand_id", "estimand_id"
+    )
+    require_unique_reference_ids(
+        registration.get("analysis_procedure_references"),
+        "analysis_procedure_id",
+        "analysis_procedure_id",
+    )
+    if root is not None:
+        owner_rules = (
+            ("metric_references", "evaluation-metrics"),
+            ("estimand_references", "evaluation-statistical-analysis"),
+            ("analysis_procedure_references", "evaluation-statistical-analysis"),
+        )
+        for field, expected_owner in owner_rules:
+            references = registration.get(field)
+            if not isinstance(references, list):
+                continue
+            for reference in references:
+                if (
+                    isinstance(reference, Mapping)
+                    and reference.get("document_id") != expected_owner
+                ):
+                    raise RegistrationValidationError(f"{field} must reference {expected_owner}")
     forbidden_unsealed_fields = {
         "policy_digest",
         "implementation_digest",
@@ -476,8 +519,9 @@ def _schema_for_artifact(
 
 def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]]:
     result: dict[tuple[str, int], list[dict[str, object]]] = {}
-    for path in sorted((root / "docs").rglob("*.md")):
-        if "archive" in path.relative_to(root / "docs").parts:
+    docs_root = root / "docs"
+    for path in sorted(docs_root.rglob("*.md")):
+        if "archive" in path.relative_to(docs_root).parts:
             continue
         text = path.read_text(encoding="utf-8")
         frontmatter = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
@@ -501,6 +545,90 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
                 "document_digest": "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
             }
             result.setdefault((document_id.group(1), int(version.group(1))), []).append(record)
+
+    snapshot_root = docs_root / "archive/contract-snapshots"
+    metadata_schema_path = root / "schemas/documents/contract-snapshot-metadata.schema.json"
+    if not snapshot_root.exists():
+        return result
+    try:
+        metadata_schema = load_json_strict(metadata_schema_path)
+        Draft202012Validator.check_schema(metadata_schema)
+        metadata_validator = Draft202012Validator(metadata_schema, format_checker=FormatChecker())
+    except Exception as exc:
+        raise RegistrationValidationError(
+            f"cannot load contract snapshot metadata schema: {type(exc).__name__}"
+        ) from exc
+
+    for metadata_path in sorted(snapshot_root.rglob("*.metadata.json")):
+        try:
+            metadata = load_json_strict(metadata_path)
+        except RegistrationValidationError as exc:
+            raise RegistrationValidationError(
+                f"invalid contract snapshot metadata {metadata_path.name}"
+            ) from exc
+        schema_errors = list(metadata_validator.iter_errors(metadata))
+        if schema_errors:
+            raise RegistrationValidationError(
+                f"invalid contract snapshot metadata {metadata_path.name}: "
+                f"{schema_issue_summary(schema_errors[0])}"
+            )
+        if not isinstance(metadata, Mapping):
+            raise RegistrationValidationError(
+                f"invalid contract snapshot metadata {metadata_path.name}"
+            )
+        snapshot_path_text = metadata["snapshot_path"]
+        if not isinstance(snapshot_path_text, str):
+            raise RegistrationValidationError("contract snapshot path is invalid")
+        normalized = snapshot_path_text.replace("\\", "/")
+        parts = normalized.split("/")
+        if (
+            not normalized.startswith("docs/archive/contract-snapshots/")
+            or any(part in {"", ".", ".."} for part in parts)
+            or re.match(r"^[A-Za-z]:", normalized)
+        ):
+            raise RegistrationValidationError("contract snapshot path is invalid")
+        snapshot_path = root / Path(*parts)
+        try:
+            resolved_snapshot = snapshot_path.resolve()
+            resolved_snapshot.relative_to(snapshot_root.resolve())
+        except ValueError as exc:
+            raise RegistrationValidationError(
+                "contract snapshot path escapes archive root"
+            ) from exc
+        if resolved_snapshot != snapshot_path:
+            raise RegistrationValidationError("contract snapshot path is not stable")
+        expected_snapshot_path = metadata_path.with_name(
+            metadata_path.name.removesuffix(".metadata.json") + ".md"
+        )
+        if snapshot_path != expected_snapshot_path:
+            raise RegistrationValidationError("contract snapshot path does not match metadata")
+        if not snapshot_path.is_file():
+            raise RegistrationValidationError("contract snapshot file is missing")
+        actual_digest = "sha256:" + hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+        if metadata["snapshot_digest"] != actual_digest:
+            raise RegistrationValidationError("contract snapshot digest mismatch")
+        if metadata["source_digest"] != metadata["snapshot_digest"]:
+            raise RegistrationValidationError("contract snapshot source digest mismatch")
+        try:
+            text = snapshot_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise RegistrationValidationError("contract snapshot is not valid UTF-8") from exc
+        identity = (metadata["document_id"], metadata["document_version"])
+        existing = result.get(identity, [])
+        if any(candidate.get("document_digest") != actual_digest for candidate in existing):
+            raise RegistrationValidationError(
+                f"current document and contract snapshot differ: {metadata['document_id']}"
+            )
+        record = {
+            "version": metadata["document_version"],
+            "status": "accepted",
+            "normative": True,
+            "document_type": "contract",
+            "text": text,
+            "path": snapshot_path,
+            "document_digest": actual_digest,
+        }
+        result.setdefault(identity, []).append(record)
     return result
 
 
@@ -792,6 +920,31 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
     errors: list[str] = []
     documents = _document_index(root)
 
+    def report_unique_references(value: Any, field: str, label: str) -> None:
+        if not isinstance(value, list):
+            return
+        seen: set[str] = set()
+        for reference in value:
+            if not isinstance(reference, Mapping):
+                continue
+            identifier = reference.get(field)
+            if not isinstance(identifier, str):
+                continue
+            if identifier in seen:
+                errors.append(f"duplicate {label}: {identifier}")
+            seen.add(identifier)
+
+    report_unique_references(
+        registration.get("contract_references"), "document_id", "contract reference"
+    )
+    report_unique_references(registration.get("metric_references"), "metric_id", "metric_id")
+    report_unique_references(registration.get("estimand_references"), "estimand_id", "estimand_id")
+    report_unique_references(
+        registration.get("analysis_procedure_references"),
+        "analysis_procedure_id",
+        "analysis_procedure_id",
+    )
+
     for reference in (
         registration.get("contract_references", [])
         if isinstance(registration.get("contract_references"), list)
@@ -811,6 +964,8 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
         else []
     ):
         if isinstance(reference, Mapping):
+            if reference.get("document_id") != "evaluation-metrics":
+                errors.append("metric_references must reference evaluation-metrics")
             _validate_document_reference(
                 reference,
                 documents,
@@ -825,6 +980,8 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
         else []
     ):
         if isinstance(reference, Mapping):
+            if reference.get("document_id") != "evaluation-statistical-analysis":
+                errors.append("estimand_references must reference evaluation-statistical-analysis")
             _validate_document_reference(
                 reference,
                 documents,
@@ -839,6 +996,10 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
         else []
     ):
         if isinstance(reference, Mapping):
+            if reference.get("document_id") != "evaluation-statistical-analysis":
+                errors.append(
+                    "analysis_procedure_references must reference evaluation-statistical-analysis"
+                )
             _validate_document_reference(
                 reference,
                 documents,
@@ -857,6 +1018,10 @@ def _validate_search_execution_references(
     documents = _document_index(root)
     reference = specification.get("research_reference")
     if isinstance(reference, Mapping):
+        if reference.get("document_id") != "roadmap-research-strategy-and-experiments":
+            errors.append(
+                "research_reference must reference roadmap-research-strategy-and-experiments"
+            )
         _validate_document_reference(
             reference,
             documents,

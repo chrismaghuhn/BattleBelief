@@ -184,6 +184,8 @@ def test_document_reference_binds_the_exact_document_digest(tmp_path: Path) -> N
 
 
 def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: Path) -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    shutil.copytree(repository_root / "schemas", tmp_path / "schemas")
     docs = tmp_path / "docs"
     docs.mkdir()
     current = docs / "example.md"
@@ -192,15 +194,24 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
         "status: accepted\nnormative: true\nversion: 2\n---\nnew\n",
         encoding="utf-8",
     )
-    snapshots = docs / "contracts/snapshots"
+    snapshots = docs / "archive/contract-snapshots"
     snapshots.mkdir(parents=True)
     snapshot = snapshots / "example-doc.v1.md"
-    snapshot.write_text(
-        "---\ndocument_id: example-doc\ndocument_type: contract\n"
-        "status: accepted\nnormative: true\nversion: 1\n---\nold\n",
+    snapshot.write_bytes(b"historical document bytes\n")
+    digest = "sha256:" + hashlib.sha256(snapshot.read_bytes()).hexdigest()
+    (snapshots / "example-doc.v1.metadata.json").write_text(
+        json.dumps(
+            {
+                "document_id": "example-doc",
+                "document_version": 1,
+                "source_path": "docs/example.md",
+                "source_digest": digest,
+                "snapshot_path": "docs/archive/contract-snapshots/example-doc.v1.md",
+                "snapshot_digest": digest,
+            }
+        ),
         encoding="utf-8",
     )
-    digest = "sha256:" + hashlib.sha256(snapshot.read_bytes()).hexdigest()
     reference = {
         "contract_references": [
             {
@@ -226,15 +237,30 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
 
 def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "schemas", tmp_path / "schemas")
     shutil.copytree(root / "docs", tmp_path / "docs")
     registration = json.loads(
         (root / "schemas/examples/experiment-registration.example.json").read_text()
     )
     metrics_path = tmp_path / "docs/evaluation/metrics.md"
     historical_metrics = metrics_path.read_bytes()
-    snapshots = tmp_path / "docs/contracts/snapshots"
+    snapshots = tmp_path / "docs/archive/contract-snapshots"
     snapshots.mkdir(parents=True)
     (snapshots / "evaluation-metrics.v4.md").write_bytes(historical_metrics)
+    metrics_digest = "sha256:" + hashlib.sha256(historical_metrics).hexdigest()
+    (snapshots / "evaluation-metrics.v4.metadata.json").write_text(
+        json.dumps(
+            {
+                "document_id": "evaluation-metrics",
+                "document_version": 4,
+                "source_path": "docs/evaluation/metrics.md",
+                "source_digest": metrics_digest,
+                "snapshot_path": "docs/archive/contract-snapshots/evaluation-metrics.v4.md",
+                "snapshot_digest": metrics_digest,
+            }
+        ),
+        encoding="utf-8",
+    )
     current_metrics = metrics_path.read_text(encoding="utf-8")
     current_metrics = current_metrics.replace("version: 4", "version: 5", 1).replace(
         "niedriger ist besser", "höher ist besser", 1
@@ -262,6 +288,40 @@ def test_registration_requires_target_population_and_pool_contracts(
     ]
 
     with pytest.raises(RegistrationValidationError, match=missing_document_id):
+        validate_registration_semantics(registration, root)
+
+
+def test_registration_references_require_unique_ids_and_document_owners() -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["metric_references"].append(
+        {**registration["metric_references"][0], "document_version": 3}
+    )
+    with pytest.raises(RegistrationValidationError, match="duplicate metric_id"):
+        validate_registration_semantics(registration, root)
+
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["contract_references"].append(
+        dict(
+            next(
+                reference
+                for reference in registration["contract_references"]
+                if reference["document_id"] == "experiment-registration"
+            )
+        )
+    )
+    with pytest.raises(RegistrationValidationError, match="duplicate contract reference"):
+        validate_registration_semantics(registration, root)
+
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["metric_references"][0]["document_id"] = "experiment-registration"
+    with pytest.raises(RegistrationValidationError, match="metric_references must reference"):
         validate_registration_semantics(registration, root)
 
 

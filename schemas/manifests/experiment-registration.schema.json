@@ -78,7 +78,7 @@
         "additionalProperties": false,
         "required": ["document_id", "document_version", "document_digest", "metric_id", "role"],
         "properties": {
-          "document_id": {"type": "string", "minLength": 1},
+          "document_id": {"const": "evaluation-metrics"},
           "document_version": {"type": "integer", "minimum": 1},
           "document_digest": {"$ref": "#/$defs/digest"},
           "metric_id": {"type": "string", "minLength": 1},
@@ -94,7 +94,7 @@
         "additionalProperties": false,
         "required": ["document_id", "document_version", "document_digest", "estimand_id"],
         "properties": {
-          "document_id": {"type": "string", "minLength": 1},
+          "document_id": {"const": "evaluation-statistical-analysis"},
           "document_version": {"type": "integer", "minimum": 1},
           "document_digest": {"$ref": "#/$defs/digest"},
           "estimand_id": {"type": "string", "minLength": 1}
@@ -109,7 +109,7 @@
         "additionalProperties": false,
         "required": ["document_id", "document_version", "document_digest", "analysis_procedure_id"],
         "properties": {
-          "document_id": {"type": "string", "minLength": 1},
+          "document_id": {"const": "evaluation-statistical-analysis"},
           "document_version": {"type": "integer", "minimum": 1},
           "document_digest": {"$ref": "#/$defs/digest"},
           "analysis_procedure_id": {"type": "string", "minLength": 1}
