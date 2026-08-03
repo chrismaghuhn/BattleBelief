@@ -8,11 +8,11 @@
   "properties": {
     "schema_version": {"const": 2},
     "spec_id": {"type": "string", "minLength": 1},
-    "budget_mode": {"enum": ["calibrated_grid", "hardware_normalized"]},
+    "budget_mode": {"const": "calibrated_grid"},
     "reference_environment_specification": {"type": "object", "minProperties": 1},
     "calibration_state_construction_rule": {"type": "string", "minLength": 1},
     "ordered_work_grid": {"type": "array", "items": {"type": "integer", "minimum": 1}, "minItems": 1, "uniqueItems": true},
-    "selection_rule_id": {"type": "string", "minLength": 1},
+    "selection_rule_id": {"const": "largest-value-under-runtime-limit-v1"},
     "measurement_profile_id": {"type": "string", "minLength": 1},
     "selection_measurement_id": {"type": "string", "minLength": 1},
     "required_measurement_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},

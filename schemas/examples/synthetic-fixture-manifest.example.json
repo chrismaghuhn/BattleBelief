@@ -1,10 +1,13 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "manifest_id": "m15-synthetic-acceptance-fixtures-v1",
   "purpose": "synthetic_acceptance",
   "team_fixtures": ["fixture-team-alpha", "fixture-team-beta"],
   "opponent_policy_fixtures": ["fixture-opponent-heuristic"],
-  "schedule_rows": ["synthetic-row-0", "synthetic-row-1"],
+  "schedule_rows": [
+    {"row_id": "synthetic-row-0", "base_matchup_id": "synthetic-matchup-0", "side_assignment": "p1", "repetition_index": 0},
+    {"row_id": "synthetic-row-1", "base_matchup_id": "synthetic-matchup-0", "side_assignment": "p2", "repetition_index": 1}
+  ],
   "seed_family": {
     "search_seed": "1111111111111111111111111111111111111111111111111111111111111111",
     "world_seed": "2222222222222222222222222222222222222222222222222222222222222222",

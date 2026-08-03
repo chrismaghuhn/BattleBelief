@@ -39,8 +39,8 @@
     }
   ],
   "metric_references": [
-    {"document_id": "evaluation-metrics", "document_version": 3, "metric_id": "decision_regret_teacher_v1", "role": "primary"},
-    {"document_id": "evaluation-metrics", "document_version": 3, "metric_id": "fallback_rate_v1", "role": "diagnostic"}
+    {"document_id": "evaluation-metrics", "document_version": 4, "metric_id": "decision_regret_teacher_v1", "role": "primary"},
+    {"document_id": "evaluation-metrics", "document_version": 4, "metric_id": "fallback_rate_v1", "role": "diagnostic"}
   ],
   "estimand_references": [
     {"document_id": "evaluation-statistical-analysis", "document_version": 3, "estimand_id": "paired_mean_difference_v1"}
@@ -52,7 +52,8 @@
   "contract_references": [
     {"document_id": "contract-manifest-schemas", "document_version": 4},
     {"document_id": "contract-determinism", "document_version": 1},
-    {"document_id": "contract-provenance", "document_version": 3}
+    {"document_id": "contract-provenance", "document_version": 3},
+    {"document_id": "experiment-registration", "document_version": 3}
   ],
   "pool_access": {"development": "available", "selection": "unopened", "power_pilot": "unopened", "release_holdout": "unopened"},
   "pool_rules": {

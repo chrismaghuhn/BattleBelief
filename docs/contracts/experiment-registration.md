@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - research
   - evaluation
@@ -40,6 +40,25 @@ Jedes dieser drei Artefakte trägt `artifact_version` und
 Vorgänger. Ein Nachfolger muss denselben Artefakttyp und dieselbe Identität
 besitzen, einen auflösbaren Vorgängerdigest referenzieren und eine höhere
 Version tragen. Selbstreferenzen und Supersessionszyklen sind ungültig.
+
+## Versionierte Registrierungsregeln
+
+Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
+
+```text
+registered_pool_construction_v1
+canonical_exact_team_cluster_v1
+alternating_balanced_sides_v1
+registered_schedule_v1
+prefer_lower_runtime_v1
+no_effect_stop_v1
+uncertain_effect_pivot_v1
+```
+
+Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Die
+Semantik jeder Regel bleibt in ihrem jeweiligen normativen Evaluations- oder
+Determinismusvertrag; diese Liste friert nur die referenzierbaren Identitäten
+für die Artefaktvalidierung ein.
 
 ## Komponentenstatus
 

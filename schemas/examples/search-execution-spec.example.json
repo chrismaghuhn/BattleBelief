@@ -10,5 +10,5 @@
   "tie_break": "safe_submission_order",
   "budget_consumption": "one_work_unit_per_world_transition",
   "fallback": "deterministic_heuristic_v0",
-  "contract_reference": {"document_id": "research-strategy-and-experiments", "document_version": 1}
+  "research_reference": {"document_id": "roadmap-research-strategy-and-experiments", "document_version": 1}
 }

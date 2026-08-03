@@ -12,6 +12,8 @@ from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
     _schema_for_artifact,
     _validate_registration_references,
+    validate_calibration_evidence,
+    validate_calibration_spec,
     validate_registration_semantics,
     validate_repository_artifacts,
 )
@@ -211,7 +213,7 @@ def _implementation_binding(registration: dict[str, object], binding_id: str) ->
     registration_digest = manifest_digest(registration)
     digest = "sha256:" + "1" * 64
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "binding_id": binding_id,
         "binding_kind": "implementation",
         "artifact_version": 1,
@@ -248,7 +250,7 @@ def test_run_binding_must_use_an_implementation_from_the_same_registration(
     (root / "registrations/implementation-a.json").write_text(json.dumps(first_impl))
     (root / "registrations/implementation-b.json").write_text(json.dumps(second_impl))
     run = {
-        "schema_version": 1,
+        "schema_version": 2,
         "binding_id": "run-a",
         "binding_kind": "run",
         "artifact_version": 1,
@@ -333,6 +335,140 @@ def test_schema_diagnostics_do_not_echo_invalid_instance_values(tmp_path: Path) 
     joined = "\n".join(errors)
     assert "synthetic-secret-that-must-not-be-echoed" not in joined
     assert "schema violation" in joined
+
+
+def test_schema_invalid_registration_is_not_hashed_or_used_as_fallback(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    registration["artifact_version"] = "not-an-integer"
+    (root / "registrations/registration.json").write_text(json.dumps(registration))
+    binding = _implementation_binding(registration, "implementation-a")
+    binding["registration_digest"] = manifest_digest(registration)
+    (root / "registrations/implementation.json").write_text(json.dumps(binding))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("registration.json: schema violation" in error for error in errors)
+    assert any("binding references unknown registration" in error for error in errors)
+    assert not any("TypeError" in error for error in errors)
+
+
+def test_binding_versions_can_form_a_single_supersession_chain(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    first = _implementation_binding(registration, "implementation-a")
+    first_path = root / "registrations/implementation-v1.json"
+    first_path.write_text(json.dumps(first))
+    second = deepcopy(first)
+    second["artifact_version"] = 2
+    second["supersedes_digest"] = manifest_digest(first)
+    second_path = root / "registrations/implementation-v2.json"
+    second_path.write_text(json.dumps(second))
+
+    errors = validate_repository_artifacts(root)
+
+    assert not any("duplicate binding_id" in error for error in errors)
+    assert not any("identity mismatch" in error for error in errors)
+
+
+def test_binding_versions_cannot_branch_from_one_predecessor(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    first = _implementation_binding(registration, "implementation-a")
+    (root / "registrations/implementation-v1.json").write_text(json.dumps(first))
+    first_digest = manifest_digest(first)
+    for name, digest in (("v2a", "9"), ("v2b", "a")):
+        successor = deepcopy(first)
+        successor["artifact_version"] = 2
+        successor["supersedes_digest"] = first_digest
+        successor["canonicalizer_digest"] = "sha256:" + digest * 64
+        (root / f"registrations/implementation-{name}.json").write_text(json.dumps(successor))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("multiple successors" in error for error in errors)
+
+
+def test_calibration_spec_rejects_unknown_selection_and_inconsistent_measurements() -> None:
+    spec = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "schemas/examples/budget-calibration-spec.example.json"
+        ).read_text()
+    )
+    spec["selection_rule_id"] = "unknown-rule"
+    spec["selection_measurement_id"] = "quality"
+    spec["required_measurement_ids"] = ["wall_time_ms", "quality"]
+    spec["forbidden_quality_measurements"] = ["quality"]
+
+    with pytest.raises(RegistrationValidationError, match="selection_rule_id"):
+        validate_calibration_spec(spec)
+
+
+def test_calibration_evidence_rejects_status_runtime_inconsistency() -> None:
+    root = Path(__file__).resolve().parents[2]
+    spec = json.loads((root / "schemas/examples/budget-calibration-spec.example.json").read_text())
+    evidence = json.loads(
+        (root / "schemas/examples/budget-calibration-evidence.example.json").read_text()
+    )
+    evidence["runtime_measurements"][1]["status"] = "over_limit"
+    evidence["runtime_measurements"][1]["measurements"]["wall_time_ms"] = 2.5
+
+    with pytest.raises(RegistrationValidationError, match="over_limit"):
+        validate_calibration_evidence(evidence, spec)
+
+
+def test_synthetic_run_binding_must_match_fixture_components(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    implementation = _implementation_binding(registration, "implementation-a")
+    implementation_path = root / "registrations/implementation.json"
+    implementation_path.write_text(json.dumps(implementation))
+    fixture = json.loads(
+        (root / "schemas/examples/synthetic-fixture-manifest.example.json").read_text()
+    )
+    fixture_path = root / "registrations/synthetic-fixture.json"
+    fixture_path.write_text(json.dumps(fixture))
+    run = {
+        "schema_version": 2,
+        "binding_id": "run-a",
+        "binding_kind": "run",
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "run_purpose": "synthetic_acceptance",
+        "registration_id": registration["registration_id"],
+        "registration_digest": manifest_digest(registration),
+        "implementation_binding_digest": manifest_digest(implementation),
+        "schedule_digest": "sha256:" + "1" * 64,
+        "seed_family_digest": manifest_digest(fixture["seed_family"]),
+        "budget_profile_digest": manifest_digest(fixture["budget_profile"]),
+        "runtime_environment_digest": manifest_digest(fixture["runtime_environment"]),
+        "ruleset_digest": manifest_digest(fixture["ruleset_snapshot"]),
+        "synthetic_fixture_manifest_digest": manifest_digest(fixture),
+    }
+    (root / "registrations/run.json").write_text(json.dumps(run))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("synthetic fixture schedule_digest mismatch" in error for error in errors)
+
+
+def test_registration_semantics_rejects_wrong_metric_direction() -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["comparisons"][0]["direction"] = "higher_is_better"
+
+    with pytest.raises(RegistrationValidationError, match="direction"):
+        validate_registration_semantics(registration, root)
+
+
+def test_registration_semantics_rejects_non_primary_metric_role() -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["metric_references"][0]["role"] = "diagnostic"
+
+    with pytest.raises(RegistrationValidationError, match="cannot be used with role"):
+        validate_registration_semantics(registration, root)
 
 
 def test_reference_requires_accepted_normative_contract_frontmatter(tmp_path: Path) -> None:

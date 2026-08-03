@@ -4,7 +4,7 @@ title: Forschungs- und Betriebsmetriken
 document_type: contract
 status: accepted
 normative: true
-version: 3
+version: 4
 applies_to:
   - research
   - evaluation
@@ -90,13 +90,13 @@ Metriken bleibt in den Abschnitten dieses Contracts:
 
 ### Feste Berechnung, Nenner und Richtung
 
-| ID | Berechnung und Nenner | Richtung |
-|---|---|---|
-| `decision_regret_teacher_v1` | Teacher-Wert minus ausgewählter Wert je vergleichbarer legaler Entscheidung; Mittelwert über den registrierten Zielpopulations-Nenner | niedriger ist besser |
-| `teacher_top1_agreement_v1` | Anteil vergleichbarer Entscheidungen mit derselben Top-1-Aktion wie der vorregistrierte Teacher | höher ist besser |
-| `battle_outcome_weighted_v1` | Zielpopulationsgewichteter Mittelwert mit Win=1, Tie=0.5 und Loss=0; technische Klassen bleiben sichtbar | höher ist besser |
-| `end_to_end_latency_ms_v1` | Millisekunden vom akzeptierten frischen Request bis zum erfolgreichen Wire-Dispatch, als Verteilung | niedriger ist besser |
-| `fallback_rate_v1` | Klassifizierte Fallback-Entscheidungen geteilt durch frische Requests mit erreichter Policy-Auswahl | niedriger ist besser |
+| ID | Berechnung und Nenner | Richtung | Zulässige Rollen |
+|---|---|---|---|
+| `decision_regret_teacher_v1` | Teacher-Wert minus ausgewählter Wert je vergleichbarer legaler Entscheidung; Mittelwert über den registrierten Zielpopulations-Nenner | niedriger ist besser | primary, secondary |
+| `teacher_top1_agreement_v1` | Anteil vergleichbarer Entscheidungen mit derselben Top-1-Aktion wie der vorregistrierte Teacher | höher ist besser | secondary, diagnostic |
+| `battle_outcome_weighted_v1` | Zielpopulationsgewichteter Mittelwert mit Win=1, Tie=0.5 und Loss=0; technische Klassen bleiben sichtbar | höher ist besser | primary, secondary |
+| `end_to_end_latency_ms_v1` | Millisekunden vom akzeptierten frischen Request bis zum erfolgreichen Wire-Dispatch, als Verteilung | niedriger ist besser | diagnostic |
+| `fallback_rate_v1` | Klassifizierte Fallback-Entscheidungen geteilt durch frische Requests mit erreichter Policy-Auswahl | niedriger ist besser | diagnostic |
 
 Die Nenner umfassen keine still verworfenen Fehler- oder Timeoutfälle. Jeder
 technische Ausgang wird mit seiner Fehlerklasse berichtet; ein Vergleich darf

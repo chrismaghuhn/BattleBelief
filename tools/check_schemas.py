@@ -12,8 +12,13 @@ if str(_ROOT) not in sys.path:
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
 from battlebelief_lab.registration_validation import (  # noqa: E402
+    RegistrationValidationError,
+    _schema_for_artifact,
+    _validate_search_execution_references,
     load_json_strict,
     schema_issue_summary,
+    validate_calibration_spec,
+    validate_registration_semantics,
     validate_repository_artifacts,
 )
 from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E402
@@ -79,6 +84,25 @@ def collect_schema_errors(root: Path) -> list[str]:
             f"{example_path.relative_to(root)}: {schema_issue_summary(issue)}"
             for issue in validator.iter_errors(instance)
         )
+        if not any(
+            error.startswith(f"{example_path.relative_to(root)}: schema violation")
+            for error in errors
+        ):
+            classified = _schema_for_artifact(example_path, instance, root)
+            if classified is not None:
+                kind = classified[1]
+                try:
+                    if kind == "registration":
+                        validate_registration_semantics(instance, root)
+                    elif kind == "calibration_spec":
+                        validate_calibration_spec(instance)
+                    elif kind == "search_execution":
+                        errors.extend(
+                            f"{example_path.relative_to(root)}: {error}"
+                            for error in _validate_search_execution_references(instance, root)
+                        )
+                except RegistrationValidationError as error:
+                    errors.append(f"{example_path.relative_to(root)}: {error}")
 
     vectors: list[dict[str, Any]] = load_json_strict(
         schema_root / "canonicalization/test-vectors.json"

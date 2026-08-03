@@ -180,7 +180,7 @@
       "additionalProperties": false,
       "required": ["budget_mode", "work_unit", "selected_work_value", "calibration_spec_digest", "benchmark_spec_digest"],
       "properties": {
-        "budget_mode": {"enum": ["fixed", "calibrated_grid", "hardware_normalized"]},
+        "budget_mode": {"enum": ["fixed", "calibrated_grid"]},
         "work_unit": {"type": "string", "minLength": 1},
         "selected_work_value": {"type": ["integer", "null"], "minimum": 1},
         "calibration_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
@@ -194,10 +194,6 @@
         {
           "if": {"properties": {"budget_mode": {"const": "calibrated_grid"}}},
           "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"$ref": "#/$defs/digest"}, "benchmark_spec_digest": {"const": null}}}
-        },
-        {
-          "if": {"properties": {"budget_mode": {"const": "hardware_normalized"}}},
-          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"const": null}, "benchmark_spec_digest": {"$ref": "#/$defs/digest"}}}
         }
       ]
     }
