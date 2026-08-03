@@ -29,8 +29,8 @@ im [Dokumentationsindex](../README.md).
 BattleBelief untersucht, ob ein explizites Open-World-Belief über vollständige
 verborgene Sets zusammen mit informationssatzkorrekter DUCT-Suche unter einem
 autoritativen Showdown-Action-Safety-Gate bessere Gen-9-OU-Entscheidungen als
-vorab festgelegte Heuristik-, Determinization- und Closed-World-Baselines
-liefert.
+vorab festgelegte Heuristik-, Determinization- und Closed-World-
+Weltverteilungsbaselines liefert.
 
 Die These wird unter festen, manifestierten CPU-, Daten-, Team-, Gegnerpolicy-
 und Reproduzierbarkeitsbedingungen geprüft. Architekturvollständigkeit,
@@ -115,31 +115,37 @@ Messinfrastruktur nicht nach Sichtung günstiger Ergebnisse angepasst wird.
 M2 beginnt mit Engine- und Oracle-Qualifikation. Danach wird zuerst die
 kleinste reproduzierbare Determinization-Search-Baseline gebaut.
 
-M2 enthält außerdem ein minimales Closed-World-Belief, damit der normative
-Search-Vertrag einen definierten Posterior besitzt:
+M2 enthält außerdem eine **Evaluation-only Closed-World-Weltverteilung**, damit
+der normative Search-Vertrag eine definierte Verteilung vollständiger Welten
+für das Sampling besitzt:
 
 - ein eingefrorener Prior über vollständige Set-Hypothesen;
 - Filterung und Gewichtsanpassung anhand harter öffentlicher Evidenz;
-- ein normalisierter Closed-World-Posterior;
+- eine normalisierte Closed-World-Verteilung;
 - kein `OTHER`-Bucket und keine Open-World-Hypothesenmaterialisierung; und
 - keine still als Ground Truth behandelten imputierten Informationen.
 
-Dieses minimale Belief ist Infrastruktur für den M2-Vergleich, nicht der
-vollständige M3-Forschungsbeitrag. M3 erweitert es um kalibrierte Priors,
-zensierte Replay-Evidenz, positive Open-World-Masse und kontrollierte
-Hypothesenmaterialisierung.
+Diese Baseline ist ausdrücklich **keine Implementierung des produktiven
+BattleBelief-Belief-Subsystems** und erhebt keinen Anspruch, den
+Open-World-Belief-Vertrag zu erfüllen. Sie darf nicht als öffentlicher
+`BeliefState` exportiert oder still zum Produktionsstandard erklärt werden.
+Sie existiert ausschließlich, um Determinization und Information-Set Search
+vor dem vollständigen M3-Belief kontrolliert vergleichen zu können.
 
 Search gilt nur dann als wissenschaftlich nützlich, wenn sie die M1-Heuristik
 in der registrierten Entwicklungsbewertung verbessert, ohne Safety-,
 Determinismus- oder Runtime-Grenzen zu schwächen.
 
-### M3: Open-World-Belief muss Search messbar verbessern
+### M3: Vertragskonformes Open-World-Belief muss Search messbar verbessern
 
-M3 prüft nicht nur Belief-Kalibrierung, sondern auch Entscheidungsnutzen. Das
-Open-World-Belief wird gegen das minimale M2-Closed-World-Belief und gegen
-einfachere vollständige Set-Priors abgetragen. Verbesserte Belief-Metriken
-werden getrennt von Verbesserungen in Search-Qualität oder Battle-Ergebnis
-berichtet.
+M3 implementiert das produktive, vertraglich definierte Belief-Subsystem mit
+vollständigen Set-Hypothesen, positiver `OTHER`-Masse, kalibrierten Priors,
+zensierter Replay-Evidenz und kontrollierter Hypothesenmaterialisierung.
+
+Dieses Open-World-Belief wird gegen die M2-Evaluation-only-Closed-World-
+Weltverteilung und gegen einfachere vollständige Set-Priors abgetragen.
+Verbesserte Belief-Metriken werden getrennt von Verbesserungen in
+Search-Qualität oder Battle-Ergebnis berichtet.
 
 Eine einfache Modellbaseline ist in M3 optional und darf erst nach einem
 bestandenen Search- und Belief-Zwischengate eingeführt werden. Sie ist kein
@@ -170,13 +176,14 @@ Die folgenden Namen sind **Evaluation-Arm-IDs**, nicht automatisch
 |---|---|
 | `heuristic_v0` | deterministische M1-Policy ohne Search oder Belief |
 | `determinization_search_v0` | einfache Evaluation-only Search über gesampelte vollständige Welten |
-| `information_set_duct_closed_world_v0` | `information_set_duct_v0` mit minimalem Closed-World-Belief |
-| `information_set_duct_open_world_v0` | `information_set_duct_v0` mit explizitem Open-World-Belief |
+| `information_set_duct_closed_world_v0` | `information_set_duct_v0` mit Evaluation-only Closed-World-Weltverteilung |
+| `information_set_duct_open_world_v0` | `information_set_duct_v0` mit vertraglichem Open-World-Belief |
 | `model_or_hybrid_v0` | optionaler Kandidat nur nach positivem vorherigem Gate |
 
 Für beide Information-Set-Arms bleibt die Search-Algorithmus-ID
-`information_set_duct_v0`. Der Unterschied liegt in `belief_mode`, Prior- und
-Belief-Digests sowie den weiteren Evaluation-Arm-Feldern.
+`information_set_duct_v0`. Der Unterschied liegt im registrierten
+Weltverteilungs-/Belief-Modus, in Prior- und Belief-Digests sowie den weiteren
+Evaluation-Arm-Feldern.
 
 `determinization_search_v0` ist zunächst ausschließlich eine
 Evaluation-Baseline. Vor ihrer bindenden Verwendung benötigt sie eine klar
@@ -190,9 +197,10 @@ Das in M1.5 einzuführende Evaluation-Arm-Manifest bindet mindestens:
 arm_id
 policy_kind
 search_algorithm_id
-belief_mode
+world_distribution_or_belief_mode
 search_manifest_digest
 prior_digest
+belief_digest
 model_digest
 fallback_policy_digest
 team_pool_digest
@@ -226,7 +234,8 @@ information_set_duct_closed_world_v0
 ```
 
 Dieser Vergleich isoliert die Informationssatzbehandlung von der bloßen
-Verwendung gesampelter vollständiger Welten.
+Verwendung gesampelter vollständiger Welten, während beide dieselbe
+Evaluation-only Closed-World-Weltverteilung verwenden.
 
 ### Open-World-Nutzen
 
@@ -237,7 +246,9 @@ information_set_duct_open_world_v0
 ```
 
 Dieser Vergleich prüft Kalibrierung, Coverage, Open-World-Ereignisse,
-Search-Qualität, Laufzeit und Battle-Ergebnis getrennt.
+Search-Qualität, Laufzeit und Battle-Ergebnis getrennt. Er vergleicht eine
+Evaluation-only Baseline mit dem vertraglichen Produktions-Belief und ändert
+keine normative Bedeutung des Closed-World-Arms.
 
 ### Modellnutzen
 
@@ -260,18 +271,20 @@ gleiches maximales End-to-End-Wandzeit- und CPU-Budget
 
 Diese Ansicht misst den Nutzen des vollständigen Systems im öffentlichen
 Runtimeprofil. Eine schnelle Heuristik muss ungenutzte Zeit nicht künstlich
-verbrauchen. Timeouts, Fallbacks und Belief-Aufwand bleiben enthalten.
+verbrauchen. Timeouts, Fallbacks und Weltverteilungs-/Belief-Aufwand bleiben
+enthalten.
 
 ### Mechanism Ablation
 
 ```text
 gleiche Search-Arbeit, etwa Transitionen, Simulationen oder Knoten
-+ separat berichteter Belief-, Orchestrierungs- und Gesamtaufwand
++ separat berichteter Weltverteilungs-, Belief-, Orchestrierungs- und
+  Gesamtaufwand
 ```
 
 Diese Ansicht prüft, ob eine Methode bessere Entscheidungen pro Search-Arbeit
 erzeugt. Beim Closed-/Open-World-Vergleich verhindert sie, dass eine geringere
-Search-Tiefe unbemerkt mit der Belief-Methode vermischt wird.
+Search-Tiefe unbemerkt mit der Weltverteilungs-/Belief-Methode vermischt wird.
 
 Für eine Heuristik ohne Search-Arbeit ist die Mechanismusansicht nicht als
 „gleiche Simulationen“ interpretierbar; dort bleibt die Deployment-Ansicht der
@@ -336,7 +349,7 @@ aber nicht still verändern.
   erzeugt;
 - seine Rechenkosten die Search-Tiefe stärker reduzieren als der zusätzliche
   Informationsgewinn kompensiert; oder
-- eine einfachere geglättete Closed-World-Baseline gleichwertig bleibt.
+- die Evaluation-only Closed-World-Baseline praktisch gleichwertig bleibt.
 
 ### Modelle verschieben oder verwerfen, wenn
 
@@ -386,8 +399,8 @@ Dokumentation mindestens eine kompakte Ablationstabelle enthalten:
 | Variante | Budgetansicht | Battle-Metrik | Belief-Metrik | p95-Zeit | Fallback/Safety |
 |---|---|---:|---:|---:|---:|
 | Heuristik | Deployment | aus Manifest | nicht anwendbar | aus Manifest | aus Manifest |
-| Determinization | Deployment/Mechanism | aus Manifest | aus Manifest | aus Manifest | aus Manifest |
-| IS-DUCT Closed World | Deployment/Mechanism | aus Manifest | aus Manifest | aus Manifest | aus Manifest |
+| Determinization | Deployment/Mechanism | aus Manifest | nicht anwendbar | aus Manifest | aus Manifest |
+| IS-DUCT Closed World | Deployment/Mechanism | aus Manifest | Baseline-Diagnostik | aus Manifest | aus Manifest |
 | IS-DUCT Open World | Deployment/Mechanism | aus Manifest | aus Manifest | aus Manifest | aus Manifest |
 
 Bis belastbare Resultate existieren, bleiben diese Felder unbefüllt und es
