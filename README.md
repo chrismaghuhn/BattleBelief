@@ -3,14 +3,134 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** M1 is in progress. `main` contains immutable protocol and
-> observed-state modeling, request-derived action safety, Showdown protocol and
-> request adapters, packed-team loading, authenticated room-preserving
-> connectivity, and a request-driven single-room `BattleSession`. Direct
-> challenge coordination, CLI integration, acceptance smokes, version
-> activation, and final M1 evidence are not yet finished. Live public battle,
-> belief, search, training, strength, parity, release, and MVP claims are not
-> made.
+> **Status:** M1 is in progress. `main` contains the protocol-safe Core,
+> authenticated Showdown connectivity, the request-driven `BattleSession`,
+> direct-challenge coordination, and the secrets-safe challenge CLI. Acceptance
+> smokes, atomic version activation, and final M1 evidence remain incomplete.
+> Live public battle, belief, search, training, strength, parity, release, and
+> MVP claims are not made.
+
+## Target architecture
+
+> This diagram shows the planned end-state architecture. The implementation
+> status and currently supported capabilities are documented above.
+
+```mermaid
+flowchart TB
+    USER["User / Maintainer"]
+    SHOWDOWN["Pokémon Showdown<br/>Gen 9 OU"]
+    SEALED["Sealed fixed team"]
+
+    subgraph RUNTIME["battlebelief-runtime · Public CPU runtime"]
+        CLI["CLI and public API"]
+        CLIENT["Authenticated Showdown client"]
+        ADAPTERS["Frame decoder<br/>Protocol and request adapters"]
+        ENGINE["Qualified poke-engine adapter"]
+        MODEL["Optional CPU model inference"]
+        ENCODER["Showdown command encoder"]
+        TRACE["Decision-record and telemetry adapters"]
+    end
+
+    subgraph CORE["battlebelief-core · Pure deterministic decision system"]
+        EVENTS["Canonical BattleEvents"]
+        STATE["Deterministic ObservedState reducer"]
+        LEGAL["Latest request + rqid<br/>Authoritative SafeSubmissionSet"]
+        BELIEF["Open-world belief<br/>Complete hidden-set hypotheses + OTHER"]
+        ELIGIBILITY["Capability and eligibility gate"]
+        SEARCH["Information-Set DUCT"]
+        FALLBACK["Deterministic heuristic fallback"]
+        CANDIDATE["Candidate action"]
+        SAFETY["Independent action and rqid safety gate"]
+    end
+
+    subgraph LAB["battlebelief-lab · Offline research and validation"]
+        ORACLE["Local Showdown oracle"]
+        DATA["Replay mining and datasets"]
+        META["Versioned meta-prior snapshot"]
+        TEAMBUILD["Offline team-building<br/>Later project phase"]
+        TRAIN["Teacher, self-play and optional training"]
+        EVALUATION["Ablations and sealed evaluation"]
+    end
+
+    subgraph GUARANTEES["Cross-cutting guarantees"]
+        DETERMINISM["Deterministic benchmark modes<br/>Explicit seeds and budgets"]
+        PROVENANCE["Manifests, digests and provenance"]
+        CI["Contract, protocol, safety,<br/>schema and package gates"]
+    end
+
+    M5["M5 strength-qualified MVP"]
+    M6["M6 human / ladder validation"]
+
+    USER --> CLI
+    SEALED --> CLI
+    CLI --> CLIENT
+    SHOWDOWN <-->|"Protocol frames and commands"| CLIENT
+
+    CLIENT --> ADAPTERS
+    ADAPTERS --> EVENTS
+    ADAPTERS --> LEGAL
+
+    EVENTS --> STATE
+    STATE --> BELIEF
+    META --> BELIEF
+
+    STATE --> ELIGIBILITY
+    BELIEF --> ELIGIBILITY
+    LEGAL --> ELIGIBILITY
+    ENGINE --> ELIGIBILITY
+
+    ELIGIBILITY -->|Eligible| SEARCH
+    ELIGIBILITY -->|Unsupported or unavailable| FALLBACK
+    MODEL -. Optional guidance .-> SEARCH
+
+    SEARCH --> CANDIDATE
+    FALLBACK --> CANDIDATE
+    CANDIDATE --> SAFETY
+    LEGAL --> SAFETY
+
+    SAFETY --> ENCODER
+    ENCODER --> CLIENT
+    SAFETY --> TRACE
+
+    ORACLE --> ENGINE
+    ORACLE --> EVALUATION
+    DATA --> META
+    DATA --> TRAIN
+    DATA --> TEAMBUILD
+    TEAMBUILD --> SEALED
+    SEARCH --> TRAIN
+    TRAIN -. Model artifact .-> MODEL
+    TRACE --> EVALUATION
+
+    DETERMINISM -. Governs .-> SEARCH
+    DETERMINISM -. Governs .-> EVALUATION
+    PROVENANCE -. Binds .-> META
+    PROVENANCE -. Binds .-> TRACE
+    PROVENANCE -. Binds .-> EVALUATION
+    CI -. Verifies .-> CLIENT
+    CI -. Verifies .-> STATE
+    CI -. Verifies .-> EVALUATION
+
+    EVALUATION --> M5
+    M5 -. "Separate external validation" .-> M6
+```
+
+The diagram shows the complete decision path:
+
+```text
+Showdown wire
+→ canonical events and public state
+→ open-world belief
+→ eligibility
+→ Information-Set DUCT or heuristic fallback
+→ independent safety gate
+→ validated Showdown command
+```
+
+It also shows the offline path through the oracle, replay data, meta priors,
+optional training, later team-building, and sealed evaluation. The separation
+between `battlebelief-core`, `battlebelief-runtime`, and `battlebelief-lab`
+remains intact.
 
 BattleBelief targets current Smogon Gen 9 OU first. Teams are fixed before a
 battle; offline team-building and in-battle decision-making are separate
@@ -43,12 +163,14 @@ implementation on `main` includes:
 - room-preserving frame decoding and strict Showdown protocol parsing;
 - request reading, command encoding, and packed-team loading;
 - authenticated Showdown WebSocket connectivity with classified transport
-  failures; and
+  failures;
 - request-driven `BattleSession` execution with freshness checks, pending-state
-  reconciliation, and `rqid`-bound `/choose` dispatch.
+  reconciliation, and `rqid`-bound `/choose` dispatch;
+- direct Gen 9 OU challenge coordination with single-reader room handoff; and
+- a secrets-safe outgoing challenge CLI with pre-network validation.
 
-Direct challenge coordination and the remaining M1 CLI, smoke, version, and
-evidence work are still in progress. See the
+Acceptance smokes, atomic version activation, and final M1 evidence are still
+in progress. See the
 [M1 protocol-safe prototype plan](docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
 for the detailed scope and task sequence.
 
@@ -59,7 +181,8 @@ for the detailed scope and task sequence.
   deterministic policy, and action safety
 - `battlebelief-runtime`: public live adapters and CLI; currently includes
   Showdown framing, parsing, requests, command encoding, packed teams,
-  authenticated connectivity, and the single-room BattleSession
+  authenticated connectivity, the single-room `BattleSession`, direct-challenge
+  coordination, and the secrets-safe challenge CLI
 - `battlebelief-lab`: offline oracle, data, training, evaluation, and reporting
   work for later milestones
 

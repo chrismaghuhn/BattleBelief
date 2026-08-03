@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
 from collections import deque
 from collections.abc import Awaitable, Callable
 
 import pytest
 from websockets.exceptions import InvalidHandshake, InvalidProxy, InvalidURI
 
+from battlebelief_runtime.adapters.showdown_client import connection as connection_module
 from battlebelief_runtime.adapters.showdown_client.connection import ShowdownConnection
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
 from battlebelief_runtime.errors.protocol import Disconnect, TransportTimeout
@@ -41,6 +43,17 @@ class _FakeSocket:
 
     async def close(self) -> None:
         self.closed = True
+
+
+class _LoggingSocket(_FakeSocket):
+    def __init__(self, frames: list[str]) -> None:
+        super().__init__(frames)
+        self.logger: logging.Logger | None = None
+
+    async def send(self, message: str) -> None:
+        assert self.logger is not None
+        self.logger.debug("> %s", message)
+        await super().send(message)
 
 
 class _ReadTimeoutSocket(_FakeSocket):
@@ -139,6 +152,46 @@ async def test_connection_sends_exact_login_command_and_preserves_challstr() -> 
 
 
 @_async_test
+async def test_websocket_debug_logging_cannot_expose_authentication_or_team_frames(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assertion = "assertion-secret-must-not-leak"
+    packed_team = "packed-team-secret-must-not-leak"
+    socket = _LoggingSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+
+    async def connector(
+        _url: str,
+        *,
+        open_timeout: float,
+        logger: logging.Logger,
+    ) -> _LoggingSocket:
+        assert open_timeout == 10.0
+        socket.logger = logger
+        return socket
+
+    caplog.set_level(
+        logging.DEBUG,
+        logger=connection_module._WEBSOCKET_LOGGER.name,
+    )
+    assert connection_module._WEBSOCKET_LOGGER.isEnabledFor(logging.DEBUG)
+    monkeypatch.setattr(connection_module, "connect", connector)
+    connection = ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password-secret-must-not-leak",
+        assertion_provider=_FakeAssertionProvider(assertion),
+    )
+
+    await connection.connect()
+    await connection.send_global(f"|/utm {packed_team}")
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert assertion not in messages
+    assert packed_team not in messages
+
+
+@_async_test
 @pytest.mark.parametrize(
     "updateuser",
     ["|updateuser| ash|0|0|{}", "|updateuser| ashley|1|0|{}"],
@@ -190,6 +243,7 @@ async def test_connection_classifies_nametaken_as_disconnect() -> None:
         InvalidHandshake("handshake failed"),
         InvalidProxy("http://proxy", "proxy failed"),
         InvalidURI("not-a-websocket", "invalid URI"),
+        ValueError("cross-origin redirect rejected"),
     ],
 )
 async def test_connection_classifies_websocket_handshake_errors(
@@ -198,16 +252,89 @@ async def test_connection_classifies_websocket_handshake_errors(
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         raise handshake_error
 
+    provider = _FakeAssertionProvider()
     connection = ShowdownConnection(
         url=_URL,
         username="Ash",
         password="password",
-        assertion_provider=_FakeAssertionProvider(),
+        assertion_provider=provider,
         socket_connector=connector,
     )
 
     with pytest.raises(Disconnect):
         await connection.connect()
+    assert provider.calls == []
+
+
+@_async_test
+async def test_pinned_transport_origin_rejects_redirect_before_authentication() -> None:
+    captured: dict[str, object] = {}
+    provider = _FakeAssertionProvider()
+
+    async def connector(url: str, **kwargs: object) -> _FakeSocket:
+        captured.update({"url": url, **kwargs})
+        raise ValueError("cross-origin redirect rejected")
+
+    connection = ShowdownConnection(
+        url="wss://sim3.psim.us/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=provider,
+        connect_host="sim3.psim.us",
+        connect_port=443,
+        socket_connector=connector,
+    )
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+
+    assert captured == {
+        "url": "wss://sim3.psim.us/showdown/websocket",
+        "open_timeout": 10.0,
+        "host": "sim3.psim.us",
+        "port": 443,
+    }
+    assert provider.calls == []
+
+
+@_async_test
+async def test_default_pinned_transport_disables_ambient_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    provider = _FakeAssertionProvider()
+
+    async def connector(
+        url: str,
+        *,
+        open_timeout: float,
+        logger: logging.Logger,
+        proxy: None,
+        host: str,
+        port: int,
+    ) -> _FakeSocket:
+        assert url == "wss://sim3.psim.us/showdown/websocket"
+        assert open_timeout == 10.0
+        assert logger is connection_module._WEBSOCKET_LOGGER
+        assert proxy is None
+        assert host == "sim3.psim.us"
+        assert port == 443
+        return socket
+
+    monkeypatch.setattr(connection_module, "connect", connector)
+    connection = ShowdownConnection(
+        url="wss://sim3.psim.us/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=provider,
+        connect_host="sim3.psim.us",
+        connect_port=443,
+    )
+
+    await connection.connect()
+
+    assert socket.sent == ["|/trn Ash,0,assertion-token"]
+    assert provider.calls == [("Ash", "password", "4|abc")]
 
 
 @_async_test
