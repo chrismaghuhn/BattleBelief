@@ -393,6 +393,14 @@ def test_battle_end_discards_pending_request() -> None:
     assert connection.sent_room == []
 
 
+@pytest.mark.parametrize("terminal", ("|win|ash", "|tie"))
+def test_terminal_result_stops_before_reading_a_following_disconnect(terminal: str) -> None:
+    result, connection = _run([_line(terminal), Disconnect("must not be read")])
+
+    assert result.primary_error is None
+    assert connection.sent_room == []
+
+
 def test_revival_sends_only_fainted_inactive_target() -> None:
     result, connection = _run([*_metadata(), _line(_request("reviving.json", 9))])
 

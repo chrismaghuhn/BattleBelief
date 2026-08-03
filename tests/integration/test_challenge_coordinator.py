@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import time
@@ -30,10 +31,17 @@ _OPPONENT_DISPLAY = "@Misty"
 _TARGET_ROOM = "battle-unpredictable-room-name"
 
 
-def _team() -> PackedTeam:
+def _team(
+    packed: str = "packed-team-secret",
+    *,
+    digest: str | None = None,
+) -> PackedTeam:
     return PackedTeam(
-        sealed=SealedTeam(digest="team-digest", member_count=1),
-        packed="packed-team-secret",
+        sealed=SealedTeam(
+            digest=digest or hashlib.sha256(packed.encode("utf-8")).hexdigest(),
+            member_count=1,
+        ),
+        packed=packed,
     )
 
 
@@ -64,8 +72,9 @@ def _room_setup_lines(
     *,
     p1_display: str = "Ash",
     p2_display: str = "Misty",
+    terminal: bool = True,
 ) -> list[RoomLine]:
-    return [
+    lines = [
         RoomLine(room_id, "|init|battle"),
         RoomLine(room_id, f"|player|p2|{p2_display}|1|"),
         RoomLine(room_id, f"|player|p1|{p1_display}|1|"),
@@ -73,6 +82,9 @@ def _room_setup_lines(
         RoomLine(room_id, "|gen|9"),
         RoomLine(room_id, "|tier|[Gen 9] OU"),
     ]
+    if terminal:
+        lines.append(RoomLine(room_id, "|win|Ash"))
+    return lines
 
 
 def _pending_state() -> RoomLine:
@@ -87,8 +99,14 @@ def _not_pending_state() -> RoomLine:
 
 
 class _RecordingConnection:
-    def __init__(self, incoming: Iterable[RoomLine | BaseException]) -> None:
-        self._incoming = tuple(incoming)
+    def __init__(
+        self,
+        incoming: Iterable[RoomLine | BaseException],
+        *,
+        include_bootstrap: bool = True,
+    ) -> None:
+        bootstrap = (RoomLine(None, '|updatesearch|{"searching":[],"games":null}'),)
+        self._incoming = (*bootstrap, *incoming) if include_bootstrap else tuple(incoming)
         self.events: list[tuple[str, str | None]] = []
         self.lines_calls = 0
         self.connect_calls = 0
@@ -121,6 +139,28 @@ class _RecordingConnection:
     async def close(self) -> None:
         self.close_calls += 1
         self.events.append(("close", None))
+
+
+class _CommandAwareConnection(_RecordingConnection):
+    def __init__(self, incoming: Iterable[RoomLine | BaseException], new_room: str) -> None:
+        super().__init__(incoming, include_bootstrap=False)
+        self._new_room = new_room
+        self._challenge_sent = False
+
+    async def _line_stream(self) -> AsyncIterator[RoomLine]:
+        games = {self._new_room: "[Gen 9] OU Battle"} if self._challenge_sent else None
+        self.events.append(("bootstrap", json.dumps(games, sort_keys=True)))
+        yield RoomLine(
+            None,
+            "|updatesearch|" + json.dumps({"searching": [], "games": games}, separators=(",", ":")),
+        )
+        async for line in super()._line_stream():
+            yield line
+
+    async def send_global(self, command: str) -> None:
+        await super().send_global(command)
+        if command.startswith("|/challenge "):
+            self._challenge_sent = True
 
 
 def _run(
@@ -181,17 +221,21 @@ class _FakeSocket:
     def __init__(self, frames: Iterable[str]) -> None:
         self.frames = deque(frames)
         self.sent: list[str] = []
+        self.events: list[tuple[str, str]] = []
         self.closed = False
         self.recv_calls = 0
 
     async def send(self, message: str) -> None:
         self.sent.append(message)
+        self.events.append(("send", message))
 
     async def recv(self) -> str:
         self.recv_calls += 1
         if not self.frames:
             raise StopAsyncIteration
-        return self.frames.popleft()
+        frame = self.frames.popleft()
+        self.events.append(("recv", frame))
+        return frame
 
     async def close(self) -> None:
         self.closed = True
@@ -227,10 +271,19 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
         RoomLine(_TARGET_ROOM, "|win|Ash"),
         RoomLine(_TARGET_ROOM, "|title|Battle finished"),
     ]
+    guest_frame = "\n".join(
+        [
+            "|updateuser| Guest 123|0|1|{}",
+            "|customgroups|{}",
+            "|formats|,1|Singles||[Gen 9] OU,",
+            "|challstr|4|abc",
+        ]
+    )
     auth_frame = "\n".join(
         [
-            "|challstr|4|abc",
             "|updateuser| Ash|1|0|{}",
+            '|updatesearch|{"searching":[],"games":null}',
+            "|updatechallenges|{}",
         ]
     )
     battle_frame = "\n".join(
@@ -239,7 +292,7 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
             *(line.payload for line in room_lines),
         ]
     )
-    socket = _FakeSocket([auth_frame, battle_frame])
+    socket = _FakeSocket([guest_frame, auth_frame, battle_frame])
 
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         return socket
@@ -265,7 +318,7 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
     assert result.primary_error is None
     assert result.explicit_request_submissions == 1
     assert connection.lines_calls == 1
-    assert socket.recv_calls == 2
+    assert socket.recv_calls == 3
     assert socket.sent == [
         "|/trn Ash,0,assertion-token",
         "|/utm packed-team-secret",
@@ -276,7 +329,13 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
 
 
 def test_actual_connection_reports_conflicting_metadata_after_handoff_from_same_frame() -> None:
-    auth_frame = "\n".join(("|challstr|4|abc", "|updateuser| Ash|1|0|{}"))
+    auth_frame = "\n".join(
+        (
+            "|challstr|4|abc",
+            "|updateuser| Ash|1|0|{}",
+            '|updatesearch|{"searching":[],"games":null}',
+        )
+    )
     battle_frame = "\n".join(
         (
             f">{_TARGET_ROOM}",
@@ -323,6 +382,74 @@ def test_actual_connection_reports_conflicting_metadata_after_handoff_from_same_
         "|/challenge @Misty, gen9ou",
         "battle-unpredictable-room-name|/choose team 123456|7",
     ]
+    assert socket.closed
+
+
+def test_actual_connection_excludes_a_target_room_buffered_during_login() -> None:
+    old_room = "battle-old-ash-misty"
+    new_room = "battle-new-ash-misty"
+    guest_frame = "\n".join(
+        (
+            "|updateuser| Guest 123|0|1|{}",
+            "|customgroups|{}",
+            "|formats|,1|Singles||[Gen 9] OU,",
+            "|challstr|4|abc",
+        )
+    )
+    auth_frame = "|updateuser| Ash|1|0|{}"
+    old_room_frame = "\n".join(
+        (
+            f">{old_room}",
+            *(line.payload for line in _room_setup_lines(old_room, terminal=False)),
+            "|teampreview",
+            _request("team-preview.json", 3),
+        )
+    )
+    bootstrap_frame = (
+        '|updatesearch|{"searching":[],"games":{"battle-old-ash-misty":"[Gen 9] OU Battle"}}'
+    )
+    new_room_frame = "\n".join(
+        (
+            f">{new_room}",
+            *(line.payload for line in _room_setup_lines(new_room, terminal=False)),
+            "|teampreview",
+            _request("team-preview.json", 7),
+            "|win|Ash",
+        )
+    )
+    socket = _FakeSocket([guest_frame, auth_frame, old_room_frame, bootstrap_frame, new_room_frame])
+
+    async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
+        return socket
+
+    connection = _CountingShowdownConnection(
+        url="wss://example.invalid/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=_AssertionProvider(),
+        socket_connector=connector,
+    )
+
+    result = asyncio.run(
+        BattleCoordinator(
+            connection,
+            _OUR_USER_ID,
+            _OPPONENT_DISPLAY,
+            _team(),
+            setup_timeout=0.1,
+        ).run()
+    )
+
+    assert result.primary_error is None
+    assert connection.lines_calls == 1
+    assert socket.recv_calls == 5
+    assert socket.sent[-1] == f"{new_room}|/choose team 123456|7"
+    assert not any(message.startswith(old_room) for message in socket.sent)
+    assert (
+        socket.events.index(("recv", bootstrap_frame))
+        < socket.events.index(("send", "|/utm packed-team-secret"))
+        < socket.events.index(("send", "|/challenge @Misty, gen9ou"))
+    )
     assert socket.closed
 
 
@@ -635,6 +762,7 @@ def test_identical_duplicate_scope_metadata_is_idempotent() -> None:
             RoomLine(_TARGET_ROOM, "|tier|[Gen 9] OU"),
             RoomLine(_TARGET_ROOM, "|player|p1|Ash|1|"),
             RoomLine(_TARGET_ROOM, "|player|p2|Misty|1|"),
+            RoomLine(_TARGET_ROOM, "|win|Ash"),
         ]
     )
 
@@ -732,11 +860,13 @@ def test_known_global_status_and_ordinary_pm_text_are_ignored_without_room_hints
     connection = _RecordingConnection(
         [
             RoomLine(None, "|formats|{}"),
+            RoomLine(None, "|customgroups|{}"),
             RoomLine(None, "|usercount|123"),
-            RoomLine(None, "|updatesearch|{}"),
+            RoomLine(None, '|updatesearch|{"searching":[],"games":null}'),
             RoomLine(None, "|pm|Brock|Ash|ordinary /challenge gen9ou text"),
             RoomLine(None, "|battle|battle-gen9ou-deceptive|Ash|Misty"),
             RoomLine(None, "|b|battle-gen9ou-deceptive"),
+            RoomLine(None, "|B|battle-gen9ou-deceptive|Ash|Misty"),
             *_room_setup_lines(),
         ]
     )
@@ -770,6 +900,143 @@ def test_unknown_global_setup_payload_fails_closed() -> None:
         _run(connection, setup_timeout=0.001)
 
 
+def test_login_buffered_old_target_room_is_never_selected_for_the_new_challenge() -> None:
+    old_room = "battle-old-ash-misty"
+    new_room = "battle-new-ash-misty"
+    old_lines = [
+        *_room_setup_lines(old_room, terminal=False),
+        RoomLine(old_room, "|teampreview"),
+        RoomLine(old_room, _request("team-preview.json", 3)),
+    ]
+    new_lines = [
+        *_room_setup_lines(new_room, terminal=False),
+        RoomLine(new_room, "|teampreview"),
+        RoomLine(new_room, _request("team-preview.json", 7)),
+        RoomLine(new_room, "|win|Ash"),
+    ]
+    connection = _RecordingConnection(
+        [
+            *old_lines,
+            RoomLine(
+                None,
+                '|updatesearch|{"searching":[],"games":{"battle-old-ash-misty":"[Gen 9] OU Battle"}}',
+            ),
+            RoomLine(None, "|B|battle-new-ash-misty|Ash|Misty"),
+            *new_lines,
+        ],
+        include_bootstrap=False,
+    )
+
+    result = _run(connection)
+
+    assert result.primary_error is None
+    assert connection.sent_room == [(new_room, "/choose team 123456|7")]
+
+
+def test_login_snapshot_is_consumed_before_the_challenge_command_can_create_a_room() -> None:
+    new_room = "battle-new-after-bootstrap"
+    connection = _CommandAwareConnection(
+        _room_setup_lines(new_room),
+        new_room,
+    )
+
+    result = _run(connection)
+
+    assert result.primary_error is None
+    assert connection.events[:4] == [
+        ("connect", None),
+        ("bootstrap", "null"),
+        ("global", "|/utm packed-team-secret"),
+        ("global", "|/challenge @Misty, gen9ou"),
+    ]
+    assert connection.sent_global == [
+        "|/utm packed-team-secret",
+        "|/challenge @Misty, gen9ou",
+    ]
+
+
+def test_later_search_snapshot_does_not_reclassify_the_new_room_as_existing() -> None:
+    new_room = "battle-new-after-bootstrap"
+    setup = _room_setup_lines(new_room, terminal=False)
+    connection = _RecordingConnection(
+        [
+            RoomLine(None, f"|B|{new_room}|Ash|Misty"),
+            *setup[:-1],
+            RoomLine(
+                None,
+                '|updatesearch|{"searching":[],"games":'
+                '{"battle-new-after-bootstrap":"[Gen 9] OU Battle"}}',
+            ),
+            setup[-1],
+            RoomLine(new_room, "|win|Ash"),
+        ]
+    )
+
+    result = _run(connection)
+
+    assert result.primary_error is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        "|updatesearch|not-json",
+        '|updatesearch|{"searching":[]}',
+        '|updatesearch|{"searching":[],"games":[]}',
+        '|updatesearch|{"searching":[],"games":{"battle-old":1}}',
+    ),
+)
+def test_malformed_login_search_snapshot_fails_closed(payload: str) -> None:
+    connection = _RecordingConnection(
+        [RoomLine(None, payload)],
+        include_bootstrap=False,
+    )
+
+    with pytest.raises(MalformedProtocolMessage):
+        _run(connection, setup_timeout=0.001)
+
+
+def test_matching_room_stream_end_without_terminal_result_is_disconnect() -> None:
+    connection = _RecordingConnection(_room_setup_lines(terminal=False))
+
+    result = _run(connection)
+
+    assert isinstance(result.primary_error, Disconnect)
+
+
+@pytest.mark.parametrize("packed", ("TEAM\n|/challenge Brock, gen9ou", "TEAM\rINJECT"))
+def test_constructor_rejects_packed_team_command_injection_before_side_effects(
+    packed: str,
+) -> None:
+    connection = _RecordingConnection([])
+
+    with pytest.raises(TeamValidationError):
+        BattleCoordinator(
+            connection,
+            _OUR_USER_ID,
+            _OPPONENT_DISPLAY,
+            _team(packed),
+            setup_timeout=0.1,
+        )
+
+    assert connection.events == []
+
+
+def test_constructor_rejects_packed_team_digest_mismatch_before_side_effects() -> None:
+    connection = _RecordingConnection([])
+
+    with pytest.raises(TeamValidationError):
+        BattleCoordinator(
+            connection,
+            _OUR_USER_ID,
+            _OPPONENT_DISPLAY,
+            _team(digest="0" * 64),
+            setup_timeout=0.1,
+        )
+
+    assert connection.events == []
+
+
 class _DelayedSessionConnection(_RecordingConnection):
     def __init__(self, setup_lines: Iterable[RoomLine], delay: float) -> None:
         super().__init__(setup_lines)
@@ -786,7 +1053,7 @@ class _DelayedSessionConnection(_RecordingConnection):
 
 
 def test_setup_timeout_ends_before_a_deliberately_longer_battle_session() -> None:
-    connection = _DelayedSessionConnection(_room_setup_lines(), delay=0.03)
+    connection = _DelayedSessionConnection(_room_setup_lines(terminal=False), delay=0.03)
     started_at = time.monotonic()
 
     result = _run(connection, setup_timeout=0.001)
@@ -821,7 +1088,7 @@ def test_inner_timeout_error_before_setup_deadline_propagates_unchanged() -> Non
 
 def test_session_transport_error_is_preserved_as_the_result_primary_error() -> None:
     failure = Disconnect("session closed")
-    connection = _RecordingConnection([*_room_setup_lines(), failure])
+    connection = _RecordingConnection([*_room_setup_lines(terminal=False), failure])
 
     result = _run(connection)
 
@@ -846,7 +1113,10 @@ def test_close_error_does_not_mask_a_setup_error() -> None:
 
 def test_close_error_does_not_mask_a_session_primary_error() -> None:
     connection = _CloseFailingConnection(
-        [*_room_setup_lines(), RoomLine(_TARGET_ROOM, "|not-a-real-wire-type")]
+        [
+            *_room_setup_lines(terminal=False),
+            RoomLine(_TARGET_ROOM, "|not-a-real-wire-type"),
+        ]
     )
 
     result = _run(connection)
@@ -911,7 +1181,7 @@ def test_setup_send_failure_closes_without_a_retry() -> None:
     with pytest.raises(Disconnect, match="write failed"):
         _run(connection)
 
-    assert connection.lines_calls == 0
+    assert connection.lines_calls == 1
     assert connection.events == [
         ("connect", None),
         ("global", "|/utm packed-team-secret"),
@@ -1009,7 +1279,7 @@ def test_logs_normalized_opponent_and_team_digest_without_sensitive_values(
 
     messages = "\n".join(record.getMessage() for record in caplog.records)
     assert "misty" in messages
-    assert "team-digest" in messages
+    assert _team().sealed.digest in messages
     assert "packed-team-secret" not in messages
     assert "password-secret" not in messages
     assert "assertion-secret" not in messages

@@ -214,6 +214,19 @@ class TestChallengePrivateMessages:
     @pytest.mark.parametrize(
         "payload",
         (
+            "|pm|Brock|+Our User|/challenge gen9ou|gen9ou|Challenge message|accept|reject",
+            "|pm|+Our User|Brock|/challenge gen9ou|gen9ou|Challenge message|accept|reject",
+            "|pm|Brock|+Our User|/challenge",
+            "|pm|+Our User|Brock|/challenge",
+            "|pm|Brock|+Our User|/challenge malformed",
+        ),
+    )
+    def test_foreign_challenge_state_pms_are_ignored(self, payload: str) -> None:
+        assert _reader().read(payload) is None
+
+    @pytest.mark.parametrize(
+        "payload",
+        (
             "|pm|+Our User|@Target User|/challenge",
             "|pm|@Target User|+Our User|/challenge",
         ),
@@ -236,10 +249,7 @@ class TestChallengePrivateMessages:
 
     @pytest.mark.parametrize(
         "payload",
-        (
-            "|pm|+Our User|@Other User|/challenge gen9ou|gen9ou|Challenge message|accept|reject",
-            "|pm|+Our User|@Target User|/challenge gen8ou|gen8ou|Challenge message|accept|reject",
-        ),
+        ("|pm|+Our User|@Target User|/challenge gen8ou|gen8ou|Challenge message|accept|reject",),
     )
     def test_wrong_pending_pm_target_or_format_is_rejected_fail_closed(self, payload: str) -> None:
         with pytest.raises(UnknownProtocolEvent):

@@ -92,10 +92,10 @@ class ChallengeStateReader:
             self._our_user_id,
             self._target_user_id,
         }
+        if not participants_match:
+            return None
 
         if message == "/challenge":
-            if not participants_match:
-                raise UnknownProtocolEvent("challenge state pm has unexpected participants")
             return self._observation(OutgoingChallengeStatus.NOT_PENDING, None, "pm")
 
         if not message.startswith("/challenge "):
@@ -104,8 +104,6 @@ class ChallengeStateReader:
             return None
         if sender_id == self._target_user_id and receiver_id == self._our_user_id:
             return None
-        if sender_id != self._our_user_id or receiver_id != self._target_user_id:
-            raise UnknownProtocolEvent("pending challenge pm has unexpected participants")
 
         challenge_fields = message.split("|")
         if len(challenge_fields) != 5:

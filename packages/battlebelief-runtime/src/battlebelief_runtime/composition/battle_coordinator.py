@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import math
 import re
 from collections.abc import AsyncIterator, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from numbers import Real
+from typing import Any, cast
 
 from battlebelief_core.domain.events.metadata import (
     GameTypeDeclared,
@@ -27,7 +30,11 @@ from battlebelief_runtime.composition.battle_session import (
     BattleSessionResult,
     DecisionPolicy,
 )
-from battlebelief_runtime.errors.protocol import MalformedProtocolMessage, UnknownProtocolEvent
+from battlebelief_runtime.errors.protocol import (
+    Disconnect,
+    MalformedProtocolMessage,
+    UnknownProtocolEvent,
+)
 from battlebelief_runtime.errors.setup import ChallengeSetupError, TeamValidationError
 
 _FORMAT_ID = "gen9ou"
@@ -56,10 +63,11 @@ _EXPLICIT_REJECTION_MESSAGES = frozenset(
 )
 _HARMLESS_GLOBAL_TYPES = frozenset(
     {
+        "B",
         "b",
         "battle",
+        "customgroups",
         "formats",
-        "updatesearch",
         "usercount",
     }
 )
@@ -151,6 +159,11 @@ class BattleCoordinator:
             or setup_timeout <= 0
         ):
             raise ValueError("setup timeout must be a finite positive real value")
+        if team.packed == "" or "\r" in team.packed or "\n" in team.packed:
+            raise TeamValidationError("packed team must be one nonempty physical line")
+        packed_digest = hashlib.sha256(team.packed.encode("utf-8")).hexdigest()
+        if packed_digest != team.sealed.digest:
+            raise TeamValidationError("packed team digest does not match its sealed team")
         self._connection = connection
         self._our_user_id = normalized_our_user_id
         self._opponent_display = opponent_display
@@ -169,10 +182,6 @@ class BattleCoordinator:
                 self._team.sealed.digest,
             )
             await self._connection.connect()
-            await self._connection.send_global(f"|/utm {self._team.packed}")
-            await self._connection.send_global(
-                f"|/challenge {self._opponent_display}, {_FORMAT_ID}"
-            )
             source = self._connection.lines()
             candidate = await self._discover(source)
             session = BattleSession(
@@ -188,6 +197,17 @@ class BattleCoordinator:
                 policy=self._policy,
             )
             result = await session.run()
+            if (
+                result.primary_error is None
+                and result.state.winner is None
+                and not result.state.tied
+            ):
+                result = replace(
+                    result,
+                    primary_error=Disconnect(
+                        "Showdown battle stream ended before a terminal result"
+                    ),
+                )
         except BaseException as exc:
             primary_error = exc
             raise
@@ -210,19 +230,37 @@ class BattleCoordinator:
         )
         ever_pending = False
         latest_status: OutgoingChallengeStatus | None = None
+        bootstrap_complete = False
+        excluded_room_ids: set[str] = set()
         timeout = asyncio.timeout(self._setup_timeout)
         try:
             async with timeout:
                 async for line in source:
                     if line.room_id is None:
+                        if line.payload.startswith("|updatesearch|"):
+                            existing_room_ids = _read_existing_room_ids(line.payload)
+                            if not bootstrap_complete:
+                                excluded_room_ids.update(existing_room_ids)
+                                bootstrap_complete = True
+                                await self._connection.send_global(f"|/utm {self._team.packed}")
+                                await self._connection.send_global(
+                                    f"|/challenge {self._opponent_display}, {_FORMAT_ID}"
+                                )
+                            continue
                         observation = challenge_reader.read(line.payload)
                         if observation is not None:
-                            latest_status = observation.status
-                            ever_pending = ever_pending or (
-                                observation.status == OutgoingChallengeStatus.PENDING
-                            )
+                            if bootstrap_complete:
+                                latest_status = observation.status
+                                ever_pending = ever_pending or (
+                                    observation.status == OutgoingChallengeStatus.PENDING
+                                )
                             continue
                         self._read_global_line(line.payload)
+                        continue
+                    if not bootstrap_complete:
+                        excluded_room_ids.add(line.room_id)
+                        continue
+                    if line.room_id in excluded_room_ids:
                         continue
                     candidate = candidates.setdefault(
                         line.room_id, _RoomCandidate(room_id=line.room_id)
@@ -405,3 +443,29 @@ def _global_wire_type(payload: str) -> str | None:
     if len(parts) < 2:
         return None
     return parts[1]
+
+
+def _read_existing_room_ids(payload: str) -> set[str]:
+    try:
+        decoded = json.loads(payload.removeprefix("|updatesearch|"))
+    except json.JSONDecodeError as exc:
+        raise MalformedProtocolMessage(f"invalid updatesearch json: {exc}") from exc
+    if not isinstance(decoded, dict):
+        raise MalformedProtocolMessage("updatesearch json must be an object")
+    data = cast(dict[str, Any], decoded)
+    if "games" not in data:
+        raise MalformedProtocolMessage("updatesearch.games is required")
+    games = data.get("games")
+    if games is None:
+        return set()
+    if not isinstance(games, dict):
+        raise MalformedProtocolMessage("updatesearch.games must be an object or null")
+
+    room_ids: set[str] = set()
+    for room_id, title in cast(dict[str, Any], games).items():
+        if room_id == "" or not isinstance(title, str):
+            raise MalformedProtocolMessage(
+                "updatesearch.games must map nonempty room IDs to string titles"
+            )
+        room_ids.add(room_id)
+    return room_ids
