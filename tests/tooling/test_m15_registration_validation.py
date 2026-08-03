@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from copy import deepcopy
@@ -141,6 +142,8 @@ def test_reference_matching_does_not_accept_identifier_substrings(tmp_path: Path
                 {
                     "document_id": "example-doc",
                     "document_version": 1,
+                    "document_digest": "sha256:"
+                    + hashlib.sha256((docs / "example.md").read_bytes()).hexdigest(),
                     "metric_id": "mean_difference_v1",
                 }
             ],
@@ -150,6 +153,69 @@ def test_reference_matching_does_not_accept_identifier_substrings(tmp_path: Path
         tmp_path,
     )
     assert any("unknown metric_id" in error for error in errors)
+
+
+def test_document_reference_binds_the_exact_document_digest(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    document = docs / "example.md"
+    document.write_text(
+        "---\ndocument_id: example-doc\ndocument_type: contract\n"
+        "status: accepted\nnormative: true\nversion: 1\n---\n",
+        encoding="utf-8",
+    )
+    reference = {
+        "contract_references": [
+            {
+                "document_id": "example-doc",
+                "document_version": 1,
+                "document_digest": "sha256:" + "0" * 64,
+            }
+        ],
+        "metric_references": [],
+        "estimand_references": [],
+        "analysis_procedure_references": [],
+    }
+
+    errors = _validate_registration_references(reference, tmp_path)
+
+    assert any("document digest mismatch" in error for error in errors)
+
+
+def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    current = docs / "example.md"
+    current.write_text(
+        "---\ndocument_id: example-doc\ndocument_type: contract\n"
+        "status: accepted\nnormative: true\nversion: 2\n---\nnew\n",
+        encoding="utf-8",
+    )
+    snapshots = docs / "contracts/snapshots"
+    snapshots.mkdir(parents=True)
+    snapshot = snapshots / "example-doc.v1.md"
+    snapshot.write_text(
+        "---\ndocument_id: example-doc\ndocument_type: contract\n"
+        "status: accepted\nnormative: true\nversion: 1\n---\nold\n",
+        encoding="utf-8",
+    )
+    digest = "sha256:" + hashlib.sha256(snapshot.read_bytes()).hexdigest()
+    reference = {
+        "contract_references": [
+            {
+                "document_id": "example-doc",
+                "document_version": 1,
+                "document_digest": digest,
+            }
+        ],
+        "metric_references": [],
+        "estimand_references": [],
+        "analysis_procedure_references": [],
+    }
+
+    errors = _validate_registration_references(reference, tmp_path)
+
+    assert errors == []
 
 
 def test_duplicate_registration_ids_are_reported(tmp_path: Path) -> None:
@@ -469,6 +535,110 @@ def test_synthetic_run_binding_must_match_fixture_components(tmp_path: Path) -> 
     assert any("synthetic fixture schedule_digest mismatch" in error for error in errors)
 
 
+def test_valid_synthetic_run_binding_accepts_array_schedule_digest(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    implementation = _implementation_binding(registration, "implementation-a")
+    (root / "registrations/implementation.json").write_text(json.dumps(implementation))
+    fixture = json.loads(
+        (root / "schemas/examples/synthetic-fixture-manifest.example.json").read_text()
+    )
+    (root / "registrations/synthetic-fixture.json").write_text(json.dumps(fixture))
+    run = {
+        "schema_version": 2,
+        "binding_id": "run-a",
+        "binding_kind": "run",
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "run_purpose": "synthetic_acceptance",
+        "registration_id": registration["registration_id"],
+        "registration_digest": manifest_digest(registration),
+        "implementation_binding_digest": manifest_digest(implementation),
+        "schedule_digest": manifest_digest(fixture["schedule_rows"]),
+        "seed_family_digest": manifest_digest(fixture["seed_family"]),
+        "budget_profile_digest": manifest_digest(fixture["budget_profile"]),
+        "runtime_environment_digest": manifest_digest(fixture["runtime_environment"]),
+        "ruleset_digest": manifest_digest(fixture["ruleset_snapshot"]),
+        "synthetic_fixture_manifest_digest": manifest_digest(fixture),
+    }
+    (root / "registrations/run.json").write_text(json.dumps(run))
+
+    errors = validate_repository_artifacts(root)
+
+    assert errors == []
+
+
+def test_evaluation_run_bindings_are_closed_until_pool_artifacts_exist(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    implementation = _implementation_binding(registration, "implementation-a")
+    (root / "registrations/implementation.json").write_text(json.dumps(implementation))
+    run = {
+        "schema_version": 2,
+        "binding_id": "evaluation-run",
+        "binding_kind": "run",
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "run_purpose": "evaluation",
+        "registration_id": registration["registration_id"],
+        "registration_digest": manifest_digest(registration),
+        "implementation_binding_digest": manifest_digest(implementation),
+        "schedule_digest": "sha256:" + "2" * 64,
+        "seed_family_digest": "sha256:" + "3" * 64,
+        "budget_profile_digest": "sha256:" + "4" * 64,
+        "runtime_environment_digest": "sha256:" + "5" * 64,
+        "ruleset_digest": "sha256:" + "6" * 64,
+        "team_pool_digest": "sha256:" + "7" * 64,
+        "opponent_policy_pool_digest": "sha256:" + "8" * 64,
+    }
+    (root / "registrations/run.json").write_text(json.dumps(run))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("evaluation run bindings are not enabled" in error for error in errors)
+
+
+def test_registration_rule_references_are_field_typed(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["pool_rules"]["construction_rule_id"] = "no_effect_stop_v1"
+
+    with pytest.raises(RegistrationValidationError, match="construction_rule_id"):
+        validate_registration_semantics(registration, root)
+
+
+def test_registration_analysis_references_are_field_typed(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["comparisons"][0]["technical_outcome_treatment_id"] = (
+        "weighted_cluster_bootstrap_v1"
+    )
+
+    with pytest.raises(RegistrationValidationError, match="technical outcome treatment"):
+        validate_registration_semantics(registration, root)
+
+
+def test_execution_spec_must_match_registered_arm(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    specification = json.loads(
+        (root / "schemas/examples/search-execution-spec.example.json").read_text()
+    )
+    specification_digest = manifest_digest(specification)
+    (root / "registrations/search-spec.json").write_text(json.dumps(specification))
+    arms = registration["arms"]
+    assert isinstance(arms, list)
+    arms[1]["arm_id"] = "other_search_v0"
+    registration["comparisons"][0]["right_arm_id"] = "other_search_v0"
+    arms[1]["execution_spec_digest"] = specification_digest
+    (root / "registrations/registration.json").write_text(json.dumps(registration))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("execution specification arm mismatch" in error for error in errors)
+
+
 def test_registration_semantics_rejects_wrong_metric_direction() -> None:
     root = Path(__file__).resolve().parents[2]
     registration = json.loads(
@@ -499,9 +669,16 @@ def test_reference_requires_accepted_normative_contract_frontmatter(tmp_path: Pa
         "status: draft\nnormative: false\nversion: 1\n---\n",
         encoding="utf-8",
     )
+    document_digest = "sha256:" + hashlib.sha256((docs / "example.md").read_bytes()).hexdigest()
     errors = _validate_registration_references(
         {
-            "contract_references": [{"document_id": "example-doc", "document_version": 1}],
+            "contract_references": [
+                {
+                    "document_id": "example-doc",
+                    "document_version": 1,
+                    "document_digest": document_digest,
+                }
+            ],
             "metric_references": [],
             "estimand_references": [],
             "analysis_procedure_references": [],

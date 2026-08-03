@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 3
+version: 4
 applies_to:
   - research
   - evaluation
@@ -45,15 +45,15 @@ Version tragen. Selbstreferenzen und Supersessionszyklen sind ungültig.
 
 Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 
-```text
-registered_pool_construction_v1
-canonical_exact_team_cluster_v1
-alternating_balanced_sides_v1
-registered_schedule_v1
-prefer_lower_runtime_v1
-no_effect_stop_v1
-uncertain_effect_pivot_v1
-```
+| Referenzfeld | Zulässige ID |
+|---|---|
+| `construction_rule_id` | `registered_pool_construction_v1` |
+| `near_duplicate_rule_id` | `canonical_exact_team_cluster_v1` |
+| `side_assignment_rule_id` | `alternating_balanced_sides_v1` |
+| `schedule_rule_id` | `registered_schedule_v1` |
+| `tie_break_rule_id` | `prefer_lower_runtime_v1` |
+| `stop_rule_id` | `no_effect_stop_v1` |
+| `pivot_rule_id` | `uncertain_effect_pivot_v1` |
 
 Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Die
 Semantik jeder Regel bleibt in ihrem jeweiligen normativen Evaluations- oder
@@ -78,6 +78,11 @@ Registrierungen halten `selection`, `power_pilot` und `release_holdout` bis zu
 den jeweils akzeptierten Freigabekriterien geschlossen. Ein synthetischer
 Acceptance-Lauf verwendet ausschließlich deklarierte Fixture-Manifeste und
 öffnet oder simuliert keinen Evaluationspool.
+
+Schema-Version 2 aktiviert nur synthetische Acceptance-Bindings. Evaluation-
+Bindings bleiben geschlossen, solange keine auflösbaren Poolartefakte und
+Poolrollen existieren; ein solcher Lauf darf keinen geschützten Pool nur über
+einen freien Digest öffnen.
 
 ## Validierung und Supersession
 

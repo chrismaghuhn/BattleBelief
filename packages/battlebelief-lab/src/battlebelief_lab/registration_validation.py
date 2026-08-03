@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -251,11 +252,15 @@ def validate_registration_semantics(
     analysis_procedure_ids = declared_ids(
         registration.get("analysis_procedure_references"), "analysis_procedure_id"
     )
-    known_rules: set[str] = _registration_rule_ids(root) if root is not None else set()
+    rule_registry: dict[str, set[str]] = (
+        _registration_rule_registry(root) if root is not None else {}
+    )
     metric_roles: dict[str, set[str]] = {}
     metric_directions: dict[str, str] = {}
+    statistical_registry: dict[str, set[str]] = {}
     if root is not None:
         metric_registry = _metric_registry(root)
+        statistical_registry = _statistical_registry(root)
         metric_references = registration.get("metric_references")
         for reference in metric_references if isinstance(metric_references, list) else []:
             if isinstance(reference, Mapping) and isinstance(reference.get("metric_id"), str):
@@ -328,8 +333,24 @@ def validate_registration_semantics(
                 f"comparison {comparison_id} references undeclared technical outcome treatment"
             )
         if root is not None:
+            if comparison.get("estimand_id") not in statistical_registry.get("estimand_id", set()):
+                raise RegistrationValidationError(
+                    f"comparison {comparison_id} references unknown estimand_id"
+                )
+            if comparison.get("analysis_procedure_id") not in statistical_registry.get(
+                "analysis_procedure_id", set()
+            ):
+                raise RegistrationValidationError(
+                    f"comparison {comparison_id} references unknown analysis_procedure_id"
+                )
+            if comparison.get("technical_outcome_treatment_id") not in statistical_registry.get(
+                "technical_outcome_treatment_id", set()
+            ):
+                raise RegistrationValidationError(
+                    f"comparison {comparison_id} references invalid technical outcome treatment"
+                )
             for field in ("tie_break_rule_id",):
-                if comparison.get(field) not in known_rules:
+                if comparison.get(field) not in rule_registry.get(field, set()):
                     raise RegistrationValidationError(f"unknown {field}: {comparison.get(field)}")
 
     budget_profiles = registration.get("budget_profiles")
@@ -369,12 +390,12 @@ def validate_registration_semantics(
                 "side_assignment_rule_id",
                 "schedule_rule_id",
             ):
-                if pool_rules.get(field) not in known_rules:
+                if pool_rules.get(field) not in rule_registry.get(field, set()):
                     raise RegistrationValidationError(f"unknown {field}: {pool_rules.get(field)}")
         for gate in registration.get("decision_gates", []):
             if isinstance(gate, Mapping):
                 for field in ("stop_rule_id", "pivot_rule_id"):
-                    if gate.get(field) not in known_rules:
+                    if gate.get(field) not in rule_registry.get(field, set()):
                         raise RegistrationValidationError(f"unknown {field}: {gate.get(field)}")
 
 
@@ -422,8 +443,8 @@ def _schema_for_artifact(
     return None
 
 
-def _document_index(root: Path) -> dict[str, dict[str, object]]:
-    result: dict[str, dict[str, object]] = {}
+def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]]:
+    result: dict[tuple[str, int], list[dict[str, object]]] = {}
     for path in sorted((root / "docs").rglob("*.md")):
         if "archive" in path.relative_to(root / "docs").parts:
             continue
@@ -439,20 +460,44 @@ def _document_index(root: Path) -> dict[str, dict[str, object]]:
             r"^document_type:\s*(\S+)\s*$", frontmatter.group(1), re.MULTILINE
         )
         if document_id is not None and version is not None:
-            result[document_id.group(1)] = {
+            record = {
                 "version": int(version.group(1)),
                 "status": status.group(1) if status is not None else None,
                 "normative": normative is not None and normative.group(1) == "true",
                 "document_type": document_type.group(1) if document_type is not None else None,
                 "text": text,
+                "path": path,
+                "document_digest": "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
             }
+            result.setdefault((document_id.group(1), int(version.group(1))), []).append(record)
     return result
+
+
+def _latest_document(
+    documents: Mapping[tuple[str, int], list[dict[str, object]]], document_id: str
+) -> dict[str, object] | None:
+    candidates = [
+        record
+        for (candidate_id, _), records in documents.items()
+        if candidate_id == document_id
+        for record in records
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda record: (
+            record["version"] if isinstance(record["version"], int) else -1,
+            "contracts/snapshots" not in str(record["path"]).replace("\\", "/"),
+        ),
+        reverse=True,
+    )
+    return candidates[0]
 
 
 def _metric_registry(root: Path) -> dict[str, dict[str, str]]:
     """Read metric direction and roles from the normative metrics table."""
 
-    document = _document_index(root).get("evaluation-metrics")
+    document = _latest_document(_document_index(root), "evaluation-metrics")
     text = document.get("text") if document is not None else None
     result: dict[str, dict[str, str]] = {}
     if not isinstance(text, str):
@@ -474,20 +519,15 @@ def _metric_registry(root: Path) -> dict[str, dict[str, str]]:
     return result
 
 
-def _registration_rule_ids(root: Path) -> set[str]:
-    document = _document_index(root).get("experiment-registration")
+def _registration_rule_registry(root: Path) -> dict[str, set[str]]:
+    document = _latest_document(_document_index(root), "experiment-registration")
     text = document.get("text") if document is not None else None
-    if not isinstance(text, str):
-        return set()
-    result = set(
-        re.findall(
-            r"(?<![a-z0-9_])(?:registered_pool_construction_v1|"
-            r"canonical_exact_team_cluster_v1|alternating_balanced_sides_v1|"
-            r"registered_schedule_v1|prefer_lower_runtime_v1|no_effect_stop_v1|"
-            r"uncertain_effect_pivot_v1)(?![a-z0-9_])",
-            text,
-        )
-    )
+    result: dict[str, set[str]] = {}
+    if isinstance(text, str):
+        for line in text.splitlines():
+            columns = [column.strip().strip("`") for column in line.strip().strip("|").split("|")]
+            if len(columns) == 2 and columns[0].endswith("_id") and columns[1]:
+                result.setdefault(columns[0], set()).add(columns[1])
     if not result:
         raise RegistrationValidationError(
             "experiment-registration rule registry could not be parsed"
@@ -495,9 +535,29 @@ def _registration_rule_ids(root: Path) -> set[str]:
     return result
 
 
+def _statistical_registry(root: Path) -> dict[str, set[str]]:
+    document = _latest_document(_document_index(root), "evaluation-statistical-analysis")
+    text = document.get("text") if document is not None else None
+    result: dict[str, set[str]] = {}
+    if isinstance(text, str):
+        for line in text.splitlines():
+            columns = [column.strip().strip("`") for column in line.strip().strip("|").split("|")]
+            if len(columns) == 3 and columns[0] in {
+                "estimand_id",
+                "analysis_procedure_id",
+                "technical_outcome_treatment_id",
+            }:
+                result.setdefault(columns[0], set()).add(columns[1])
+    if not result:
+        raise RegistrationValidationError(
+            "evaluation-statistical-analysis registry could not be parsed"
+        )
+    return result
+
+
 def _validate_document_reference(
     reference: Mapping[str, Any],
-    documents: Mapping[str, Mapping[str, object]],
+    documents: Mapping[tuple[str, int], list[dict[str, object]]],
     errors: list[str],
     *,
     expected_document_type: str,
@@ -509,9 +569,30 @@ def _validate_document_reference(
     if not isinstance(document_id, str):
         errors.append("document reference has invalid document_id")
         return
-    document = documents.get(document_id)
+    if not isinstance(document_version, int) or isinstance(document_version, bool):
+        errors.append(f"document reference has invalid document_version: {document_id}")
+        return
+    candidates = documents.get((document_id, document_version), [])
+    if not candidates:
+        if any(candidate_id == document_id for candidate_id, _ in documents):
+            errors.append(f"document version mismatch: {document_id}")
+        else:
+            errors.append(f"unknown document reference: {document_id}")
+        return
+    document_digest = reference.get("document_digest")
+    if not isinstance(document_digest, str):
+        errors.append(f"document reference has no document digest: {document_id}")
+        return
+    document = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.get("document_digest") == document_digest
+        ),
+        None,
+    )
     if document is None:
-        errors.append(f"unknown document reference: {document_id}")
+        errors.append(f"document digest mismatch: {document_id}")
         return
     if document["status"] != "accepted":
         errors.append(f"document is not accepted: {document_id}")
@@ -522,8 +603,6 @@ def _validate_document_reference(
             errors.append(f"document must be non-normative: {document_id}")
     if document["document_type"] != expected_document_type:
         errors.append(f"document type mismatch: {document_id}")
-    if document["version"] != document_version:
-        errors.append(f"document version mismatch: {document_id}")
     if identifier_field is not None:
         identifier = reference.get(identifier_field)
         document_text = document.get("text")
@@ -766,6 +845,8 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 )
                 if execution is None or execution[2] != "search_execution":
                     errors.append(f"{relative}: execution specification digest is unresolved")
+                elif execution[1].get("arm_id") != arm.get("arm_id"):
+                    errors.append(f"{relative}: execution specification arm mismatch")
             budget_profiles = value.get("budget_profiles", {})
             if isinstance(budget_profiles, Mapping):
                 for profile_name, profile in budget_profiles.items():
@@ -879,6 +960,11 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                         ):
                             errors.append(f"{relative}: heuristic arm cannot bind {component_name}")
         else:
+            if value.get("run_purpose") == "evaluation":
+                errors.append(
+                    f"{relative}: evaluation run bindings are not enabled until pool artifacts exist"
+                )
+                continue
             implementation_digest = value.get("implementation_binding_digest")
             implementation = (
                 by_digest.get(implementation_digest)
@@ -919,9 +1005,7 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                         "ruleset_digest": fixture_value.get("ruleset_snapshot"),
                     }
                     for field, fixture_component in expected_fixture_fields.items():
-                        if not isinstance(fixture_component, Mapping) or value.get(
-                            field
-                        ) != manifest_digest(fixture_component):
+                        if value.get(field) != manifest_digest(fixture_component):
                             errors.append(f"{relative}: synthetic fixture {field} mismatch")
     return sorted(errors)
 

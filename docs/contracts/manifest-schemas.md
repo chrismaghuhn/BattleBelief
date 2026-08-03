@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 4
+version: 5
 applies_to:
   - manifests
   - release
@@ -83,6 +83,11 @@ Ein Leser darf ein Manifest nur akzeptieren, wenn:
 
 Unbekannte Schema-Versionen werden fail-closed abgelehnt, nicht heuristisch
 interpretiert.
+
+Document references bind the document ID and version to the SHA-256 digest of
+the exact UTF-8 file. Older frozen references resolve from versioned files
+under `docs/contracts/snapshots/`; changing the current Markdown file must not
+retroactively change an existing document digest.
 
 Beispieldateien unter `/schemas/examples` werden im `pr-gate` über eine
 explizite Beispiel-zu-Schema-Zuordnung geprüft; die Zuordnung wird nicht aus

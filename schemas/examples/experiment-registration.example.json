@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "artifact_version": 1,
   "supersedes_digest": null,
   "registration_id": "m15-core-comparisons-v1",
@@ -39,21 +39,21 @@
     }
   ],
   "metric_references": [
-    {"document_id": "evaluation-metrics", "document_version": 4, "metric_id": "decision_regret_teacher_v1", "role": "primary"},
-    {"document_id": "evaluation-metrics", "document_version": 4, "metric_id": "fallback_rate_v1", "role": "diagnostic"}
+    {"document_id": "evaluation-metrics", "document_version": 4, "document_digest": "sha256:2c2287d97cd166f1fd109a5c1b59ebc294d3dc2d83f1fa3f0a9ff487e9a5c11a", "metric_id": "decision_regret_teacher_v1", "role": "primary"},
+    {"document_id": "evaluation-metrics", "document_version": 4, "document_digest": "sha256:2c2287d97cd166f1fd109a5c1b59ebc294d3dc2d83f1fa3f0a9ff487e9a5c11a", "metric_id": "fallback_rate_v1", "role": "diagnostic"}
   ],
   "estimand_references": [
-    {"document_id": "evaluation-statistical-analysis", "document_version": 3, "estimand_id": "paired_mean_difference_v1"}
+    {"document_id": "evaluation-statistical-analysis", "document_version": 4, "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531", "estimand_id": "paired_mean_difference_v1"}
   ],
   "analysis_procedure_references": [
-    {"document_id": "evaluation-statistical-analysis", "document_version": 3, "analysis_procedure_id": "weighted_cluster_bootstrap_v1"},
-    {"document_id": "evaluation-statistical-analysis", "document_version": 3, "analysis_procedure_id": "technical_outcomes_full_v1"}
+    {"document_id": "evaluation-statistical-analysis", "document_version": 4, "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531", "analysis_procedure_id": "weighted_cluster_bootstrap_v1"},
+    {"document_id": "evaluation-statistical-analysis", "document_version": 4, "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531", "analysis_procedure_id": "technical_outcomes_full_v1"}
   ],
   "contract_references": [
-    {"document_id": "contract-manifest-schemas", "document_version": 4},
-    {"document_id": "contract-determinism", "document_version": 1},
-    {"document_id": "contract-provenance", "document_version": 3},
-    {"document_id": "experiment-registration", "document_version": 3}
+    {"document_id": "contract-manifest-schemas", "document_version": 5, "document_digest": "sha256:acc7f4d640e34cec4abe127cb960c27f824a06cb900100595e09dc171e673c84"},
+    {"document_id": "contract-determinism", "document_version": 1, "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"},
+    {"document_id": "contract-provenance", "document_version": 4, "document_digest": "sha256:725a35b529966020be0e91839587dd2ae80d1584c51fbde36e239a2b733f818f"},
+    {"document_id": "experiment-registration", "document_version": 4, "document_digest": "sha256:a118f478f953d004d98e358993b5bfb125adeb793c26c0bb1b32f7811b0d8450"}
   ],
   "pool_access": {"development": "available", "selection": "unopened", "power_pilot": "unopened", "release_holdout": "unopened"},
   "pool_rules": {

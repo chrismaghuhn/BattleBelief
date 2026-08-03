@@ -4,7 +4,7 @@ title: Statistischer Analysevertrag
 document_type: contract
 status: accepted
 normative: true
-version: 3
+version: 4
 applies_to:
   - evaluation
   - gen9ou
@@ -77,8 +77,8 @@ rechtfertigt keine gepaarte kausale Analyse.
 
 ## Maschinenlesbare Analyse-IDs und feste Prozeduren
 
-| ID | Bedeutung |
-|---|---|
-| `weighted_cluster_bootstrap_v1` | Resampling ganzer registrierter Matchup-Cluster mit Zielpopulationsgewichten; Cluster werden nicht in einzelne Battles aufgeteilt |
-| `paired_mean_difference_v1` | Arithmetischer Mittelwert der zeilenweise definierten rechten minus linken Armwerte innerhalb der vorregistrierten Vergleichspaare |
-| `technical_outcomes_full_v1` | Win, Loss, Tie, Void, Timeout, Disconnect, Invalid, Fallback und sonstige technische Klassen bleiben getrennt sichtbar; keine Klasse wird still entfernt |
+| Referenzfeld | ID | Bedeutung |
+|---|---|---|
+| `analysis_procedure_id` | `weighted_cluster_bootstrap_v1` | Resampling ganzer registrierter Matchup-Cluster mit Zielpopulationsgewichten; Cluster werden nicht in einzelne Battles aufgeteilt |
+| `estimand_id` | `paired_mean_difference_v1` | Arithmetischer Mittelwert der zeilenweise definierten rechten minus linken Armwerte innerhalb der vorregistrierten Vergleichspaare |
+| `technical_outcome_treatment_id` | `technical_outcomes_full_v1` | Win, Loss, Tie, Void, Timeout, Disconnect, Invalid, Fallback und sonstige technische Klassen bleiben getrennt sichtbar; keine Klasse wird still entfernt |

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:schema:manifest:experiment-registration:v2",
+  "$id": "urn:battlebelief:schema:manifest:experiment-registration:v3",
   "title": "BattleBelief experiment registration",
   "type": "object",
   "additionalProperties": false,
@@ -24,7 +24,7 @@
     "decision_gates"
   ],
   "properties": {
-    "schema_version": {"const": 2},
+    "schema_version": {"const": 3},
     "artifact_version": {"type": "integer", "minimum": 1},
     "supersedes_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
     "registration_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
@@ -76,10 +76,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["document_id", "document_version", "metric_id", "role"],
+        "required": ["document_id", "document_version", "document_digest", "metric_id", "role"],
         "properties": {
           "document_id": {"type": "string", "minLength": 1},
           "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
           "metric_id": {"type": "string", "minLength": 1},
           "role": {"enum": ["primary", "secondary", "diagnostic"]}
         }
@@ -91,10 +92,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["document_id", "document_version", "estimand_id"],
+        "required": ["document_id", "document_version", "document_digest", "estimand_id"],
         "properties": {
           "document_id": {"type": "string", "minLength": 1},
           "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
           "estimand_id": {"type": "string", "minLength": 1}
         }
       }
@@ -105,10 +107,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["document_id", "document_version", "analysis_procedure_id"],
+        "required": ["document_id", "document_version", "document_digest", "analysis_procedure_id"],
         "properties": {
           "document_id": {"type": "string", "minLength": 1},
           "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
           "analysis_procedure_id": {"type": "string", "minLength": 1}
         }
       }
@@ -119,10 +122,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["document_id", "document_version"],
+        "required": ["document_id", "document_version", "document_digest"],
         "properties": {
           "document_id": {"type": "string", "minLength": 1},
-          "document_version": {"type": "integer", "minimum": 1}
+          "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"}
         }
       }
     },
