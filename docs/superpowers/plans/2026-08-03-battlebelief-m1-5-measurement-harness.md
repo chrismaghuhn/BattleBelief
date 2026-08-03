@@ -65,7 +65,7 @@ The following remain explicitly outside every M1.5 task and PR:
 - productive or evaluation-only Belief implementation;
 - local Pokémon Showdown Oracle or `poke-engine` integration;
 - replay ingestion, dataset generation, training, self-play, or model inference;
-- concrete Selection or Release Holdout contents;
+- concrete Selection, Power Pilot, or Release Holdout contents;
 - public Ladder automation or a public-network smoke;
 - changing Runtime version `0.2.0`, Runtime phase `M1`, or the M1 Doctor output;
 - new format, generation, Doubles, or VGC abstractions; and
@@ -271,14 +271,16 @@ M2 code exists in the PR.
 - Create: `schemas/manifests/budget-calibration-spec.schema.json`
 - Create: `schemas/manifests/budget-calibration-evidence.schema.json`
 - Create: `schemas/manifests/search-execution-spec.schema.json`
+- Create: `schemas/manifests/synthetic-fixture-manifest.schema.json`
 - Create: `schemas/examples/experiment-registration.example.json`
 - Create: `schemas/examples/evaluation-arm-binding.example.json`
 - Create: `schemas/examples/evaluation-run-binding.example.json`
 - Create: `schemas/examples/budget-calibration-spec.example.json`
 - Create: `schemas/examples/budget-calibration-evidence.example.json`
 - Create: `schemas/examples/search-execution-spec.example.json`
+- Create: `schemas/examples/synthetic-fixture-manifest.example.json`
 - Modify: `docs/contracts/manifest-schemas.md` with a new version and entries
-  for all six manifest schemas, their `$id` values, validation order, and
+  for all seven manifest schemas, their `$id` values, validation order, and
   evolution rules
 - Create: `docs/contracts/experiment-registration.md` as the normative owner
   of registration, implementation-binding, run-binding, freeze, supersession,
@@ -351,7 +353,7 @@ every `schemas/examples/NAME.example.json` maps to
 `schemas/records/`.
 
 Task 17 has two explicit validation modes. `validate examples` processes the
-six explicit example-to-schema mappings listed in the contract. `validate
+seven explicit example-to-schema mappings listed in the contract. `validate
 repository artifacts` additionally scans `registrations/` and any existing
 bindings; a missing `registrations/` directory is a valid no-op until Task 21,
 while every artifact that exists is fully validated. A missing
@@ -439,9 +441,24 @@ Its implementation-facing fields are limited to
 `implementation_binding_digest`, `team_pool_digest`,
 `opponent_policy_pool_digest`, `schedule_digest`, `seed_family_digest`,
 `budget_profile_digest`, `calibration_evidence_digest`,
-`runtime_environment_digest`, and `ruleset_digest`. The corresponding
+`runtime_environment_digest`, `ruleset_digest`, and
+`synthetic_fixture_manifest_digest`. The corresponding
 `ArmImplementationBinding` does not contain those run-specific pool, schedule,
 budget, or environment values.
+
+The Run Binding is discriminated by `run_purpose`. For `evaluation`,
+`team_pool_digest` and `opponent_policy_pool_digest` are required and the
+registered pool-access rules apply. For `synthetic_acceptance`,
+`synthetic_fixture_manifest_digest` is required, both pool-digest fields are
+forbidden, and no pool is opened. The validator resolves that digest to an
+existing `synthetic-fixture-manifest` and recomputes its canonical digest; a
+syntactically valid digest without a resolvable artifact is rejected.
+
+The synthetic fixture manifest embeds or references canonical objects for the
+synthetic team fixtures, opponent-policy fixture, schedule rows, SeedFamily,
+budget profile, runtime environment, and ruleset snapshot. Every referenced
+object must exist and its digest must recompute before the Run Binding is
+accepted.
 
 The two budget-calibration schemas separate specification from later evidence.
 `budget-calibration-spec` contains the reference environment specification,
@@ -453,6 +470,11 @@ environment and calibration-state digests, measured runtime/resource values,
 and the selected grid value. A fixed profile has no evidence artifact; a
 calibrated-grid or hardware-normalized profile receives its evidence in a
 later run binding, never by rewriting the registration.
+
+`search-execution-spec` is likewise declarative only. It freezes the future
+`determinization_search_v0` world-sampling, lookahead, aggregation, tie-break,
+budget, and fallback choices; it contains no Search implementation or engine
+artifact.
 
 Digest meanings are versioned and explicit: a policy digest covers the named
 policy source manifest or wheel contents; a runtime digest covers the exact
@@ -480,7 +502,7 @@ TDD sequence:
 
 - [ ] Add invalid instances for each rejection and run the focused test to
   prove the validator rejects them.
-- [ ] Add the six valid examples and run the explicit example-to-schema
+- [ ] Add the seven valid examples and run the explicit example-to-schema
   validation.
 - [ ] Add metric, estimand, and analysis-procedure IDs to their normative
   owners without changing the meaning of an existing metric or procedure.
@@ -495,8 +517,12 @@ TDD sequence:
   only as a local/manual command.
 - [ ] Run `uv run python tools/check_docs.py` after the contract version and
   links are updated.
+- [ ] Run `uv lock --check`, `uv run python tools/smoke_packages.py`,
+  `uv run pytest tests/tooling/test_pr_workflow.py -v`,
+  `uv run python tools/check_architecture.py`, and `uv run mypy` after the
+  dependency and workflow changes.
 
-**Acceptance criteria:** All six manifest artifacts and examples validate
+**Acceptance criteria:** All seven manifest artifacts and examples validate
 through the repository schema gate; preconditioned missing directories are
 explicit no-ops and existing artifacts are fully checked; cross-field identity
 and arm rules are tested; the contract is the only
@@ -575,6 +601,7 @@ policy_rejected
 action_gate_rejected
 command_encoding_failed
 send_failed
+session_aborted
 superseded_before_selection
 terminally_discarded
 reconciliation_rejected
@@ -593,6 +620,15 @@ failed, and no socket send was attempted. In that terminal record,
 `selected_submission` and `submission_provenance` are set,
 `fallback_or_error_class` is a stable sanitized code, and submission counters
 remain unchanged.
+
+`session_aborted` finalizes a fresh record when a classified session error
+(such as `disconnect`, `transport_timeout`, `timer_or_forfeit`,
+`unknown_protocol_event`, `malformed_protocol_message`, or a reducer invariant
+failure) ends the session before another terminal disposition. Its
+`fallback_or_error_class` is the stable existing error code;
+`selected_submission` is retained if selection already occurred, otherwise it
+is null. It never invents an action or performs an additional send. A record
+already finalized as `submitted` is never rewritten by a later abort.
 
 The record is bound to an `EvaluationRunBinding` through a
 `measurement-run` context. The public context carries these primary
@@ -616,6 +652,14 @@ references, `battle_ordinal`, and `battle_id_digest`; its digest is
 serialized field in this offline identity scheme. The bot and opponent
 identities are not projected. Tests must use concrete room IDs and usernames
 to prove that they do not appear in canonical bytes or JSONL.
+
+The same resolution is mandatory for every record: `policy_or_arm_id` must
+equal the resolved implementation binding's `arm_id`; the record's
+`runtime_and_contract_digests.runtime_digest` must equal the Run Binding's
+runtime digest; and its `contract_set_digest` must equal the resolved
+implementation binding's contract-set digest. Policy and fallback/safety
+digests, when represented in public provenance, are likewise derived from the
+resolved binding rather than accepted as caller-supplied alternatives.
 
 `record_id` is non-circular. It is derived from the run-context digest,
 `battle_id_digest`, a zero-based `decision_index`, and the public
@@ -677,6 +721,9 @@ TDD sequence:
   matrix.
 - [ ] Add the command-encoding failure to that matrix and prove it emits one
   terminal record without a socket send or counter increment.
+- [ ] Add pending-request abort cases for disconnect, transport timeout,
+  timer/forfeit, unknown protocol, and malformed protocol classifications, and
+  prove a submitted record remains immutable after a later abort.
 - [ ] Implement the record dataclass, projections, canonical bytes, and digest
   helpers against the selected byte contract.
 - [ ] Run the focused Core and contract tests, then `uv run python
@@ -740,7 +787,10 @@ superseded pending request uses `superseded_before_selection`; a request
 discarded by `win`/`tie` uses `terminally_discarded`; and reconciliation failure
 after the freshness boundary uses `reconciliation_rejected`. Aborts before
 any fresh request remain in the existing run/battle result and are not wrapped
-in a fabricated Decision Record.
+in a fabricated Decision Record. Once a fresh record exists, a classified
+Disconnect, TransportTimeout, TimerOrForfeit, UnknownProtocolEvent,
+MalformedProtocolMessage, or reducer invariant failure finalizes it as
+`session_aborted` unless a more specific terminal disposition already exists.
 
 Trace failures are surfaced through the stable `trace_sink_failure` class and
 are never silently discarded. Each fresh request produces exactly one
@@ -767,6 +817,9 @@ TDD sequence:
   and terminal battle abort, checking the exact status and nullability rules.
 - [ ] Add a failing command-encoding test after a successful safety gate,
   proving no send or submission-counter increment occurs.
+- [ ] Add pending-request session-abort tests for disconnect, transport
+  timeout, timer/forfeit, unknown protocol, malformed protocol, and reducer
+  invariant failure, including preservation of already submitted records.
 - [ ] Add a failing test for a trace-sink failure before and after a primary
   battle/send failure, checking `trace_sink_failure` classification and error
   precedence.
@@ -795,6 +848,9 @@ output is safe, newline-stable, and deterministic.
   schema and its evolution rules
 - Modify: `docs/contracts/decision-records.md` to define the run-result
   relationship, pre-request dispositions, trace status, and sink lifecycle
+- Create: `docs/evaluation/team-clustering.md` as the normative owner of the
+  selected Decision B canonicalization rule
+- Modify: `docs/README.md` to index the team-clustering contract
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/__init__.py`
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/budget_profiles.py`
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/seed_families.py`
@@ -883,13 +939,28 @@ generate concrete members. If Decision B option 1 is selected,
 cluster ID equal to the digest of that canonical representation. Member order
 is not semantic; the contract explicitly decides move-slot order and includes
 species/form, moves, item, ability, nature, EVs/IVs, level, tera type, gender,
-and other relevant fields with deterministic defaults. If Option 2 is
-selected, the same module additionally requires a versioned distance, field
+and exactly the closed field/default rules in
+`docs/evaluation/team-clustering.md`. If Option 2 is selected, the same module
+additionally requires a versioned distance, field
 weights, threshold, deterministic clustering algorithm, and tie-break rule;
 those values receive their own contract and vectors. If Option 3 is selected,
 no local clustering algorithm is introduced; the harness accepts only a
 versioned external classifier digest and complete input manifest, and all
 evaluation pools remain unopened until that artifact is validated.
+
+`docs/evaluation/team-clustering.md` must define a closed canonical field set
+before implementation. For Option 1 that set is: species, form, item,
+ability, nature, all four move slots, EVs, IVs, level, happiness, gender,
+shiny, Pokéball, Hidden-Power type, and Tera type. No other field is included.
+It must define
+Showdown ID and Unicode normalization, missing/implicit defaults, whether move
+slot order is preserved or sorted for clustering, canonical field order,
+order-independent six-member ordering, and fail-closed behavior for duplicate
+or structurally invalid members. Unowned fields and defaults are rejected. The
+cluster ID is the SHA-256 digest of this
+exact versioned canonical team representation. Option 2 owns a separate
+distance/weight/threshold contract; Option 3 owns only external classifier
+provenance.
 
 Schedule generation sorts canonical identities, records balanced side
 assignments within each registered block, derives all schedule seeds from the
@@ -927,6 +998,7 @@ explicit_submission_count
 default_submission_count
 room_control_or_chat_count
 ignored_display_count
+final_observed_state_digest
 trace_status
 ```
 
@@ -940,9 +1012,12 @@ error.
 
 The result validator requires every listed Decision Record to exist, to share
 the run context, and to have unique IDs in `decision_index` order. It checks
-that explicit/default/room-control/ignored-display counters agree with the
-records, that `trace_status` matches the actual emit outcome, and that
-`battle_outcome` is one of `our_win`, `opponent_win`, `tie`, `void`, or
+that explicit/default counters are derivable from finalized Decision Records.
+`room_control_or_chat_count` must equal the `BattleSessionResult` value, and
+`ignored_display_count` must equal the final `ObservedState` value. The
+`final_observed_state_digest` must equal the digest of the final public State
+projection. It also checks that `trace_status` matches the actual emit outcome
+and that `battle_outcome` is one of `our_win`, `opponent_win`, `tie`, `void`, or
 `incomplete`. Winner values are side labels, never usernames.
 
 TDD sequence:
@@ -981,6 +1056,7 @@ offline M1.5 harness rather than a Search or Oracle package.
 - Create: `registrations/gen9ou/m1-5-core-comparisons-v1.json`
 - Create: `registrations/gen9ou/bindings/heuristic_v0-implementation.json`
 - Create: `registrations/gen9ou/bindings/heuristic_v0-m15-synthetic-run.json`
+- Create: `registrations/gen9ou/synthetic/m15-acceptance-inputs-v1.json`
 - Create: `registrations/gen9ou/arm-specs/determinization-search-v0.json`
 - Create conditionally for Decision C `calibrated_grid` or
   `hardware_normalized`: `registrations/gen9ou/budgets/m15-search-work-calibration-v1.json`
@@ -1042,9 +1118,13 @@ observed result.
 The second binding is a synthetic acceptance `EvaluationRunBinding` with
 `run_purpose: "synthetic_acceptance"`. It uses small fixture digests only;
 those fixtures are not Selection, Power Pilot, Release Holdout, or any other
-evaluation pool. It binds the implementation binding, schedule, seed family,
-budget profile, runtime environment, ruleset, and permitted pool-access state
-so Task 22 cannot bypass the formal Run Binding layer.
+evaluation pool. The `synthetic-fixture-manifest` above is a concrete,
+schema-valid artifact containing the synthetic team fixtures,
+opponent-policy fixture, schedule rows, SeedFamily, budget profile, runtime
+environment, and ruleset snapshot. The binding references its recomputed
+`synthetic_fixture_manifest_digest`, forbids both pool-digest fields, and binds
+the implementation binding without opening a pool. Task 22 therefore cannot
+bypass the formal Run Binding layer.
 
 Before any future binding of `determinization_search_v0`, the registration
 must also reference a versioned execution specification covering world
@@ -1072,8 +1152,8 @@ TDD sequence:
   registered arm ID.
 - [ ] Add tests for `not_applicable`, `unbound`, and `bound` component states
   in the implementation binding.
-- [ ] Generate the two artifacts from the already accepted rules and validate
-  them without changing their meaning after digest calculation.
+- [ ] Generate and validate all required artifacts from the already accepted
+  rules without changing their meaning after digest calculation.
 
 **Acceptance criteria:** The registration is formally frozen and
 digest-verifiable;
@@ -1117,9 +1197,11 @@ records:
   implementation binding and frozen registration;
 - two identical synthetic M1 runs with byte-identical Decision Records;
 - seed, schedule, and budget reproducibility;
-- immutable Calibration Specification contents and budget-profile digest
-  reproducibility; measured Calibration Evidence is explicitly deferred to
-  the later M2 implementation binding;
+- budget-profile reproducibility; for Decision C `fixed`, report the selected
+  work value and no Calibration Specification or Evidence; for
+  `calibrated_grid` or `hardware_normalized`, report the concrete Calibration
+  Specification and explicitly report that measured Calibration Evidence is
+  deferred to the later M2 implementation binding;
 - pool partition and near-duplicate disjointness checks;
 - unopened Selection, Power Pilot, and Release Holdout status;
 - secret and hidden-state leakage checks;
