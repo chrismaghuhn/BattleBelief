@@ -67,12 +67,15 @@ CPython 3.14.5. Jeder aufgeführte Befehl endete mit Exitcode 0.
 Die negative Scope-Suche wurde mit diesem Befehl ausgeführt:
 
 ```powershell
-rg -n "poke_engine|poke-engine|DUCT|MCTS|BeliefState|duckdb|pyarrow|torch|onnx|/search" packages tests .github
+rg -n "poke_engine|poke-engine|DUCT|MCTS|BeliefState|duckdb|pyarrow|torch|onnx|/search" packages tools tests .github
 ```
 
-Sie fand genau einen Treffer. Dieser Treffer ist der Negativtest, der `/search`
-und weitere nicht erlaubte Challenge-Kommandos ausdrücklich ausschließt; ein
-ausführbarer M2+-Pfad wurde nicht gefunden.
+Sie fand sieben passende Zeilen: Sechs Zeilen in `tools/check_architecture.py`
+deklarieren M2+-Dependencies ausdrücklich als verbotene Paketabhängigkeiten.
+Eine Zeile ist der Negativtest, der `/search` und weitere nicht erlaubte
+Challenge-Kommandos ausdrücklich ausschließt. In den durchsuchten ausführbaren
+Repositorypfaden `packages`, `tools`, `tests` und `.github` wurde kein M2+-Pfad
+gefunden.
 
 ## GitHub-Actions-Matrix
 
