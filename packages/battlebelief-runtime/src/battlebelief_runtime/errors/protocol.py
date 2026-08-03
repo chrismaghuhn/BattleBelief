@@ -23,3 +23,7 @@ class Disconnect(RuntimeError):
 
 class TimerOrForfeit(RuntimeError):
     code = "timer_or_forfeit"
+
+
+class ReducerInvariantFailure(RuntimeError):
+    code = "reducer_invariant_failure"

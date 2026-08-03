@@ -29,7 +29,11 @@ from battlebelief_runtime.adapters.showdown_protocol.parser import (
     parse_battle_line,
     parse_inactive_line,
 )
-from battlebelief_runtime.errors.protocol import MalformedProtocolMessage, UnknownProtocolEvent
+from battlebelief_runtime.errors.protocol import (
+    MalformedProtocolMessage,
+    TimerOrForfeit,
+    UnknownProtocolEvent,
+)
 
 
 class TestNoOps:
@@ -115,6 +119,23 @@ class TestEvidence:
         ev = parse_battle_line("|", 0)
         assert isinstance(ev, IgnoredDisplayEvent)
         assert ev.kind == "spacer"
+
+    def test_nonterminal_message_is_ignored_display_noop(self) -> None:
+        ev = parse_battle_line("|-message|Custom message", 0)
+        assert isinstance(ev, IgnoredDisplayEvent)
+        assert ev.kind == "-message"
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "|-message|ash lost due to inactivity.",
+            "|-message|ash forfeited.",
+            "|-message|All players are inactive.",
+        ],
+    )
+    def test_terminal_message_raises_timer_or_forfeit(self, payload: str) -> None:
+        with pytest.raises(TimerOrForfeit):
+            parse_battle_line(payload, 0)
 
 
 class TestMalformedAndUnknown:

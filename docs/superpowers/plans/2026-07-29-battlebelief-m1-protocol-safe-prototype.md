@@ -1,10 +1,10 @@
 ---
 document_id: plan-m1-protocol-safe-prototype
-title: BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.1
+title: BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.2
 document_type: roadmap
 status: proposed
 normative: false
-version: 3
+version: 4
 applies_to:
   - repository
   - runtime
@@ -14,10 +14,10 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-30
+last_reviewed: 2026-08-03
 ---
 
-# BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.1
+# BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.2
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` (recommended) or
@@ -566,7 +566,7 @@ Nur diese display-/transportbezogenen Battle-Zeilen ergeben
 
 ```text
 spacer (exakter Payload |), upkeep, t:, -anim, -hint, -center, -combine,
--waiting, message, -message
+-waiting, message sowie nichtterminale -message
 ```
 
 `player`, `teamsize`, `gametype`, `gen`, `tier`, `rule`, `poke`,
@@ -1257,8 +1257,11 @@ Challenge- und Chatzeilen gehen nicht durch diese Funktion. Der
 `parse_inactive_line(payload, event_index)` ist eine getrennte Funktion im
 gleichen Modul. Nichtterminale `inactive`-Warnungen ergeben
 `VisibleEvidence(kind="timer_warning")`; `inactiveoff` ergibt
-`VisibleEvidence(kind="timer_warning_cleared")`. Die im Corpus festgelegten
-terminalen Inactivity-/Forfeit-Meldungen erzeugen `TimerOrForfeit`.
+`VisibleEvidence(kind="timer_warning_cleared")`. `parse_battle_line()` prüft
+`-message` vor der Display-Allowlist. Die drei im gepinnten Server emittierten
+terminalen Formen `<player> lost due to inactivity.`, `<player> forfeited.`
+und `All players are inactive.` erzeugen `TimerOrForfeit`; andere
+`-message`-Zeilen bleiben `IgnoredDisplayEvent`.
 
 Der M1-Vertrag bleibt bewusst **ein kanonisches Event pro Battle-Wire-Zeile**.
 Im gepinnten Showdown-Snapshot besitzt `|-sethp|POKEMON|HP` genau ein Ziel.
@@ -1290,7 +1293,8 @@ eine Tuple-Rückgabe oder einen Multi-Event-Typ.
 | `-transform`, `-formechange`, `-terastallize` | Transform-/Form-/Tera-Event |
 | `-crit`, `-supereffective`, `-resisted`, `-immune`, `-miss`, `-fail`, `-activate`, `-block`, `-notarget`, `-nothing`, `-hitcount`, `-prepare`, `-fieldactivate` | `VisibleEvidence` |
 | exakter Payload `|` | `IgnoredDisplayEvent(kind="spacer")` |
-| `upkeep`, `t:`, `-anim`, `-hint`, `-center`, `-combine`, `-waiting`, `message`, `-message` | `IgnoredDisplayEvent` |
+| `upkeep`, `t:`, `-anim`, `-hint`, `-center`, `-combine`, `-waiting`, `message`, nichtterminales `-message` | `IgnoredDisplayEvent` |
+| terminales `-message`: `<player> lost due to inactivity.`, `<player> forfeited.`, `All players are inactive.` | `TimerOrForfeit` |
 
 Alte Mechaniken wie `-mega`, `-zpower` oder Dynamax werden nicht vorauseilend
 implementiert. Wenn sie im Gen-9-OU-Corpus auftauchen, ist das ein
@@ -1758,8 +1762,9 @@ werden, muss den ursprünglichen Fehler aber weiterhin zählen.
 - `|error|[Unavailable choice]` → sofort `ServerUnavailableChoice`;
 - andere `|error|` → `MalformedProtocolMessage`, sofern nicht separat
   spezifiziert;
-- Corpus-terminales `|inactive|...lost due to inactivity...` oder
-  Forfeit-Signal → `TimerOrForfeit`;
+- Corpus-terminales `|-message|<player> lost due to inactivity.`,
+  `|-message|<player> forfeited.` oder
+  `|-message|All players are inactive.` → `TimerOrForfeit`;
 - nichtterminale Inactive-Warnung → typisierte Timer-Evidence, kein No-op;
 - `|inactiveoff|` → `VisibleEvidence(kind="timer_warning_cleared")`;
 - unbekannte Eventtypen werden vor dem Reducer klassifiziert;
@@ -1816,6 +1821,108 @@ uv run pytest tests/integration/test_battle_session.py -v
 ```powershell
 git add packages/battlebelief-runtime tests/integration/test_battle_session.py
 git commit -m "feat(runtime): act on fresh Showdown requests safely"
+```
+
+### Review-Nachtrag: echte terminale Timer-/Forfeit-Wireformen
+
+**Files:**
+
+- Modify: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/showdown_protocol/parser.py`
+- Modify: `packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py`
+- Modify: `tests/integration/test_battle_session.py`
+- Modify: `tests/contracts/test_protocol_contract.py`
+- Modify: `tests/fixtures/protocol/evidence-and-display.txt`
+
+- [ ] **Step 1: Failing Parser- und Session-Regressionen schreiben**
+
+Die drei gepinnten Serverformen werden parametrisiert:
+
+```python
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "|-message|ash lost due to inactivity.",
+        "|-message|ash forfeited.",
+        "|-message|All players are inactive.",
+    ],
+)
+def test_terminal_message_raises_timer_or_forfeit(payload: str) -> None:
+    with pytest.raises(TimerOrForfeit):
+        parse_battle_line(payload, 0)
+```
+
+Die Session muss dieselben drei Formen als einzige Primärklasse übernehmen;
+`|-message|Custom message` bleibt über den bestehenden No-op-Test ein
+`IgnoredDisplayEvent`.
+
+- [ ] **Step 2: Fokussierte Tests rot ausführen**
+
+```powershell
+uv run pytest packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/integration/test_battle_session.py -v
+```
+
+Erwartung: Die drei neuen Parser- und Sessionfälle schlagen fehl, weil
+`-message` noch vollständig über die Display-Allowlist läuft.
+
+- [ ] **Step 3: Engen Parser-Fix implementieren**
+
+`parse_battle_line()` prüft `-message` vor `IGNORED_DISPLAY_TYPES`:
+
+```python
+if wire_type == "-message":
+    message = "|".join(args) if args else ""
+    lowered = message.lower()
+    if (
+        lowered.endswith(" lost due to inactivity.")
+        or lowered.endswith(" forfeited.")
+        or lowered == "all players are inactive."
+    ):
+        raise TimerOrForfeit(message)
+```
+
+Alle anderen `-message`-Zeilen erreichen unverändert die vorhandene
+Display-Allowlist.
+
+- [ ] **Step 4: Corpus auf die drei echten Wireformen erweitern**
+
+`tests/fixtures/protocol/evidence-and-display.txt` erhält alle drei Zeilen.
+Der Contract-Helfer fängt `TimerOrForfeit` für `TIMER_MESSAGE` und
+`BATTLE_EVENT` an derselben äußeren Parsergrenze ab und zählt keine der
+terminalen Zeilen als kanonisches Event.
+
+- [ ] **Step 5: Fokussierte Tests grün ausführen**
+
+```powershell
+uv run pytest packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/integration/test_battle_session.py tests/contracts/test_protocol_contract.py -v
+```
+
+- [ ] **Step 6: Aktuelles `main` ohne History-Rewrite integrieren**
+
+```powershell
+git merge --no-edit origin/main
+```
+
+- [ ] **Step 7: Vollständige Repository-Gates und Diff-Prüfung ausführen**
+
+```powershell
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy
+uv run pytest
+uv run python tools/check_architecture.py
+uv run python tools/check_docs.py
+uv run python tools/check_schemas.py
+uv lock --check
+python tools/smoke_packages.py
+git diff --check
+```
+
+- [ ] **Step 8: Fokussiert committen und auf PR #12 pushen**
+
+```powershell
+git add docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md packages/battlebelief-runtime/src/battlebelief_runtime/adapters/showdown_protocol/parser.py packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/contracts/test_protocol_contract.py tests/fixtures/protocol/evidence-and-display.txt tests/integration/test_battle_session.py
+git commit -m "fix(runtime): classify terminal Showdown messages"
+git push origin feat/m1-battle-session
 ```
 
 ---
@@ -2126,7 +2233,8 @@ Mit FakeConnection werden mindestens diese vollständigen Abläufe ausgeführt:
 - nackter `|`-Spacer in der Battle-Initialisierung;
 - Room-Control/Chat gemischt mit Battle-Events, einschließlich Chattext mit
   eingebettetem `|request|`;
-- terminale Timer-/Forfeit-Line;
+- alle drei terminalen `-message`-Timer-/Forfeit-Formen sowie eine
+  nichtterminale `-message`-Kontrolle;
 - zwei parallele Raumpräfixe bei weiterhin nur einer Session.
 
 Für alle erfolgreichen Abläufe gilt:
