@@ -4,22 +4,24 @@ title: Projektroadmap und Meilensteine
 document_type: roadmap
 status: accepted
 normative: false
-version: 5
+version: 6
 applies_to:
   - project
   - gen9ou
-effective_from: 2026-07-29
+effective_from: 2026-08-03
 supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-29
+last_reviewed: 2026-08-03
 ---
 
 # Projektroadmap und Meilensteine
 
 Die Roadmap ordnet Arbeit. Verbindliche Schwellen und Bedeutungen stehen in den
-verlinkten Contracts.
+verlinkten Contracts. Die experimentelle Reihenfolge, Baselines und
+Stop-/Pivot-Entscheidungen werden in der
+[Forschungsstrategie](../research/strategy-and-experiments.md) erklärt.
 
 ## M0 – Öffentliche Projektgrundlage
 
@@ -56,7 +58,31 @@ Lieferumfang:
 Gate: Die Evidence- und Safety-Anforderungen aus
 [`contract-protocol-state`](../contracts/protocol-state.md) und
 [`contract-legal-action-safety`](../contracts/legal-action-safety.md) bestehen
-in der lokalen Release-Smoke-Suite.
+in der lokalen Release-Smoke-Suite. Ein vollständiger direkter Battlepfad muss
+kontrolliert wiederholbar sein; das erzeugt weiterhin keinen Strength-Claim.
+
+## M1.5 – Measurement Harness and Baseline Freeze
+
+M1.5 ist ein kurzer Forschungs- und Evidenzcheckpoint zwischen dem sicheren
+Runtimepfad und umfangreicher Search-Implementierung. Es ist kein zusätzliches
+Release und kein Strength-Claim.
+
+Lieferumfang:
+
+- vorregistrierte zentrale Hypothese und Kernvergleiche;
+- eingefrorene Baseline-IDs und Ablationsreihenfolge;
+- festgelegte Entwicklungs-, Selection- und spätere Holdout-Grenzen;
+- Team-, Gegnerpolicy-, Seiten- und Scheduleplanung;
+- manifestierte CPU-/Arbeitsbudgets und Decision-Trace-Ausgaben;
+- Verweise auf die normativen Metrik-, Statistik-, Zielpopulations- und
+  Determinismusquellen; und
+- dokumentierte Stop-/Pivot-Kriterien für Search, Belief und optionale
+  Modelle.
+
+Gate: Die Measurement- und Baseline-Definitionen sind prüfbar, alle benötigten
+M1-Traces sind reproduzierbar und kein Selection- oder Release-Holdout wurde
+vorzeitig geöffnet. Der lokale Showdown-Oracle bleibt der erste technische
+M2-Liefergegenstand.
 
 ## M2 – Engine-qualified Search Prototype
 
@@ -68,14 +94,18 @@ Lieferumfang:
 - installierbares Runtime-`search`-Extra und echter Gen9-Sentinel;
 - Capability-Manifest und Eligibility-Gate;
 - Differentialtests;
+- kleinste reproduzierbare Determinization-Search-Baseline;
 - `information_set_duct_v0`;
 - beide Search-Betriebsmodi.
 
 Gate: Engine-, Search- und Determinismus-Contracts bestehen im definierten
 Corpus; unbekannte oder nicht unterstützte Capabilities führen fail-closed zum
-Fallback. Die Runtime-Grenzen aus
+Fallback. Search wird zuerst gegen die M1-Heuristik unter demselben
+manifestierten Budget geprüft. Ein ausbleibender reproduzierbarer Nutzen führt
+zu dem vorregistrierten Pivot statt zur automatischen Erweiterung der
+Search-Komplexität. Die Runtime-Grenzen aus
 [`evaluation-m5-strength-qualification`](../evaluation/m5-strength-qualification.md)
-werden auf der Referenzhardware eingehalten; dies erzeugt noch keinen
+werden auf der Referenzhardware geprüft; dies erzeugt noch keinen
 Strength-Claim.
 
 ## M3 – Belief- und Forschungsbaseline
@@ -93,8 +123,11 @@ Lieferumfang:
 Gate: Hidden-Set-NLL verbessert sich auf evidenzgesicherten
 Ground-Truth-Fällen; Reveal-Likelihood verbessert sich separat auf zensierten
 Replays; Kalibrierung, Coverage und Open-World-Verhalten bestehen ihre
-vorregistrierten Guardrails. Die normativen Definitionen und
-Entscheidungsregeln stehen ausschließlich in
+vorregistrierten Guardrails. Zusätzlich werden Closed World gegen Open World
+und Belief-Metrik gegen tatsächlichen Entscheidungsnutzen getrennt abgetragen.
+Eine Kalibrierungsverbesserung ohne Search- oder Battle-Nutzen wird als solche
+berichtet und löst den vorregistrierten Pivot aus. Die normativen Definitionen
+und Entscheidungsregeln stehen ausschließlich in
 [`evaluation-metrics`](../evaluation/metrics.md). Engine-Bias,
 Search-Stabilität und Clusterstruktur sind messbar. Das ist keine
 Releaseevidenz.
@@ -106,14 +139,19 @@ Großes GPU-Training beginnt erst nach diesem Gate.
 Lieferumfang:
 
 - optional Replay-BC, Search Teacher, Population Self-Play und Hybridmodell;
-- Pflichtablation Heuristik, Search, Model und Hybrid;
+- Pflichtablation Heuristik, Determinization Search, Information-Set Search,
+  Closed World, Open World, Model und Hybrid soweit implementiert;
+- Vergleich mit mindestens einer starken externen oder öffentlich
+  reproduzierbaren Baseline;
 - formale Auswahl genau eines Kandidaten;
 - anschließend Power Pilot und endgültiger Stichprobenplan.
 
 Gate: Einer der in
 [`training-pipeline-and-selection`](../training/pipeline-and-selection.md)
 definierten Auswahlwege besteht; alle Artefakte sind versiegelt und der
-Release-Holdout bleibt ungeöffnet.
+Release-Holdout bleibt ungeöffnet. Ein öffentliches Leaderboard oder ein
+Wettbewerb ist erwünscht, ersetzt jedoch nicht die manifestierte interne
+Evaluation.
 
 ## M5 – Strength-qualified MVP
 
@@ -147,7 +185,9 @@ ist kein rückwirkender Bestandteil von M5.
 - Inferenzoptimierung und Wheels.
 
 Jede zusätzliche Schicht muss Stärke erhöhen oder bei formaler
-Nichtunterlegenheit die vorab definierte Ressource senken.
+Nichtunterlegenheit die vorab definierte Ressource senken. Komponenten, die
+die Stop-/Pivot-Kriterien der Forschungsstrategie auslösen, werden zuerst
+vereinfacht oder neu ausgerichtet, statt parallel weiter ausgebaut zu werden.
 
 ## Phase 3 – Offline-Team-Building
 
