@@ -18,7 +18,7 @@ The project currently targets **Smogon Gen 9 OU** and studies whether an explici
 - [[Architecture]] — packages, data flow, safety boundaries, and planned decision pipeline
 - [[Current Status and Roadmap]] — implemented capabilities, limitations, and milestones
 - [[Development and Contributing]] — repository workflow, tests, architecture rules, and contribution requirements
-- [[Research, Scope, and Safety]] — research thesis, supported scope, reproducibility, credentials, and non-goals
+- [[Research, Scope, and Safety|Research-Scope-and-Safety]] — research thesis, supported scope, reproducibility, credentials, and non-goals
 
 ## Decision path
 
