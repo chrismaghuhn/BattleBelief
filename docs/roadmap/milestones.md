@@ -106,16 +106,19 @@ Lieferumfang:
 - Differentialtests;
 - kleinste reproduzierbare Determinization-Search-Baseline als eigener
   Evaluation-Arm;
-- minimales Closed-World-Belief mit eingefrorenem vollständigem Set-Prior,
-  harter öffentlicher Evidenzfilterung und normalisiertem Posterior;
-- `information_set_duct_v0` auf diesem Closed-World-Posterior;
+- Evaluation-only Closed-World-Weltverteilung mit eingefrorenem vollständigem
+  Set-Prior, harter öffentlicher Evidenzfilterung und normalisierter
+  Verteilung;
+- `information_set_duct_v0` auf dieser Closed-World-Weltverteilung;
 - deterministic-benchmark- und live-anytime-Betriebsmodus.
 
-Das minimale M2-Belief besitzt keinen `OTHER`-Bucket, keine Open-World-
-Materialisierung und keine still als Ground Truth behandelten imputierten
-Informationen. Es stellt den Posterior bereit, den der normative Search-Vertrag
-für das Welt-Sampling benötigt. Die vollständige Open-World-Komponente folgt in
-M3.
+Die M2-Weltverteilung ist keine Implementierung des produktiven
+BattleBelief-Belief-Subsystems und beansprucht keine Erfüllung des
+Open-World-Belief-Vertrags. Sie besitzt keinen `OTHER`-Bucket, keine
+Open-World-Materialisierung und keine still als Ground Truth behandelten
+imputierten Informationen. Sie stellt ausschließlich die vollständige
+Weltverteilung für kontrollierte Search-Baselines bereit. Das vertragliche
+Open-World-Belief folgt in M3.
 
 Gate: Engine-, Search- und Determinismus-Contracts bestehen im definierten
 Corpus; unbekannte oder nicht unterstützte Capabilities führen fail-closed zum
@@ -124,8 +127,8 @@ unter den registrierten Budgetansichten geprüft:
 
 - gleiches maximales End-to-End-Wandzeit- und CPU-Budget für Deployment
   Utility; und
-- soweit anwendbar gleiche Search-Arbeit mit separat berichtetem Belief- und
-  Gesamtaufwand für Mechanismus-Ablationen.
+- soweit anwendbar gleiche Search-Arbeit mit separat berichtetem
+  Weltverteilungs-/Belief- und Gesamtaufwand für Mechanismus-Ablationen.
 
 Ein ausbleibender reproduzierbarer Nutzen führt zu dem vorab festgelegten
 Forschungsbefund und Pivot-Prozess statt zur automatischen Erweiterung der
@@ -142,11 +145,13 @@ Lieferumfang:
 
 - versionierter Meta-Snapshot;
 - Lab-Dataset-Profil und Replay-/Dataset-Ingestion-Smoke;
-- vollständige Set-Hypothesen mit kalibrierten Priors;
-- Erweiterung des M2-Closed-World-Beliefs um positive Open-World-Masse,
-  kontrollierte Hypothesenmaterialisierung und Ereignisprotokollierung;
+- produktives, vertraglich konformes Belief über vollständige Set-Hypothesen
+  mit kalibrierten Priors;
+- positive Open-World-Masse, kontrollierte Hypothesenmaterialisierung und
+  Ereignisprotokollierung;
 - Replaypipeline;
-- Heuristik-, Determinization-, Closed-World- und Open-World-Search-Arms;
+- Heuristik-, Determinization-, Evaluation-only-Closed-World- und
+  Open-World-Search-Arms;
 - optionale einfache Modellbaseline ausschließlich nach bestandenem Search-
   und Belief-Zwischengate;
 - getrennte Entwicklungs- und Evaluationsartefakte;
@@ -157,10 +162,11 @@ Lieferumfang:
 Gate: Hidden-Set-NLL verbessert sich auf evidenzgesicherten
 Ground-Truth-Fällen; Reveal-Likelihood verbessert sich separat auf zensierten
 Replays; Kalibrierung, Coverage und Open-World-Verhalten bestehen ihre
-vorregistrierten Guardrails. Zusätzlich werden M2 Closed World gegen M3 Open
-World und Belief-Metrik gegen tatsächlichen Entscheidungsnutzen getrennt
-abgetragen. Die Deployment- und Mechanismus-Budgetansichten verhindern, dass
-Belief-Aufwand und geringere Search-Tiefe still vermischt werden.
+vorregistrierten Guardrails. Zusätzlich werden die M2-Evaluation-only-
+Closed-World-Weltverteilung gegen das M3-Open-World-Belief und Belief-Metrik
+gegen tatsächlichen Entscheidungsnutzen getrennt abgetragen. Die Deployment-
+und Mechanismus-Budgetansichten verhindern, dass Belief-Aufwand und geringere
+Search-Tiefe still vermischt werden.
 
 Eine Kalibrierungsverbesserung ohne Search- oder Battle-Nutzen wird als solche
 berichtet und löst den festgelegten Pivot-Prozess aus. Eine Änderung des
@@ -179,8 +185,8 @@ Lieferumfang:
 
 - optional Replay-BC, Search Teacher, Population Self-Play und Hybridmodell;
 - Pflichtablation Heuristik, Determinization Search, Information-Set Search,
-  Closed World und Open World sowie Model und Hybrid nur soweit tatsächlich
-  implementiert;
+  Evaluation-only Closed World und vertragliches Open World sowie Model und
+  Hybrid nur soweit tatsächlich implementiert;
 - Vergleich mit mindestens einer starken externen oder öffentlich
   reproduzierbaren Baseline;
 - klare Trennung zwischen externem Kontextvergleich und internem
