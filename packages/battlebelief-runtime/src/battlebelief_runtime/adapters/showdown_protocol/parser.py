@@ -59,7 +59,11 @@ from battlebelief_runtime.adapters.showdown_protocol.wire_types import (
     EVIDENCE_TYPES,
     IGNORED_DISPLAY_TYPES,
 )
-from battlebelief_runtime.errors.protocol import MalformedProtocolMessage, UnknownProtocolEvent
+from battlebelief_runtime.errors.protocol import (
+    MalformedProtocolMessage,
+    TimerOrForfeit,
+    UnknownProtocolEvent,
+)
 
 # ---------------------------------------------------------------------------
 # small pure helpers
@@ -656,6 +660,15 @@ def parse_battle_line(payload: str, event_index: int, *, room_id: str | None = N
             return _parse_evidence(wire_type, args, event_index)
         if payload == "|":
             return IgnoredDisplayEvent(event_index=event_index, kind="spacer")
+        if wire_type == "-message":
+            message = "|".join(args) if args else ""
+            lowered = message.lower()
+            if (
+                lowered.endswith(" lost due to inactivity.")
+                or lowered.endswith(" forfeited.")
+                or lowered == "all players are inactive."
+            ):
+                raise TimerOrForfeit(message)
         if wire_type in IGNORED_DISPLAY_TYPES:
             return IgnoredDisplayEvent(event_index=event_index, kind=wire_type)
         raise UnknownProtocolEvent(wire_type)

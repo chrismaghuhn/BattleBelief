@@ -150,14 +150,14 @@ def _process_fixture(name: str) -> tuple[ObservedState, set[type], int]:
             RoomPayloadKind.ROOM_CONTROL_OR_CHAT,
         ):
             continue
-        if classified.kind == RoomPayloadKind.TIMER_MESSAGE:
-            try:
+        try:
+            if classified.kind == RoomPayloadKind.TIMER_MESSAGE:
                 event = parse_inactive_line(line, event_index)
-            except TimerOrForfeit:
-                event_index += 1
-                continue
-        else:
-            event = parse_battle_line(line, event_index, room_id=_ROOM_ID)
+            else:
+                event = parse_battle_line(line, event_index, room_id=_ROOM_ID)
+        except TimerOrForfeit:
+            event_index += 1
+            continue
         event_index += 1
         observed_types.add(type(event))
         state = ObservationReducer.reduce(state, event)

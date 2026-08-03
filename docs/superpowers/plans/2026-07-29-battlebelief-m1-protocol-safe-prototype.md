@@ -1823,6 +1823,108 @@ git add packages/battlebelief-runtime tests/integration/test_battle_session.py
 git commit -m "feat(runtime): act on fresh Showdown requests safely"
 ```
 
+### Review-Nachtrag: echte terminale Timer-/Forfeit-Wireformen
+
+**Files:**
+
+- Modify: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/showdown_protocol/parser.py`
+- Modify: `packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py`
+- Modify: `tests/integration/test_battle_session.py`
+- Modify: `tests/contracts/test_protocol_contract.py`
+- Modify: `tests/fixtures/protocol/evidence-and-display.txt`
+
+- [ ] **Step 1: Failing Parser- und Session-Regressionen schreiben**
+
+Die drei gepinnten Serverformen werden parametrisiert:
+
+```python
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "|-message|ash lost due to inactivity.",
+        "|-message|ash forfeited.",
+        "|-message|All players are inactive.",
+    ],
+)
+def test_terminal_message_raises_timer_or_forfeit(payload: str) -> None:
+    with pytest.raises(TimerOrForfeit):
+        parse_battle_line(payload, 0)
+```
+
+Die Session muss dieselben drei Formen als einzige Primärklasse übernehmen;
+`|-message|Custom message` bleibt über den bestehenden No-op-Test ein
+`IgnoredDisplayEvent`.
+
+- [ ] **Step 2: Fokussierte Tests rot ausführen**
+
+```powershell
+uv run pytest packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/integration/test_battle_session.py -v
+```
+
+Erwartung: Die drei neuen Parser- und Sessionfälle schlagen fehl, weil
+`-message` noch vollständig über die Display-Allowlist läuft.
+
+- [ ] **Step 3: Engen Parser-Fix implementieren**
+
+`parse_battle_line()` prüft `-message` vor `IGNORED_DISPLAY_TYPES`:
+
+```python
+if wire_type == "-message":
+    message = "|".join(args) if args else ""
+    lowered = message.lower()
+    if (
+        lowered.endswith(" lost due to inactivity.")
+        or lowered.endswith(" forfeited.")
+        or lowered == "all players are inactive."
+    ):
+        raise TimerOrForfeit(message)
+```
+
+Alle anderen `-message`-Zeilen erreichen unverändert die vorhandene
+Display-Allowlist.
+
+- [ ] **Step 4: Corpus auf die drei echten Wireformen erweitern**
+
+`tests/fixtures/protocol/evidence-and-display.txt` erhält alle drei Zeilen.
+Der Contract-Helfer fängt `TimerOrForfeit` für `TIMER_MESSAGE` und
+`BATTLE_EVENT` an derselben äußeren Parsergrenze ab und zählt keine der
+terminalen Zeilen als kanonisches Event.
+
+- [ ] **Step 5: Fokussierte Tests grün ausführen**
+
+```powershell
+uv run pytest packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/integration/test_battle_session.py tests/contracts/test_protocol_contract.py -v
+```
+
+- [ ] **Step 6: Aktuelles `main` ohne History-Rewrite integrieren**
+
+```powershell
+git merge --no-edit origin/main
+```
+
+- [ ] **Step 7: Vollständige Repository-Gates und Diff-Prüfung ausführen**
+
+```powershell
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy
+uv run pytest
+uv run python tools/check_architecture.py
+uv run python tools/check_docs.py
+uv run python tools/check_schemas.py
+uv lock --check
+python tools/smoke_packages.py
+git diff --check
+```
+
+- [ ] **Step 8: Fokussiert committen und auf PR #12 pushen**
+
+```powershell
+git add docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md packages/battlebelief-runtime/src/battlebelief_runtime/adapters/showdown_protocol/parser.py packages/battlebelief-runtime/tests/adapters/test_protocol_parser.py tests/contracts/test_protocol_contract.py tests/fixtures/protocol/evidence-and-display.txt tests/integration/test_battle_session.py
+git commit -m "fix(runtime): classify terminal Showdown messages"
+git push origin feat/m1-battle-session
+```
+
 ---
 
 ## Task 11 – Direkter Gen-9-OU-Challenge-Coordinator

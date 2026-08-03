@@ -35,4 +35,7 @@
 |-waiting|p1a: Garchomp|p2a: Togekiss
 |message|Sand Stream whipped up a sandstorm!
 |-message|Custom message
+|-message|ash lost due to inactivity.
+|-message|ash forfeited.
+|-message|All players are inactive.
 |win|ash

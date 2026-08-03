@@ -268,6 +268,9 @@ def test_invalid_and_unavailable_server_errors_abort_on_first_event(
         ),
         ([_line("|player|p3|ash|1|")], ReducerInvariantFailure),
         ([_line("|inactive|You lost due to inactivity.")], TimerOrForfeit),
+        ([_line("|-message|ash lost due to inactivity.")], TimerOrForfeit),
+        ([_line("|-message|ash forfeited.")], TimerOrForfeit),
+        ([_line("|-message|All players are inactive.")], TimerOrForfeit),
         ([Disconnect("socket closed")], Disconnect),
     ],
 )
