@@ -1,10 +1,10 @@
 ---
 document_id: plan-m1-protocol-safe-prototype
-title: BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.1
+title: BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.2
 document_type: roadmap
 status: proposed
 normative: false
-version: 3
+version: 4
 applies_to:
   - repository
   - runtime
@@ -14,10 +14,10 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-30
+last_reviewed: 2026-08-03
 ---
 
-# BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.1
+# BattleBelief M1 Protocol-safe Prototype Implementation Plan v3.2
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` (recommended) or
@@ -566,7 +566,7 @@ Nur diese display-/transportbezogenen Battle-Zeilen ergeben
 
 ```text
 spacer (exakter Payload |), upkeep, t:, -anim, -hint, -center, -combine,
--waiting, message, -message
+-waiting, message sowie nichtterminale -message
 ```
 
 `player`, `teamsize`, `gametype`, `gen`, `tier`, `rule`, `poke`,
@@ -1257,8 +1257,11 @@ Challenge- und Chatzeilen gehen nicht durch diese Funktion. Der
 `parse_inactive_line(payload, event_index)` ist eine getrennte Funktion im
 gleichen Modul. Nichtterminale `inactive`-Warnungen ergeben
 `VisibleEvidence(kind="timer_warning")`; `inactiveoff` ergibt
-`VisibleEvidence(kind="timer_warning_cleared")`. Die im Corpus festgelegten
-terminalen Inactivity-/Forfeit-Meldungen erzeugen `TimerOrForfeit`.
+`VisibleEvidence(kind="timer_warning_cleared")`. `parse_battle_line()` prüft
+`-message` vor der Display-Allowlist. Die drei im gepinnten Server emittierten
+terminalen Formen `<player> lost due to inactivity.`, `<player> forfeited.`
+und `All players are inactive.` erzeugen `TimerOrForfeit`; andere
+`-message`-Zeilen bleiben `IgnoredDisplayEvent`.
 
 Der M1-Vertrag bleibt bewusst **ein kanonisches Event pro Battle-Wire-Zeile**.
 Im gepinnten Showdown-Snapshot besitzt `|-sethp|POKEMON|HP` genau ein Ziel.
@@ -1290,7 +1293,8 @@ eine Tuple-Rückgabe oder einen Multi-Event-Typ.
 | `-transform`, `-formechange`, `-terastallize` | Transform-/Form-/Tera-Event |
 | `-crit`, `-supereffective`, `-resisted`, `-immune`, `-miss`, `-fail`, `-activate`, `-block`, `-notarget`, `-nothing`, `-hitcount`, `-prepare`, `-fieldactivate` | `VisibleEvidence` |
 | exakter Payload `|` | `IgnoredDisplayEvent(kind="spacer")` |
-| `upkeep`, `t:`, `-anim`, `-hint`, `-center`, `-combine`, `-waiting`, `message`, `-message` | `IgnoredDisplayEvent` |
+| `upkeep`, `t:`, `-anim`, `-hint`, `-center`, `-combine`, `-waiting`, `message`, nichtterminales `-message` | `IgnoredDisplayEvent` |
+| terminales `-message`: `<player> lost due to inactivity.`, `<player> forfeited.`, `All players are inactive.` | `TimerOrForfeit` |
 
 Alte Mechaniken wie `-mega`, `-zpower` oder Dynamax werden nicht vorauseilend
 implementiert. Wenn sie im Gen-9-OU-Corpus auftauchen, ist das ein
@@ -1758,8 +1762,9 @@ werden, muss den ursprünglichen Fehler aber weiterhin zählen.
 - `|error|[Unavailable choice]` → sofort `ServerUnavailableChoice`;
 - andere `|error|` → `MalformedProtocolMessage`, sofern nicht separat
   spezifiziert;
-- Corpus-terminales `|inactive|...lost due to inactivity...` oder
-  Forfeit-Signal → `TimerOrForfeit`;
+- Corpus-terminales `|-message|<player> lost due to inactivity.`,
+  `|-message|<player> forfeited.` oder
+  `|-message|All players are inactive.` → `TimerOrForfeit`;
 - nichtterminale Inactive-Warnung → typisierte Timer-Evidence, kein No-op;
 - `|inactiveoff|` → `VisibleEvidence(kind="timer_warning_cleared")`;
 - unbekannte Eventtypen werden vor dem Reducer klassifiziert;
@@ -2126,7 +2131,8 @@ Mit FakeConnection werden mindestens diese vollständigen Abläufe ausgeführt:
 - nackter `|`-Spacer in der Battle-Initialisierung;
 - Room-Control/Chat gemischt mit Battle-Events, einschließlich Chattext mit
   eingebettetem `|request|`;
-- terminale Timer-/Forfeit-Line;
+- alle drei terminalen `-message`-Timer-/Forfeit-Formen sowie eine
+  nichtterminale `-message`-Kontrolle;
 - zwei parallele Raumpräfixe bei weiterhin nur einer Session.
 
 Für alle erfolgreichen Abläufe gilt:
