@@ -3,14 +3,12 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** M1 is in progress. `main` contains immutable protocol and
-> observed-state modeling, request-derived action safety, Showdown protocol and
-> request adapters, packed-team loading, authenticated room-preserving
-> connectivity, and a request-driven single-room `BattleSession`. Direct
-> challenge coordination, CLI integration, acceptance smokes, version
-> activation, and final M1 evidence are not yet finished. Live public battle,
-> belief, search, training, strength, parity, release, and MVP claims are not
-> made.
+> **Status:** M1 is in progress. `main` contains the protocol-safe Core,
+> authenticated Showdown connectivity, the request-driven `BattleSession`,
+> direct-challenge coordination, and the secrets-safe challenge CLI. Acceptance
+> smokes, atomic version activation, and final M1 evidence remain incomplete.
+> Live public battle, belief, search, training, strength, parity, release, and
+> MVP claims are not made.
 
 ## Target architecture
 
@@ -60,12 +58,13 @@ flowchart TB
         CI["Contract, protocol, safety,<br/>schema and package gates"]
     end
 
-    RESULT["M5 strength-qualified MVP<br/>M6 external human validation"]
+    M5["M5 strength-qualified MVP"]
+    M6["M6 human / ladder validation"]
 
     USER --> CLI
     SEALED --> CLI
     CLI --> CLIENT
-    SHOWDOWN <-->|"Room frames and validated commands"| CLIENT
+    SHOWDOWN <-->|"Protocol frames and commands"| CLIENT
 
     CLIENT --> ADAPTERS
     ADAPTERS --> EVENTS
@@ -112,7 +111,8 @@ flowchart TB
     CI -. Verifies .-> STATE
     CI -. Verifies .-> EVALUATION
 
-    EVALUATION --> RESULT
+    EVALUATION --> M5
+    M5 -. "Separate external validation" .-> M6
 ```
 
 The diagram shows the complete decision path:
@@ -163,12 +163,14 @@ implementation on `main` includes:
 - room-preserving frame decoding and strict Showdown protocol parsing;
 - request reading, command encoding, and packed-team loading;
 - authenticated Showdown WebSocket connectivity with classified transport
-  failures; and
+  failures;
 - request-driven `BattleSession` execution with freshness checks, pending-state
-  reconciliation, and `rqid`-bound `/choose` dispatch.
+  reconciliation, and `rqid`-bound `/choose` dispatch;
+- direct Gen 9 OU challenge coordination with single-reader room handoff; and
+- a secrets-safe outgoing challenge CLI with pre-network validation.
 
-Direct challenge coordination and the remaining M1 CLI, smoke, version, and
-evidence work are still in progress. See the
+Acceptance smokes, atomic version activation, and final M1 evidence are still
+in progress. See the
 [M1 protocol-safe prototype plan](docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
 for the detailed scope and task sequence.
 
@@ -179,7 +181,8 @@ for the detailed scope and task sequence.
   deterministic policy, and action safety
 - `battlebelief-runtime`: public live adapters and CLI; currently includes
   Showdown framing, parsing, requests, command encoding, packed teams,
-  authenticated connectivity, and the single-room BattleSession
+  authenticated connectivity, the single-room `BattleSession`, direct-challenge
+  coordination, and the secrets-safe challenge CLI
 - `battlebelief-lab`: offline oracle, data, training, evaluation, and reporting
   work for later milestones
 

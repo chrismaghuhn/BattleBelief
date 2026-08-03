@@ -25,6 +25,8 @@ from battlebelief_runtime.composition.battle_coordinator import BattleCoordinato
 from battlebelief_runtime.composition.battle_session import BattleSessionResult
 from battlebelief_runtime.config import (
     DEFAULT_SERVER_URL,
+    SHOWDOWN_SERVER_HOST,
+    SHOWDOWN_SERVER_TLS_PORT,
     ChallengeConfig,
     ChallengeConfigError,
     load_challenge_config,
@@ -181,6 +183,9 @@ def main(
     if result.primary_error is not None:
         print(_runtime_error_code(result.primary_error), file=sys.stderr)
         return 1
+    if result.state.winner is None and not result.state.tied:
+        print("disconnect", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -198,6 +203,9 @@ def _create_connection(config: ChallengeConfig) -> BattleConnection:
         username=config.username,
         password=config.password,
         assertion_provider=ShowdownAssertionProvider(),
+        read_timeout=None,
+        connect_host=SHOWDOWN_SERVER_HOST,
+        connect_port=SHOWDOWN_SERVER_TLS_PORT,
     )
 
 

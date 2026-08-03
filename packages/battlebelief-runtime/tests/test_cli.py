@@ -14,6 +14,7 @@ from battlebelief_core.errors import (
     NoLegalActionError,
     StaleRequestIdentity,
 )
+from battlebelief_runtime import cli as cli_module
 from battlebelief_runtime.adapters.team_files.loader import load_packed_team
 from battlebelief_runtime.adapters.team_files.packed_team import PackedTeam
 from battlebelief_runtime.cli import ChallengeRunner, main
@@ -33,9 +34,15 @@ _PACKED_TEAM = (
 )
 
 
-def _result(primary_error: BaseException | None = None) -> BattleSessionResult:
+def _result(
+    primary_error: BaseException | None = None,
+    *,
+    state: ObservedState | None = None,
+) -> BattleSessionResult:
+    if state is None:
+        state = dataclasses.replace(ObservedState.initial("ash"), tied=True)
     return BattleSessionResult(
-        state=ObservedState.initial("ash"),
+        state=state,
         primary_error=primary_error,
         room_control_or_chat_count=0,
         explicit_request_submissions=0,
@@ -217,6 +224,7 @@ def test_password_environment_is_read_at_invocation_time(
         ("Ash|injected", "Misty"),
         ("Ash", "Misty, gen9anythinggoes"),
         ("123", "Misty"),
+        ("\u212a123", "Misty"),
         ("A" * 19, "Misty"),
         ("A" * 18 + "\u212a", "Misty"),
         ("   ", "Misty"),
@@ -414,6 +422,26 @@ def test_success_uses_defaults_and_runs_exactly_one_coordinator(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
+
+
+def test_nonterminal_result_exits_one_as_disconnect(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = _FakeRunner(result=_result(state=ObservedState.initial("ash")))
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path)),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 1
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == "disconnect"
 
 
 def test_primary_error_exits_one_with_stable_code(
@@ -615,3 +643,30 @@ def test_challenge_runner_has_injectable_connection_and_coordinator_seams(
     assert result.primary_error is None
     assert observed == [(connection, config, team)]
     assert coordinator.calls == 1
+
+
+def test_public_connection_factory_pins_transport_origin_and_delegates_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    def connection_factory(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr(cli_module, "ShowdownConnection", connection_factory)
+    config = ChallengeConfig(
+        username="Ash",
+        opponent="Misty",
+        team_path=tmp_path / "team.txt",
+        server_url=DEFAULT_SERVER_URL,
+        setup_timeout=DEFAULT_CHALLENGE_SETUP_TIMEOUT_SECONDS,
+        password=_PASSWORD,
+    )
+
+    assert cli_module._create_connection(config) is sentinel
+    assert captured["connect_host"] == "sim3.psim.us"
+    assert captured["connect_port"] == 443
+    assert captured["read_timeout"] is None

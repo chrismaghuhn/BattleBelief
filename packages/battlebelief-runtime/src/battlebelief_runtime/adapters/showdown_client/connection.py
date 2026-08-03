@@ -64,6 +64,8 @@ class ShowdownConnection:
         open_timeout: float = 10.0,
         read_timeout: float | None = 60.0,
         write_timeout: float | None = 10.0,
+        connect_host: str | None = None,
+        connect_port: int | None = None,
         socket_connector: SocketConnector | None = None,
     ) -> None:
         self._url = url
@@ -73,6 +75,8 @@ class ShowdownConnection:
         self._open_timeout = open_timeout
         self._read_timeout = read_timeout
         self._write_timeout = write_timeout
+        self._connect_host = connect_host
+        self._connect_port = connect_port
         self._uses_default_socket_connector = socket_connector is None
         self._socket_connector: SocketConnector = (
             socket_connector if socket_connector is not None else cast(SocketConnector, connect)
@@ -87,17 +91,16 @@ class ShowdownConnection:
 
         try:
             try:
+                connection_kwargs: dict[str, object] = {
+                    "open_timeout": self._open_timeout,
+                }
                 if self._uses_default_socket_connector:
-                    self._socket = await self._socket_connector(
-                        self._url,
-                        open_timeout=self._open_timeout,
-                        logger=_WEBSOCKET_LOGGER,
-                    )
-                else:
-                    self._socket = await self._socket_connector(
-                        self._url,
-                        open_timeout=self._open_timeout,
-                    )
+                    connection_kwargs["logger"] = _WEBSOCKET_LOGGER
+                if self._connect_host is not None:
+                    connection_kwargs["host"] = self._connect_host
+                if self._connect_port is not None:
+                    connection_kwargs["port"] = self._connect_port
+                self._socket = await self._socket_connector(self._url, **connection_kwargs)
             except TimeoutError as exc:
                 raise TransportTimeout("Showdown connection open timed out") from exc
             except (
@@ -107,6 +110,7 @@ class ShowdownConnection:
                 InvalidURI,
                 OSError,
                 StopAsyncIteration,
+                ValueError,
             ) as exc:
                 raise Disconnect("Showdown connection could not be opened") from exc
 

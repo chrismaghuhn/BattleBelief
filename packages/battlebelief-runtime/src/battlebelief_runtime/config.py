@@ -4,13 +4,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-DEFAULT_SERVER_URL = "wss://sim3.psim.us/showdown/websocket"
+SHOWDOWN_SERVER_HOST = "sim3.psim.us"
+SHOWDOWN_SERVER_TLS_PORT = 443
+DEFAULT_SERVER_URL = f"wss://{SHOWDOWN_SERVER_HOST}/showdown/websocket"
 DEFAULT_CHALLENGE_SETUP_TIMEOUT_SECONDS = 120.0
 SHOWDOWN_PASSWORD_ENV = "BATTLEBELIEF_SHOWDOWN_PASSWORD"
 _ALLOWED_SERVER_URLS = frozenset(
     {
         DEFAULT_SERVER_URL,
-        "wss://sim3.psim.us:443/showdown/websocket",
+        f"wss://{SHOWDOWN_SERVER_HOST}:{SHOWDOWN_SERVER_TLS_PORT}/showdown/websocket",
     }
 )
 
@@ -65,6 +67,7 @@ def _validate_user_value(value: str, *, field_name: str) -> None:
         not user_id
         or len(user_id) > 18
         or not any("a" <= character <= "z" for character in user_id)
+        or not any(character.isascii() and character.isalpha() for character in value)
         or not value.isprintable()
         or any(character in {",", "|"} for character in value)
     ):

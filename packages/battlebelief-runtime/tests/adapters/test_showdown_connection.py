@@ -174,6 +174,7 @@ async def test_websocket_debug_logging_cannot_expose_authentication_or_team_fram
         logging.DEBUG,
         logger=connection_module._WEBSOCKET_LOGGER.name,
     )
+    assert connection_module._WEBSOCKET_LOGGER.isEnabledFor(logging.DEBUG)
     monkeypatch.setattr(connection_module, "connect", connector)
     connection = ShowdownConnection(
         url=_URL,
@@ -242,6 +243,7 @@ async def test_connection_classifies_nametaken_as_disconnect() -> None:
         InvalidHandshake("handshake failed"),
         InvalidProxy("http://proxy", "proxy failed"),
         InvalidURI("not-a-websocket", "invalid URI"),
+        ValueError("cross-origin redirect rejected"),
     ],
 )
 async def test_connection_classifies_websocket_handshake_errors(
@@ -250,16 +252,49 @@ async def test_connection_classifies_websocket_handshake_errors(
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         raise handshake_error
 
+    provider = _FakeAssertionProvider()
     connection = ShowdownConnection(
         url=_URL,
         username="Ash",
         password="password",
-        assertion_provider=_FakeAssertionProvider(),
+        assertion_provider=provider,
         socket_connector=connector,
     )
 
     with pytest.raises(Disconnect):
         await connection.connect()
+    assert provider.calls == []
+
+
+@_async_test
+async def test_pinned_transport_origin_rejects_redirect_before_authentication() -> None:
+    captured: dict[str, object] = {}
+    provider = _FakeAssertionProvider()
+
+    async def connector(url: str, **kwargs: object) -> _FakeSocket:
+        captured.update({"url": url, **kwargs})
+        raise ValueError("cross-origin redirect rejected")
+
+    connection = ShowdownConnection(
+        url="wss://sim3.psim.us/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=provider,
+        connect_host="sim3.psim.us",
+        connect_port=443,
+        socket_connector=connector,
+    )
+
+    with pytest.raises(Disconnect):
+        await connection.connect()
+
+    assert captured == {
+        "url": "wss://sim3.psim.us/showdown/websocket",
+        "open_timeout": 10.0,
+        "host": "sim3.psim.us",
+        "port": 443,
+    }
+    assert provider.calls == []
 
 
 @_async_test
