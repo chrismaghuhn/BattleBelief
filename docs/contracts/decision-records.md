@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - evaluation
   - measurement
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-04
 ---
 
 # Decision-Record- und öffentliche Projektion-Vertrag
@@ -40,8 +40,12 @@ Die Referenzvektoren liegen in
 Die Projektionen enthalten keine Passwörter, Assertions, Packed Teams, rohen
 Room-IDs, Konto- oder User-IDs, sichtbaren Displaynamen, privaten Requests,
 gesampelten Hidden Worlds, absoluten Pfade, Hostnamen oder Wandzeitstempel.
-Sie bewahren nur ausdrücklich dokumentierte beobachtete Felder. Der Gewinner
-wird als `our_side`, `opponent_side` oder `tie` dargestellt, nie als Username.
+Sie bewahren nur ausdrücklich dokumentierte beobachtete Felder. Nickname-
+tragende Transformationsziele, freie Effekte und rohe Annotationen werden nicht
+projiziert; eine Transformation wird nur als boolesches `transformed`-Merkmal
+beziehungsweise als identitätsfreie Evidenz gemeldet. Der Gewinner wird als
+`our_side`, `opponent_side` oder `tie` dargestellt, nie als Username. Ein nicht
+auflösbarer Gewinner wird nicht als gegnerischer Sieg fehlklassifiziert.
 
 Die Reihenfolge von `SafeSubmissionSet.submissions`, `BattleSubmission.team_order`
 und sichtbaren Evidenzereignissen ist semantisch und bleibt erhalten.
@@ -66,7 +70,7 @@ nullbasierten `decision_index`.
 
 ## Status und Kardinalität
 
-Die zulässigen terminalen Status sind:
+Die zulässigen terminalen Status und ihre Feldinvarianten sind:
 
 ```text
 submitted
@@ -81,12 +85,28 @@ terminally_discarded
 reconciliation_rejected
 ```
 
+`submitted` erfordert eine ausgewählte Submission und passende Provenance,
+aber keinen Fehlercode. `wait_noop` hat keine Submission, keine Provenance und
+keinen Fehlercode. `policy_rejected`, `superseded_before_selection`,
+`terminally_discarded` und `reconciliation_rejected` haben keine Submission,
+keine Provenance und einen stabilen Fehlercode. `action_gate_rejected`,
+`command_encoding_failed` und `send_failed` haben eine ausgewählte Submission,
+passende Provenance und einen stabilen Fehlercode. `session_aborted` erfordert
+einen stabilen Fehlercode; eine bereits erfolgte Auswahl darf erhalten bleiben.
+Fehlercodes entsprechen ausschließlich
+`^[a-z][a-z0-9_.:-]*$`. Die Submission-Felder entsprechen außerdem den
+Invarianten von `BattleSubmission`: Move-Slots sind 1--4, Switch-/Revive-Slots
+1--6, Team-Slots sind nichtleer und eindeutig, und Default-Aktionen tragen
+ausschließlich `server_default`.
+
 Jeder frische Request, der die Freshness-Prüfung passiert, eröffnet genau ein
 Record und erhält genau eine terminale Disposition. Ein identischer Duplicate-
 Request eröffnet kein Record. Ein Abbruch ohne frischen Request gehört in das
 Run-/Battle-Resultat und erfindet keine Request-Identity. `command_encoding_failed`
 ist von `send_failed` getrennt: Die Auswahl und Provenance sind vorhanden, aber
-es gab keinen Socket-Send und keinen Submission-Counter-Zuwachs.
+es gab keinen Socket-Send und keinen Submission-Counter-Zuwachs. `battle_id_digest`
+ist Bestandteil des Payloads und wird damit sowohl von `record_id` als auch von
+`record_digest` nachvollziehbar gebunden.
 
 Fehlertexte werden nie serialisiert; `fallback_or_error_class` enthält nur
 stabile Klassifikationscodes oder `null`.

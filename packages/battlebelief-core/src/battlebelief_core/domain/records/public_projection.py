@@ -145,7 +145,7 @@ def _project_pokemon(item: PokemonView) -> dict[str, PublicValue]:
         "boosts": list(item.boosts),
         "volatiles": list(item.volatiles),
         "recharging": item.recharging,
-        "transform_target": item.transform_target,
+        "transformed": item.transform_target is not None,
     }
 
 
@@ -167,14 +167,33 @@ def _winner_projection(state: ObservedState) -> str | None:
         return "tie"
     if state.winner is None:
         return None
-    winner = state.winner.casefold()
-    our_user = state.our_user_id.casefold()
+    winner = _showdown_id(state.winner)
+    our_user = _showdown_id(state.our_user_id)
     if winner == our_user:
         return "our_side"
     for side in (state.p1, state.p2):
-        if side.user_id is not None and winner == side.user_id.casefold():
+        if side.user_id is not None and winner == _showdown_id(side.user_id):
             return "our_side" if side.side_id == state.our_side else "opponent_side"
-    return "opponent_side"
+    return None
+
+
+def _showdown_id(value: str) -> str:
+    """Apply the same ASCII ``toID`` normalization as Showdown's parser."""
+
+    return "".join(
+        character for character in value.lower() if character.isascii() and character.isalnum()
+    )
+
+
+def _project_visible_evidence(evidence: Any) -> dict[str, PublicValue]:
+    """Keep event identity while excluding raw nickname-bearing payloads."""
+
+    return {
+        "event_index": evidence.event_index,
+        "kind": evidence.kind,
+        "side_id": evidence.side_id,
+        "slot": evidence.slot,
+    }
 
 
 def project_observed_state(state: ObservedState) -> Mapping[str, PublicValue]:
@@ -202,15 +221,7 @@ def project_observed_state(state: ObservedState) -> Mapping[str, PublicValue]:
                 "weather": state.weather,
                 "field_conditions": list(state.field_conditions),
                 "visible_evidence": [
-                    {
-                        "event_index": evidence.event_index,
-                        "kind": evidence.kind,
-                        "side_id": evidence.side_id,
-                        "slot": evidence.slot,
-                        "effect": evidence.effect,
-                        "annotations": list(evidence.annotations),
-                    }
-                    for evidence in state.visible_evidence
+                    _project_visible_evidence(evidence) for evidence in state.visible_evidence
                 ],
                 "ignored_display_count": state.ignored_display_count,
             }

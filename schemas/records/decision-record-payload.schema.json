@@ -8,6 +8,7 @@
     "record_schema_version",
     "record_status",
     "run_context_digest",
+    "battle_id_digest",
     "decision_index",
     "request_identity",
     "observed_state_digest",
@@ -35,6 +36,7 @@
       ]
     },
     "run_context_digest": {"$ref": "#/$defs/digest"},
+    "battle_id_digest": {"$ref": "#/$defs/digest"},
     "decision_index": {"type": "integer", "minimum": 0},
     "request_identity": {"$ref": "#/$defs/requestIdentity"},
     "observed_state_digest": {"$ref": "#/$defs/digest"},
@@ -55,6 +57,47 @@
     "policy_or_arm_id": {"type": "string", "minLength": 1},
     "runtime_and_contract_digests": {"$ref": "#/$defs/runtimeAndContractDigests"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"record_status": {"const": "submitted"}}},
+      "then": {
+        "required": ["selected_submission", "submission_provenance"],
+        "properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"type": "null"}}
+      }
+    },
+    {
+      "if": {"properties": {"record_status": {"const": "wait_noop"}}},
+      "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"record_status": {"enum": ["policy_rejected", "superseded_before_selection", "terminally_discarded", "reconciliation_rejected"]}}},
+      "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+    },
+    {
+      "if": {"properties": {"record_status": {"enum": ["action_gate_rejected", "command_encoding_failed", "send_failed"]}}},
+      "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+    },
+    {
+      "if": {"properties": {"record_status": {"const": "session_aborted"}}},
+      "then": {"properties": {"fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+    },
+    {
+      "if": {"properties": {"submission_provenance": {"const": "explicit_request"}}},
+      "then": {"properties": {"selected_submission": {"oneOf": [{"$ref": "#/$defs/moveSubmission"}, {"$ref": "#/$defs/switchSubmission"}, {"$ref": "#/$defs/reviveSubmission"}, {"$ref": "#/$defs/teamSubmission"}]}}}
+    },
+    {
+      "if": {"properties": {"submission_provenance": {"const": "server_default"}}},
+      "then": {"properties": {"selected_submission": {"$ref": "#/$defs/defaultSubmission"}}}
+    },
+    {
+      "if": {"properties": {"selected_submission": {"not": {"type": "null"}}}},
+      "then": {"properties": {"submission_provenance": {"enum": ["explicit_request", "server_default"]}}}
+    },
+    {
+      "if": {"properties": {"selected_submission": {"type": "null"}}},
+      "then": {"properties": {"submission_provenance": {"type": "null"}}}
+    }
+  ],
   "$defs": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "requestIdentity": {
@@ -66,21 +109,31 @@
         "request_digest": {"$ref": "#/$defs/digest"}
       }
     },
-    "submission": {
-      "type": "object",
-      "additionalProperties": false,
+    "submission": {"oneOf": [{"$ref": "#/$defs/moveSubmission"}, {"$ref": "#/$defs/switchSubmission"}, {"$ref": "#/$defs/reviveSubmission"}, {"$ref": "#/$defs/teamSubmission"}, {"$ref": "#/$defs/defaultSubmission"}]},
+    "moveSubmission": {
+      "type": "object", "additionalProperties": false,
       "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
-      "properties": {
-        "kind": {"enum": ["move", "switch", "revive", "team", "default"]},
-        "provenance": {"enum": ["explicit_request", "server_default"]},
-        "slot": {"type": ["integer", "null"], "minimum": 1},
-        "move_id": {"type": ["string", "null"]},
-        "terastallize": {"type": "boolean"},
-        "team_order": {
-          "type": "array",
-          "items": {"type": "integer", "minimum": 1, "maximum": 6}
-        }
-      }
+      "properties": {"kind": {"const": "move"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "integer", "minimum": 1, "maximum": 4}, "move_id": {"type": "string", "minLength": 1}, "terastallize": {"type": "boolean"}, "team_order": {"type": "array", "maxItems": 0}}
+    },
+    "switchSubmission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
+      "properties": {"kind": {"const": "switch"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "integer", "minimum": 1, "maximum": 6}, "move_id": {"type": "null"}, "terastallize": {"const": false}, "team_order": {"type": "array", "maxItems": 0}}
+    },
+    "reviveSubmission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
+      "properties": {"kind": {"const": "revive"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "integer", "minimum": 1, "maximum": 6}, "move_id": {"type": "null"}, "terastallize": {"const": false}, "team_order": {"type": "array", "maxItems": 0}}
+    },
+    "teamSubmission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
+      "properties": {"kind": {"const": "team"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "null"}, "move_id": {"type": "null"}, "terastallize": {"const": false}, "team_order": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 6}}}
+    },
+    "defaultSubmission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
+      "properties": {"kind": {"const": "default"}, "provenance": {"const": "server_default"}, "slot": {"type": "null"}, "move_id": {"type": "null"}, "terastallize": {"const": false}, "team_order": {"type": "array", "maxItems": 0}}
     },
     "runtimeAndContractDigests": {
       "type": "object",

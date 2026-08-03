@@ -11,6 +11,8 @@ from battlebelief_core.domain.records.decision_record import (
     derive_record_id,
     derive_run_scope_digest,
     digest_record_envelope,
+    validate_decision_record_envelope,
+    validate_measurement_run_context,
 )
 from battlebelief_core.domain.records.public_projection import (
     battle_submission_digest,
@@ -44,4 +46,6 @@ __all__ = [
     "project_safe_submission_set",
     "request_identity_digest",
     "safe_submission_set_digest",
+    "validate_decision_record_envelope",
+    "validate_measurement_run_context",
 ]

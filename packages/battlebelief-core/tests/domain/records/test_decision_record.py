@@ -80,6 +80,7 @@ def test_record_id_and_digest_are_non_circular_and_bind_identity() -> None:
         envelope["payload"],
     )
     assert changed_id_digest != envelope["record_digest"]
+    assert envelope["payload"]["battle_id_digest"] == record.battle_id_digest
 
 
 def test_run_scope_and_context_derivation_is_explicit_and_room_independent() -> None:
@@ -128,3 +129,85 @@ def test_command_encoding_failure_keeps_selected_submission_without_send_claim()
     assert payload["record_status"] == "command_encoding_failed"
     assert payload["selected_submission"] is not None
     assert payload["fallback_or_error_class"] == "command_encoding_failed"
+
+
+def test_run_context_schema_version_is_part_of_its_digest() -> None:
+    scope = RunScopePayload(
+        registration_digest="sha256:" + "1" * 64,
+        arm_binding_digest="sha256:" + "2" * 64,
+        schedule_digest="sha256:" + "3" * 64,
+        schedule_row_id="row-0",
+        budget_profile_digest="sha256:" + "4" * 64,
+        seed_family_digest="sha256:" + "5" * 64,
+        runtime_digest="sha256:" + "6" * 64,
+        contract_set_digest="sha256:" + "7" * 64,
+    )
+    context = MeasurementRunContext.create(
+        evaluation_run_binding_digest="sha256:" + "8" * 64,
+        run_scope=scope,
+        battle_ordinal=0,
+    )
+
+    assert context.payload.to_dict()["schema_version"] == 1
+    assert context.to_dict()["run_context_digest"] == context.run_context_digest
+
+
+@pytest.mark.parametrize(
+    ("status", "selected", "provenance", "error"),
+    [
+        (DecisionRecordStatus.SUBMITTED, None, None, None),
+        (DecisionRecordStatus.WAIT_NOOP, _move(), ActionProvenance.EXPLICIT_REQUEST, None),
+        (DecisionRecordStatus.POLICY_REJECTED, None, None, None),
+        (
+            DecisionRecordStatus.ACTION_GATE_REJECTED,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            None,
+        ),
+        (
+            DecisionRecordStatus.COMMAND_ENCODING_FAILED,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            None,
+        ),
+        (DecisionRecordStatus.SEND_FAILED, _move(), ActionProvenance.EXPLICIT_REQUEST, None),
+        (
+            DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            "superseded",
+        ),
+        (DecisionRecordStatus.TERMINALLY_DISCARDED, None, None, None),
+        (
+            DecisionRecordStatus.RECONCILIATION_REJECTED,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            "rejected",
+        ),
+    ],
+)
+def test_terminal_status_matrix_rejects_impossible_records(
+    status: DecisionRecordStatus,
+    selected: BattleSubmission | None,
+    provenance: ActionProvenance | None,
+    error: str | None,
+) -> None:
+    with pytest.raises(ValueError):
+        replace(
+            _record(),
+            record_status=status,
+            selected_submission=selected,
+            submission_provenance=provenance,
+            fallback_or_error_class=error,
+        )
+
+
+def test_fallback_or_error_class_rejects_raw_error_text_and_negative_rqid() -> None:
+    with pytest.raises(ValueError):
+        replace(_record(), fallback_or_error_class="Timeout: /var/run/showdown.sock")
+    with pytest.raises(ValueError):
+        replace(_record(), request_identity=_identity_with_rqid(-1))
+
+
+def _identity_with_rqid(rqid: int) -> RequestIdentity:
+    return RequestIdentity(room_id="battle-private-room", rqid=rqid, request_digest=_DIGEST)

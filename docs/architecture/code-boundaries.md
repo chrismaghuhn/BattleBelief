@@ -29,6 +29,7 @@ packages/
 │     │  ├─ actions/
 │     │  ├─ belief/
 │     │  ├─ teams/
+│     │  ├─ records/
 │     │  └─ schemas/
 │     ├─ ports/
 │     │  ├─ battle_transport
@@ -101,10 +102,10 @@ Nicht freigegeben sind private CLI-, Composition- und Implementierungsmodule.
 
 ## Core-Reinheit
 
-`battlebelief_core.domain.records` contains immutable Decision-Record types
-and explicit public projections. It remains pure Core code and may not import
-Runtime, Lab, filesystem, environment, clock, random, logging, or telemetry
-adapters.
+`battlebelief_core.domain.records` enthält unveränderliche Decision-Record-
+Typen und ausdrückliche öffentliche Projektionen. Dieser Bereich bleibt reiner
+Core-Code und darf Runtime, Lab, Dateisystem, Umgebung, Uhr, Zufall,
+Logging oder Telemetrie-Adapter nicht importieren.
 
 Core darf kennen:
 

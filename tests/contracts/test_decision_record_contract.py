@@ -17,6 +17,9 @@ from battlebelief_core.domain.records.decision_record import (
     DecisionRecord,
     DecisionRecordStatus,
     RuntimeAndContractDigests,
+    digest_record_envelope,
+    validate_decision_record_envelope,
+    validate_measurement_run_context,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,6 +51,22 @@ def test_record_examples_validate_against_their_schema() -> None:
         assert errors == [], [error.message for error in errors]
 
 
+def test_record_examples_have_semantically_valid_identity_digests() -> None:
+    record = json.loads((ROOT / "schemas/examples/decision-record.example.json").read_text())
+    run = json.loads((ROOT / "schemas/examples/measurement-run.example.json").read_text())
+
+    assert validate_measurement_run_context(run) == []
+    assert validate_decision_record_envelope(record) == []
+
+    tampered_run = json.loads(json.dumps(run))
+    tampered_run["schema_version"] = 2
+    assert validate_measurement_run_context(tampered_run)
+
+    tampered_record = json.loads(json.dumps(record))
+    tampered_record["record_id"] = "sha256:" + "0" * 64
+    assert validate_decision_record_envelope(tampered_record)
+
+
 def test_schema_checker_accepts_the_task_18_artifacts() -> None:
     errors = collect_schema_errors(ROOT)
     assert errors == [], "\n".join(errors)
@@ -65,6 +84,36 @@ def test_decision_record_rejects_unknown_fields() -> None:
     assert any("password" in error.message for error in errors)
 
 
+def test_submission_schema_matches_domain_action_invariants() -> None:
+    schema = json.loads(
+        (ROOT / "schemas/records/decision-record-payload.schema.json").read_text(encoding="utf-8")
+    )
+    payload = json.loads(
+        (ROOT / "schemas/examples/decision-record-payload.example.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(schema)
+
+    invalid_move = json.loads(json.dumps(payload))
+    invalid_move["selected_submission"]["slot"] = 5
+    assert list(validator.iter_errors(invalid_move))
+
+    invalid_team = json.loads(json.dumps(payload))
+    invalid_team["selected_submission"] = {
+        "kind": "team",
+        "provenance": "explicit_request",
+        "slot": None,
+        "move_id": None,
+        "terastallize": False,
+        "team_order": [1, 1],
+    }
+    invalid_team["submission_provenance"] = "explicit_request"
+    assert list(validator.iter_errors(invalid_team))
+
+    invalid_status = json.loads(json.dumps(payload))
+    invalid_status["record_status"] = "wait_noop"
+    assert list(validator.iter_errors(invalid_status))
+
+
 def test_decision_record_cross_version_vector_is_stable() -> None:
     vectors = json.loads(
         (ROOT / "schemas" / "canonicalization" / "decision-record-test-vectors.json").read_text(
@@ -74,6 +123,14 @@ def test_decision_record_cross_version_vector_is_stable() -> None:
     for vector in vectors:
         assert canonicalize(vector["value"]) == vector["canonical_utf8"].encode("utf-8")
         assert manifest_digest(vector["value"]) == "sha256:" + vector["sha256"]
+        assert vector["run_context_digest"] == run_context_digest_from_document(
+            vector["run_context"]
+        )
+        assert vector["battle_id_digest"] == vector["run_context"]["battle_id_digest"]
+        assert vector["record_id"] == record_id_from_payload(vector["value"])
+        assert vector["record_digest"] == digest_record_envelope(
+            vector["record_id"], vector["value"]
+        )
 
 
 def test_domain_record_serialization_is_envelope_schema_valid() -> None:
@@ -108,3 +165,26 @@ def test_domain_record_serialization_is_envelope_schema_valid() -> None:
     )
     errors = list(Draft202012Validator(schema).iter_errors(record.to_envelope()))
     assert errors == [], [error.message for error in errors]
+
+
+def run_context_digest_from_document(document: dict[str, object]) -> str:
+    return manifest_digest(
+        {
+            "schema_version": document["schema_version"],
+            "evaluation_run_binding_digest": document["evaluation_run_binding_digest"],
+            "run_scope_digest": document["run_scope_digest"],
+            "battle_id_digest": document["battle_id_digest"],
+            "battle_ordinal": document["battle_ordinal"],
+        }
+    )
+
+
+def record_id_from_payload(payload: dict[str, object]) -> str:
+    from battlebelief_core.domain.records.decision_record import derive_record_id
+
+    return derive_record_id(
+        str(payload["run_context_digest"]),
+        str(payload["battle_id_digest"]),
+        int(payload["decision_index"]),
+        payload["request_identity"],  # type: ignore[arg-type]
+    )

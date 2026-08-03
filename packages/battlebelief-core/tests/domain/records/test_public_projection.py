@@ -20,6 +20,7 @@ from battlebelief_core.domain.records.public_projection import (
     safe_submission_set_digest,
 )
 from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_core.domain.state.pokemon_view import PokemonView
 
 _DIGEST = "sha256:" + "a" * 64
 
@@ -94,6 +95,34 @@ def test_state_projection_removes_account_and_private_identity_fields() -> None:
         "secret-opponent-nickname",
     ):
         assert forbidden not in text
+
+
+def test_state_projection_redacts_transform_targets_and_raw_annotations() -> None:
+    initial = ObservedState.initial("mrmime")
+    transformed = PokemonView.new("p1", "Ditto", "Ditto, L50")
+    transformed = replace(transformed, active=True, transform_target="SecretNickname")
+    state = replace(
+        initial,
+        p1=replace(initial.p1, pokemon=(transformed,)),
+        visible_evidence=(
+            VisibleEvidence(
+                event_index=1,
+                kind="transform",
+                side_id="p2",
+                slot=1,
+                nickname="SecretNickname",
+                effect="SecretNickname",
+                annotations=("[of] p2a: SecretNickname",),
+            ),
+        ),
+    )
+
+    encoded = canonical_public_bytes(project_observed_state(state)).decode("utf-8")
+
+    assert "SecretNickname" not in encoded
+    assert "transform_target" not in encoded
+    assert "annotations" not in encoded
+    assert '"transformed":true' in encoded
 
 
 def test_submission_order_is_semantic_but_mapping_order_is_not() -> None:
@@ -173,3 +202,20 @@ def test_each_observed_state_projection_dimension_is_digestable() -> None:
 
     digests = {observed_state_digest(value) for value in variants}
     assert len(digests) == len(variants)
+
+
+def test_winner_projection_uses_showdown_identifier_normalization() -> None:
+    initial = ObservedState.initial("mrmime")
+    state = replace(
+        initial,
+        p1=replace(initial.p1, user_id="mrmime"),
+        p2=replace(initial.p2, user_id="mistywaterflower"),
+        winner="Mr. Mime",
+    )
+
+    assert project_observed_state(state)["winner"] == "our_side"
+
+    opponent_state = replace(state, winner="Misty Waterflower")
+    assert project_observed_state(opponent_state)["winner"] == "opponent_side"
+
+    assert project_observed_state(replace(state, winner="unknown winner"))["winner"] is None

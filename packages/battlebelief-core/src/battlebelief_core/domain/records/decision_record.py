@@ -68,12 +68,15 @@ class RuntimeAndContractDigests:
 
 @dataclass(frozen=True, slots=True)
 class RunContextPayload:
+    schema_version: int
     evaluation_run_binding_digest: str
     run_scope_digest: str
     battle_id_digest: str
     battle_ordinal: int
 
     def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise ValueError("unsupported measurement-run schema version")
         for name, value in (
             ("evaluation_run_binding_digest", self.evaluation_run_binding_digest),
             ("run_scope_digest", self.run_scope_digest),
@@ -85,6 +88,7 @@ class RunContextPayload:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "schema_version": self.schema_version,
             "evaluation_run_binding_digest": self.evaluation_run_binding_digest,
             "run_scope_digest": self.run_scope_digest,
             "battle_id_digest": self.battle_id_digest,
@@ -143,7 +147,6 @@ class MeasurementRunContext:
 
     def to_dict(self) -> dict[str, object]:
         value = self.payload.to_dict()
-        value["schema_version"] = 1
         value["run_context_digest"] = self.run_context_digest
         return value
 
@@ -160,6 +163,7 @@ class MeasurementRunContext:
             run_scope_digest, run_scope.schedule_row_id, battle_ordinal
         )
         payload = RunContextPayload(
+            schema_version=1,
             evaluation_run_binding_digest=evaluation_run_binding_digest,
             run_scope_digest=run_scope_digest,
             battle_id_digest=battle_id_digest,
@@ -208,6 +212,71 @@ def digest_record_envelope(record_id: str, payload: Mapping[str, Any]) -> str:
     return manifest_digest({"record_id": record_id, "payload": dict(payload)})
 
 
+def validate_measurement_run_context(document: Mapping[str, Any]) -> list[str]:
+    """Validate measurement-run digest identities after schema validation."""
+
+    required = {
+        "schema_version",
+        "evaluation_run_binding_digest",
+        "run_scope_digest",
+        "battle_id_digest",
+        "battle_ordinal",
+        "run_context_digest",
+    }
+    if not required.issubset(document):
+        return ["measurement-run document is missing required fields"]
+    try:
+        payload = RunContextPayload(
+            schema_version=document["schema_version"],
+            evaluation_run_binding_digest=document["evaluation_run_binding_digest"],
+            run_scope_digest=document["run_scope_digest"],
+            battle_id_digest=document["battle_id_digest"],
+            battle_ordinal=document["battle_ordinal"],
+        )
+        expected = manifest_digest(payload.to_dict())
+    except (TypeError, ValueError):
+        return ["measurement-run payload is invalid"]
+    if document["run_context_digest"] != expected:
+        return ["run_context_digest does not match measurement-run payload"]
+    return []
+
+
+def validate_decision_record_envelope(document: Mapping[str, Any]) -> list[str]:
+    """Validate record and envelope digest identities after schema validation."""
+
+    payload = document.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["decision-record payload is missing"]
+    required = {
+        "run_context_digest",
+        "battle_id_digest",
+        "decision_index",
+        "request_identity",
+    }
+    if (
+        not required.issubset(payload)
+        or "record_id" not in document
+        or "record_digest" not in document
+    ):
+        return ["decision-record envelope is missing identity fields"]
+    try:
+        expected_id = derive_record_id(
+            payload["run_context_digest"],
+            payload["battle_id_digest"],
+            payload["decision_index"],
+            payload["request_identity"],
+        )
+        expected_digest = digest_record_envelope(expected_id, payload)
+    except (TypeError, ValueError):
+        return ["decision-record identity fields are invalid"]
+    errors: list[str] = []
+    if document["record_id"] != expected_id:
+        errors.append("record_id does not match decision-record identity")
+    if document["record_digest"] != expected_digest:
+        errors.append("record_digest does not match decision-record envelope")
+    return errors
+
+
 @dataclass(frozen=True, slots=True)
 class DecisionRecord:
     record_schema_version: int
@@ -232,10 +301,20 @@ class DecisionRecord:
         _require_digest("run_context_digest", self.run_context_digest)
         _require_digest("battle_id_digest", self.battle_id_digest)
         _require_digest("request_digest", self.request_identity.request_digest)
+        if (
+            isinstance(self.request_identity.rqid, bool)
+            or not isinstance(self.request_identity.rqid, int)
+            or self.request_identity.rqid < 0
+        ):
+            raise ValueError("rqid must be a non-negative integer")
         _require_digest("observed_state_digest", self.observed_state_digest)
         _require_digest("safe_submission_set_digest", self.safe_submission_set_digest)
         if not self.policy_or_arm_id:
             raise ValueError("policy_or_arm_id must not be empty")
+        if self.fallback_or_error_class is not None and not re.fullmatch(
+            r"[a-z][a-z0-9_.:-]*", self.fallback_or_error_class
+        ):
+            raise ValueError("fallback_or_error_class must be a stable code")
         if self.selected_submission is None and self.submission_provenance is not None:
             raise ValueError("submission provenance requires a selected submission")
         if (
@@ -243,12 +322,39 @@ class DecisionRecord:
             and self.submission_provenance != self.selected_submission.provenance
         ):
             raise ValueError("submission provenance must match selected submission")
+        selected_required = {
+            DecisionRecordStatus.SUBMITTED,
+            DecisionRecordStatus.ACTION_GATE_REJECTED,
+            DecisionRecordStatus.COMMAND_ENCODING_FAILED,
+            DecisionRecordStatus.SEND_FAILED,
+        }
+        selection_forbidden = {
+            DecisionRecordStatus.WAIT_NOOP,
+            DecisionRecordStatus.POLICY_REJECTED,
+            DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
+            DecisionRecordStatus.TERMINALLY_DISCARDED,
+            DecisionRecordStatus.RECONCILIATION_REJECTED,
+        }
+        error_forbidden = {
+            DecisionRecordStatus.SUBMITTED,
+            DecisionRecordStatus.WAIT_NOOP,
+        }
+        error_required = set(DecisionRecordStatus) - error_forbidden
+        if self.record_status in selected_required and self.selected_submission is None:
+            raise ValueError("record status requires selected_submission")
+        if self.record_status in selection_forbidden and self.selected_submission is not None:
+            raise ValueError("record status must not contain selected_submission")
+        if self.record_status in error_forbidden and self.fallback_or_error_class is not None:
+            raise ValueError("record status must not contain an error class")
+        if self.record_status in error_required and self.fallback_or_error_class is None:
+            raise ValueError("record status requires an error class")
 
     def to_payload(self) -> dict[str, Any]:
         return {
             "record_schema_version": self.record_schema_version,
             "record_status": self.record_status.value,
             "run_context_digest": self.run_context_digest,
+            "battle_id_digest": self.battle_id_digest,
             "decision_index": self.decision_index,
             "request_identity": dict(_thaw(project_request_identity(self.request_identity))),
             "observed_state_digest": self.observed_state_digest,
