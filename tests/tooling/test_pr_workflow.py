@@ -69,3 +69,13 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert '"$PROTOCOL_SMOKE"' in gate_step["run"]
     assert '"$SAFETY_SMOKE"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
+
+
+def test_repository_contracts_run_m15_semantic_validation() -> None:
+    workflow = _load_workflow()
+    contracts_step = next(
+        step
+        for step in workflow["jobs"]["quality"]["steps"]
+        if step.get("name") == "Repository contracts"
+    )
+    assert "uv run python tools/validate_m15_registration.py" in contracts_step["run"]

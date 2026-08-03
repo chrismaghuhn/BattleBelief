@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:documents:document-snapshot-metadata:v1",
+  "title": "BattleBelief document snapshot metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_id",
+    "document_version",
+    "document_type",
+    "status",
+    "normative",
+    "source_path",
+    "source_digest",
+    "snapshot_path",
+    "snapshot_digest"
+  ],
+  "properties": {
+    "document_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "document_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "document_type": {
+      "enum": [
+        "contract",
+        "architecture",
+        "operation",
+        "adr",
+        "roadmap",
+        "research",
+        "audit",
+        "archive",
+        "guide"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "accepted",
+        "deprecated",
+        "superseded",
+        "archived"
+      ]
+    },
+    "normative": {
+      "type": "boolean"
+    },
+    "source_path": {
+      "$ref": "#/$defs/repositoryPath"
+    },
+    "source_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "snapshot_path": {
+      "$ref": "#/$defs/repositoryPath"
+    },
+    "snapshot_digest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$"
+    }
+  }
+}

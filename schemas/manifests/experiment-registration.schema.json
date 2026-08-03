@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:experiment-registration:v3",
+  "title": "BattleBelief experiment registration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_version",
+    "supersedes_digest",
+    "registration_id",
+    "registration_status",
+    "hypothesis",
+    "null_hypotheses",
+    "arms",
+    "comparisons",
+    "metric_references",
+    "estimand_references",
+    "analysis_procedure_references",
+    "contract_references",
+    "pool_access",
+    "pool_rules",
+    "budget_profiles",
+    "decision_gates"
+  ],
+  "properties": {
+    "schema_version": {"const": 3},
+    "artifact_version": {"type": "integer", "minimum": 1},
+    "supersedes_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "registration_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
+    "registration_status": {"const": "frozen"},
+    "hypothesis": {"type": "string", "minLength": 1},
+    "null_hypotheses": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "arms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["arm_id", "policy_kind", "search_algorithm_id", "world_distribution_or_belief_mode", "lifecycle"],
+        "properties": {
+          "arm_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
+          "policy_kind": {"enum": ["heuristic", "search", "model_or_hybrid"]},
+          "search_algorithm_id": {"type": ["string", "null"]},
+          "world_distribution_or_belief_mode": {"type": "string", "minLength": 1},
+          "lifecycle": {"enum": ["active", "deferred", "disabled"]},
+          "execution_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+        }
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["comparison_id", "left_arm_id", "right_arm_id", "primary_metric_id", "estimand_id", "analysis_procedure_id", "direction", "confidence_level", "technical_outcome_treatment_id", "minimum_effect", "tie_break_rule_id"],
+        "properties": {
+          "comparison_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
+          "left_arm_id": {"type": "string"},
+          "right_arm_id": {"type": "string"},
+          "primary_metric_id": {"type": "string", "minLength": 1},
+          "estimand_id": {"type": "string", "minLength": 1},
+          "analysis_procedure_id": {"type": "string", "minLength": 1},
+          "direction": {"enum": ["higher_is_better", "lower_is_better"]},
+          "confidence_level": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+          "technical_outcome_treatment_id": {"type": "string", "minLength": 1},
+          "minimum_effect": {"type": "number", "minimum": 0},
+          "tie_break_rule_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "metric_references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "document_version", "document_digest", "metric_id", "role"],
+        "properties": {
+          "document_id": {"const": "evaluation-metrics"},
+          "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
+          "metric_id": {"type": "string", "minLength": 1},
+          "role": {"enum": ["primary", "secondary", "diagnostic"]}
+        }
+      }
+    },
+    "estimand_references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "document_version", "document_digest", "estimand_id"],
+        "properties": {
+          "document_id": {"const": "evaluation-statistical-analysis"},
+          "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
+          "estimand_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "analysis_procedure_references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "document_version", "document_digest", "analysis_procedure_id"],
+        "properties": {
+          "document_id": {"const": "evaluation-statistical-analysis"},
+          "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"},
+          "analysis_procedure_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "contract_references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "document_version", "document_digest"],
+        "properties": {
+          "document_id": {"type": "string", "minLength": 1},
+          "document_version": {"type": "integer", "minimum": 1},
+          "document_digest": {"$ref": "#/$defs/digest"}
+        }
+      }
+    },
+    "pool_access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["development", "selection", "power_pilot", "release_holdout"],
+      "properties": {
+        "development": {"const": "available"},
+        "selection": {"const": "unopened"},
+        "power_pilot": {"const": "unopened"},
+        "release_holdout": {"const": "unopened"}
+      }
+    },
+    "pool_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["construction_rule_id", "near_duplicate_rule_id", "side_assignment_rule_id", "schedule_rule_id"],
+      "properties": {
+        "construction_rule_id": {"type": "string", "minLength": 1},
+        "near_duplicate_rule_id": {"type": "string", "minLength": 1},
+        "side_assignment_rule_id": {"type": "string", "minLength": 1},
+        "schedule_rule_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "budget_profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment_utility", "mechanism_ablation"],
+      "properties": {
+        "deployment_utility": {"$ref": "#/$defs/budgetProfile"},
+        "mechanism_ablation": {"$ref": "#/$defs/budgetProfile"}
+      }
+    },
+    "decision_gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision_id", "version", "stop_rule_id", "pivot_rule_id"],
+        "properties": {
+          "decision_id": {"type": "string", "minLength": 1},
+          "version": {"type": "integer", "minimum": 1},
+          "stop_rule_id": {"type": "string", "minLength": 1},
+          "pivot_rule_id": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "budgetProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget_mode", "work_unit", "selected_work_value", "calibration_spec_digest", "benchmark_spec_digest"],
+      "properties": {
+        "budget_mode": {"enum": ["fixed", "calibrated_grid"]},
+        "work_unit": {"type": "string", "minLength": 1},
+        "selected_work_value": {"type": ["integer", "null"], "minimum": 1},
+        "calibration_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "benchmark_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"budget_mode": {"const": "fixed"}}},
+          "then": {"properties": {"selected_work_value": {"type": "integer", "minimum": 1}, "calibration_spec_digest": {"const": null}, "benchmark_spec_digest": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"budget_mode": {"const": "calibrated_grid"}}},
+          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"$ref": "#/$defs/digest"}, "benchmark_spec_digest": {"const": null}}}
+        }
+      ]
+    }
+  }
+}

@@ -12,11 +12,22 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
+# Allow `python tools/check_docs.py` to import the shared diagnostic helper.
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from battlebelief_lab.registration_validation import (  # noqa: E402
+    load_json_strict,
+    schema_issue_summary,
+)
+
 FRONTMATTER = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 FENCED_CODE = re.compile(r"(?ms)^(`{3,})[^\n]*\n.*?^\1[ \t]*$")
 LOCAL_PATH = re.compile(r"(?i)(?<![a-z])[a-z]:[\\/]|file://|%3a(?:%2f|/)")
 OLD_NAMES = re.compile(r"(?i)urn:pokemonbot|pokemonbot[-_](?:core|runtime|lab)")
+DOCUMENT_SNAPSHOT_METADATA_SCHEMA = "schemas/documents/document-snapshot-metadata.schema.json"
 
 
 def jsonable(value: Any) -> Any:
@@ -68,7 +79,7 @@ def collect_doc_errors(root: Path) -> list[str]:
             continue
         frontmatter = jsonable(yaml.safe_load(match.group(1)))
         errors.extend(
-            f"{path.relative_to(root)} {issue.json_path}: {issue.message}"
+            f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
             for issue in validator.iter_errors(frontmatter)
         )
         document_id = frontmatter.get("document_id")
@@ -110,6 +121,8 @@ def collect_doc_errors(root: Path) -> list[str]:
         ):
             errors.append(f"{document_id}: old namespace in current normative document")
 
+    errors.extend(collect_document_snapshot_errors(root))
+
     authority = json.loads((root / "config/docs-authority.json").read_text(encoding="utf-8"))
     for definition in authority["definitions"]:
         literal = "".join(definition["parts"])
@@ -145,6 +158,103 @@ def collect_doc_errors(root: Path) -> list[str]:
     if coverage != expected_coverage:
         errors.append("migration matrix has gaps, overlaps, or wrong order")
     return sorted(errors)
+
+
+def collect_document_snapshot_errors(root: Path) -> list[str]:
+    """Validate typed immutable snapshot metadata without revalidating bytes."""
+
+    docs_root = root / "docs"
+    legacy_roots = (
+        docs_root / "contracts/snapshots",
+        docs_root / "archive/contract-snapshots",
+    )
+    snapshot_root = docs_root / "archive/document-snapshots"
+    errors: list[str] = []
+    for legacy_root in legacy_roots:
+        if legacy_root.exists() and any(legacy_root.rglob("*")):
+            errors.append(
+                f"{legacy_root.relative_to(root)}: legacy snapshot path is unsupported; "
+                "use docs/archive/document-snapshots with sidecar metadata"
+            )
+    if not snapshot_root.exists():
+        return sorted(errors)
+
+    metadata_schema_path = root / DOCUMENT_SNAPSHOT_METADATA_SCHEMA
+    try:
+        metadata_schema = load_json_strict(metadata_schema_path)
+        Draft202012Validator.check_schema(metadata_schema)
+    except Exception as exc:
+        return [
+            f"{metadata_schema_path.relative_to(root)}: cannot load snapshot metadata schema: "
+            f"{type(exc).__name__}"
+        ]
+    metadata_validator = Draft202012Validator(metadata_schema, format_checker=FormatChecker())
+
+    referenced_snapshots: set[Path] = set()
+    identities: set[tuple[str, int, str]] = set()
+    for metadata_path in sorted(snapshot_root.rglob("*.metadata.json")):
+        relative = metadata_path.relative_to(root)
+        try:
+            metadata = load_json_strict(metadata_path)
+        except Exception as exc:
+            errors.append(f"{relative}: invalid snapshot metadata: {type(exc).__name__}")
+            continue
+        schema_errors = list(metadata_validator.iter_errors(metadata))
+        if schema_errors:
+            errors.extend(f"{relative}: {schema_issue_summary(issue)}" for issue in schema_errors)
+            continue
+        if not isinstance(metadata, dict):
+            errors.append(f"{relative}: snapshot metadata must be an object")
+            continue
+        snapshot_path_text = metadata["snapshot_path"]
+        snapshot_path = root / Path(*snapshot_path_text.replace("\\", "/").split("/"))
+        resolved_snapshot = snapshot_path.resolve()
+        try:
+            resolved_snapshot.relative_to(snapshot_root.resolve())
+        except ValueError:
+            errors.append(f"{relative}: snapshot path escapes archive root")
+            continue
+        if resolved_snapshot != snapshot_path:
+            errors.append(f"{relative}: snapshot path is not repository-relative")
+            continue
+        if (
+            metadata_path.with_name(metadata_path.name.removesuffix(".metadata.json") + ".md")
+            != snapshot_path
+        ):
+            errors.append(f"{relative}: snapshot path does not match metadata filename")
+            continue
+        if not snapshot_path.is_file():
+            errors.append(f"{relative}: snapshot file is missing")
+            continue
+        actual_digest = "sha256:" + hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+        if metadata["snapshot_digest"] != actual_digest:
+            errors.append(f"{relative}: snapshot digest mismatch")
+            continue
+        if metadata["source_digest"] != metadata["snapshot_digest"]:
+            errors.append(f"{relative}: source and snapshot digests differ")
+        identity = (
+            metadata["document_id"],
+            metadata["document_version"],
+            metadata["snapshot_digest"],
+        )
+        if identity in identities:
+            errors.append(
+                f"duplicate document snapshot: {metadata['document_id']} "
+                f"v{metadata['document_version']} {metadata['snapshot_digest']}"
+            )
+        identities.add(identity)
+        referenced_snapshots.add(snapshot_path)
+
+    for snapshot_path in sorted(snapshot_root.rglob("*.md")):
+        if snapshot_path not in referenced_snapshots:
+            errors.append(f"{snapshot_path.relative_to(root)}: snapshot metadata is missing")
+    return sorted(errors)
+
+
+def collect_contract_snapshot_errors(root: Path) -> list[str]:
+    """Backward-compatible name for the generalized document snapshot checker."""
+
+    return collect_document_snapshot_errors(root)
 
 
 def main() -> int:

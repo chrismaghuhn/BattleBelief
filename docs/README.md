@@ -4,7 +4,7 @@ title: BattleBelief-Dokumentation
 document_type: guide
 status: accepted
 normative: false
-version: 4
+version: 5
 applies_to:
   - repository
 effective_from: 2026-08-03
@@ -63,6 +63,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [`contract-determinism`](contracts/determinism.md)
 - [`contract-provenance`](contracts/provenance.md)
 - [`contract-manifest-schemas`](contracts/manifest-schemas.md)
+- [`experiment-registration`](contracts/experiment-registration.md)
 
 ### Daten, Training und Teams
 

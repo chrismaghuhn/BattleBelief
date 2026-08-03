@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.15"
 license = "Apache-2.0"
 authors = [{ name = "BattleBelief contributors" }]
-dependencies = []
+dependencies = [
+  "rfc8785==0.1.4",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/battlebelief_core"]
