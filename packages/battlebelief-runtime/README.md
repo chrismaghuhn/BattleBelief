@@ -32,7 +32,8 @@ challenge setup timeout: 120.0 seconds
 the explicit TLS port `:443`. This trust binding prevents an official login
 assertion from being sent to another WebSocket host. Private Showdown servers
 aren't supported because authentication remains coupled to the official
-Showdown assertion endpoint.
+Showdown assertion endpoint. The transport-pinned M1 path also ignores ambient
+operating-system and environment proxy settings.
 
 The team file must be UTF-8 and contain exactly one structurally valid Showdown
 packed-team line. Showdown performs Gen 9 OU legality validation later during

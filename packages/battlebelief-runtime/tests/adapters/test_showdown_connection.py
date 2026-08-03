@@ -298,6 +298,46 @@ async def test_pinned_transport_origin_rejects_redirect_before_authentication() 
 
 
 @_async_test
+async def test_default_pinned_transport_disables_ambient_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    socket = _FakeSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+    provider = _FakeAssertionProvider()
+
+    async def connector(
+        url: str,
+        *,
+        open_timeout: float,
+        logger: logging.Logger,
+        proxy: None,
+        host: str,
+        port: int,
+    ) -> _FakeSocket:
+        assert url == "wss://sim3.psim.us/showdown/websocket"
+        assert open_timeout == 10.0
+        assert logger is connection_module._WEBSOCKET_LOGGER
+        assert proxy is None
+        assert host == "sim3.psim.us"
+        assert port == 443
+        return socket
+
+    monkeypatch.setattr(connection_module, "connect", connector)
+    connection = ShowdownConnection(
+        url="wss://sim3.psim.us/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=provider,
+        connect_host="sim3.psim.us",
+        connect_port=443,
+    )
+
+    await connection.connect()
+
+    assert socket.sent == ["|/trn Ash,0,assertion-token"]
+    assert provider.calls == [("Ash", "password", "4|abc")]
+
+
+@_async_test
 async def test_authentication_error_closes_socket_and_preserves_error() -> None:
     socket = _FakeSocket(["|challstr|4|abc"])
 

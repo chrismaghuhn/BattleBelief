@@ -96,6 +96,8 @@ class ShowdownConnection:
                 }
                 if self._uses_default_socket_connector:
                     connection_kwargs["logger"] = _WEBSOCKET_LOGGER
+                    if self._connect_host is not None or self._connect_port is not None:
+                        connection_kwargs["proxy"] = None
                 if self._connect_host is not None:
                     connection_kwargs["host"] = self._connect_host
                 if self._connect_port is not None:
