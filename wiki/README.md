@@ -40,10 +40,12 @@ git add Home.md Getting-Started.md Architecture.md \
   Current-Status-and-Roadmap.md Development-and-Contributing.md \
   Research-Scope-and-Safety.md _Sidebar.md _Footer.md
 git commit -m "Create English project wiki"
-git push origin master
+wiki_branch="$(git branch --show-current)"
+printf 'Publishing Wiki branch: %s\n' "$wiki_branch"
+git push origin "$wiki_branch"
 ```
 
-Depending on how GitHub initializes the Wiki repository, the default Wiki branch may be `master`. Check `git branch --show-current` before pushing and use that branch name.
+Confirm that the printed branch is the initialized Wiki branch before pushing. GitHub may initialize Wiki repositories with `master`, `main`, or another branch name.
 
 ## Maintenance rule
 
