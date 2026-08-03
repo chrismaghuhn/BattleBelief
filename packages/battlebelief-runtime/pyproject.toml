@@ -12,7 +12,7 @@ license = "Apache-2.0"
 authors = [{ name = "BattleBelief contributors" }]
 dependencies = [
     "battlebelief-core==0.2.0",
-    "websockets==16.1.1",
+    "websockets==17.0.1",
 ]
 
 [project.scripts]
