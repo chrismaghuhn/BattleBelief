@@ -4,7 +4,7 @@ title: Provenance-, Snapshot- und Claim-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - release
   - evaluation

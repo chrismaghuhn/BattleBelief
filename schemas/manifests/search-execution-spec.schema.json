@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:manifest:search-execution-spec:1",
+  "$id": "urn:battlebelief:schema:manifest:search-execution-spec:v1",
   "title": "Declarative determinization search execution specification",
   "type": "object",
   "additionalProperties": false,

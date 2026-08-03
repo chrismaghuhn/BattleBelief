@@ -4,7 +4,7 @@ title: Forschungs- und Betriebsmetriken
 document_type: contract
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - research
   - evaluation
@@ -75,7 +75,7 @@ Anwendungsprädikats geprüft“, nicht globale Vollständigkeit.
 Die konkreten M5-Schwellen stehen ausschließlich in
 [`evaluation-m5-strength-qualification`](m5-strength-qualification.md).
 
-## Maschinenlesbare Metrik-IDs
+## Maschinenlesbare Metrik-IDs und Definitionen
 
 Registrierungen referenzieren die folgenden stabilen IDs; die Bedeutung der
 Metriken bleibt in den Abschnitten dieses Contracts:
@@ -87,3 +87,19 @@ Metriken bleibt in den Abschnitten dieses Contracts:
 | `battle_outcome_weighted_v1` | gewichtetes Battle-Ergebnis |
 | `end_to_end_latency_ms_v1` | End-to-End-Latenzverteilung |
 | `fallback_rate_v1` | Fallback-Rate |
+
+### Feste Berechnung, Nenner und Richtung
+
+| ID | Berechnung und Nenner | Richtung |
+|---|---|---|
+| `decision_regret_teacher_v1` | Teacher-Wert minus ausgewählter Wert je vergleichbarer legaler Entscheidung; Mittelwert über den registrierten Zielpopulations-Nenner | niedriger ist besser |
+| `teacher_top1_agreement_v1` | Anteil vergleichbarer Entscheidungen mit derselben Top-1-Aktion wie der vorregistrierte Teacher | höher ist besser |
+| `battle_outcome_weighted_v1` | Zielpopulationsgewichteter Mittelwert mit Win=1, Tie=0.5 und Loss=0; technische Klassen bleiben sichtbar | höher ist besser |
+| `end_to_end_latency_ms_v1` | Millisekunden vom akzeptierten frischen Request bis zum erfolgreichen Wire-Dispatch, als Verteilung | niedriger ist besser |
+| `fallback_rate_v1` | Klassifizierte Fallback-Entscheidungen geteilt durch frische Requests mit erreichter Policy-Auswahl | niedriger ist besser |
+
+Die Nenner umfassen keine still verworfenen Fehler- oder Timeoutfälle. Jeder
+technische Ausgang wird mit seiner Fehlerklasse berichtet; ein Vergleich darf
+ihn nur nach dem referenzierten technischen Behandlungsschema aggregieren.
+Die Metrikversion ist Teil der Registrierungsreferenz und darf nach Öffnung
+eines Vergleichs nicht passend zu einem Ergebnis geändert werden.

@@ -1,15 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:manifest:budget-calibration-evidence:1",
+  "$id": "urn:battlebelief:schema:manifest:budget-calibration-evidence:v2",
   "title": "Budget calibration evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "evidence_id", "calibration_spec_digest", "measurement_id", "runtime_limit_ms", "actual_environment_digest", "actual_calibration_state_digest", "runtime_measurements", "selected_work_value"],
+  "required": ["schema_version", "evidence_id", "calibration_spec_digest", "measurement_profile_id", "selection_measurement_id", "runtime_limit_ms", "actual_environment_digest", "actual_calibration_state_digest", "runtime_measurements", "selected_work_value"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "evidence_id": {"type": "string", "minLength": 1},
     "calibration_spec_digest": {"$ref": "#/$defs/digest"},
-    "measurement_id": {"type": "string", "minLength": 1},
+    "measurement_profile_id": {"type": "string", "minLength": 1},
+    "selection_measurement_id": {"type": "string", "minLength": 1},
     "runtime_limit_ms": {"type": "number", "exclusiveMinimum": 0},
     "actual_environment_digest": {"$ref": "#/$defs/digest"},
     "actual_calibration_state_digest": {"$ref": "#/$defs/digest"},
@@ -21,33 +22,33 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["work_value", "status", "runtime_ms", "error_class"],
+            "required": ["work_value", "status", "measurements", "error_class"],
             "properties": {
               "work_value": {"type": "integer", "minimum": 1},
-              "status": {"const": "ok"},
-              "runtime_ms": {"type": "number", "exclusiveMinimum": 0},
+              "status": {"const": "completed"},
+              "measurements": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
               "error_class": {"const": null}
             }
           },
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["work_value", "status", "runtime_ms", "error_class"],
+            "required": ["work_value", "status", "measurements", "error_class"],
             "properties": {
               "work_value": {"type": "integer", "minimum": 1},
               "status": {"const": "over_limit"},
-              "runtime_ms": {"type": "number", "exclusiveMinimum": 0},
+              "measurements": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
               "error_class": {"const": null}
             }
           },
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["work_value", "status", "runtime_ms", "error_class"],
+            "required": ["work_value", "status", "measurements", "error_class"],
             "properties": {
               "work_value": {"type": "integer", "minimum": 1},
-              "status": {"const": "failed"},
-              "runtime_ms": {"const": null},
+              "status": {"enum": ["failed", "unsupported"]},
+              "measurements": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
               "error_class": {"type": "string", "minLength": 1}
             }
           }

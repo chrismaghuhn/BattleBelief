@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:manifest:synthetic-fixture-manifest:1",
+  "$id": "urn:battlebelief:schema:manifest:synthetic-fixture-manifest:v1",
   "title": "Synthetic M1.5 acceptance fixture manifest",
   "type": "object",
   "additionalProperties": false,

@@ -1,11 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:manifest:experiment-registration:1",
+  "$id": "urn:battlebelief:schema:manifest:experiment-registration:v2",
   "title": "BattleBelief experiment registration",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "artifact_version",
+    "supersedes_digest",
     "registration_id",
     "registration_status",
     "hypothesis",
@@ -17,11 +19,14 @@
     "analysis_procedure_references",
     "contract_references",
     "pool_access",
+    "pool_rules",
     "budget_profiles",
     "decision_gates"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
+    "artifact_version": {"type": "integer", "minimum": 1},
+    "supersedes_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
     "registration_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
     "registration_status": {"const": "frozen"},
     "hypothesis": {"type": "string", "minLength": 1},
@@ -49,14 +54,19 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["comparison_id", "left_arm_id", "right_arm_id", "primary_metric_id", "estimand_id", "analysis_procedure_id"],
+        "required": ["comparison_id", "left_arm_id", "right_arm_id", "primary_metric_id", "estimand_id", "analysis_procedure_id", "direction", "confidence_level", "technical_outcome_treatment_id", "minimum_effect", "tie_break_rule_id"],
         "properties": {
           "comparison_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
           "left_arm_id": {"type": "string"},
           "right_arm_id": {"type": "string"},
           "primary_metric_id": {"type": "string", "minLength": 1},
           "estimand_id": {"type": "string", "minLength": 1},
-          "analysis_procedure_id": {"type": "string", "minLength": 1}
+          "analysis_procedure_id": {"type": "string", "minLength": 1},
+          "direction": {"enum": ["higher_is_better", "lower_is_better"]},
+          "confidence_level": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+          "technical_outcome_treatment_id": {"type": "string", "minLength": 1},
+          "minimum_effect": {"type": "number", "minimum": 0},
+          "tie_break_rule_id": {"type": "string", "minLength": 1}
         }
       }
     },
@@ -127,6 +137,17 @@
         "release_holdout": {"const": "unopened"}
       }
     },
+    "pool_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["construction_rule_id", "near_duplicate_rule_id", "side_assignment_rule_id", "schedule_rule_id"],
+      "properties": {
+        "construction_rule_id": {"type": "string", "minLength": 1},
+        "near_duplicate_rule_id": {"type": "string", "minLength": 1},
+        "side_assignment_rule_id": {"type": "string", "minLength": 1},
+        "schedule_rule_id": {"type": "string", "minLength": 1}
+      }
+    },
     "budget_profiles": {
       "type": "object",
       "additionalProperties": false,
@@ -157,9 +178,10 @@
     "budgetProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["budget_mode", "selected_work_value", "calibration_spec_digest", "benchmark_spec_digest"],
+      "required": ["budget_mode", "work_unit", "selected_work_value", "calibration_spec_digest", "benchmark_spec_digest"],
       "properties": {
         "budget_mode": {"enum": ["fixed", "calibrated_grid", "hardware_normalized"]},
+        "work_unit": {"type": "string", "minLength": 1},
         "selected_work_value": {"type": ["integer", "null"], "minimum": 1},
         "calibration_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
         "benchmark_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}

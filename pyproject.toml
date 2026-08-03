@@ -18,7 +18,7 @@ members = [
 [dependency-groups]
 dev = [
   "hatchling==1.31.0",
-  "jsonschema==4.26.0",
+  "jsonschema[format-nongpl]==4.26.0",
   "mypy==2.3.0",
   "pytest==9.1.1",
   "PyYAML==6.0.3",

@@ -1,7 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "binding_id": "heuristic-v0-implementation-v1",
   "binding_kind": "implementation",
+  "artifact_version": 1,
+  "supersedes_digest": null,
   "registration_id": "m15-core-comparisons-v1",
   "registration_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
   "arm_id": "heuristic_v0",

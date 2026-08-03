@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - research
   - evaluation
@@ -34,6 +34,12 @@ Schedule, Seeds, Budgets, Pools oder synthetische Fixtures und die
 Laufumgebung. Keine dieser Dateien wird nach Ergebnissichtung passend verändert;
 eine Änderung erzeugt ein neues versioniertes Artefakt mit Verweis auf den
 Vorgänger.
+
+Jedes dieser drei Artefakte trägt `artifact_version` und
+`supersedes_digest`. Die erste Version hat `artifact_version: 1` und keinen
+Vorgänger. Ein Nachfolger muss denselben Artefakttyp und dieselbe Identität
+besitzen, einen auflösbaren Vorgängerdigest referenzieren und eine höhere
+Version tragen. Selbstreferenzen und Supersessionszyklen sind ungültig.
 
 ## Komponentenstatus
 

@@ -4,7 +4,7 @@ title: Statistischer Analysevertrag
 document_type: contract
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - evaluation
   - gen9ou
@@ -75,10 +75,10 @@ Die statistische Bedeutung gleicher Seeds folgt
 [`contract-determinism`](../contracts/determinism.md). Ein gleicher Seed allein
 rechtfertigt keine gepaarte kausale Analyse.
 
-## Maschinenlesbare Analyse-IDs
+## Maschinenlesbare Analyse-IDs und feste Prozeduren
 
 | ID | Bedeutung |
 |---|---|
-| `weighted_cluster_bootstrap_v1` | vorregistriertes Cluster-Bootstrap-Verfahren |
-| `paired_mean_difference_v1` | registrierter primärer Vergleichsschätzer |
-| `technical_outcomes_full_v1` | vollständige Behandlung technischer Ergebnisse |
+| `weighted_cluster_bootstrap_v1` | Resampling ganzer registrierter Matchup-Cluster mit Zielpopulationsgewichten; Cluster werden nicht in einzelne Battles aufgeteilt |
+| `paired_mean_difference_v1` | Arithmetischer Mittelwert der zeilenweise definierten rechten minus linken Armwerte innerhalb der vorregistrierten Vergleichspaare |
+| `technical_outcomes_full_v1` | Win, Loss, Tie, Void, Timeout, Disconnect, Invalid, Fallback und sonstige technische Klassen bleiben getrennt sichtbar; keine Klasse wird still entfernt |

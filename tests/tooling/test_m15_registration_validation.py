@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import shutil
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
+from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
     _schema_for_artifact,
@@ -46,6 +48,11 @@ def _registration() -> dict[str, object]:
                 "primary_metric_id": "metric_v1",
                 "estimand_id": "estimand_v1",
                 "analysis_procedure_id": "analysis_v1",
+                "direction": "higher_is_better",
+                "confidence_level": 0.95,
+                "technical_outcome_treatment_id": "analysis_v1",
+                "minimum_effect": 0.0,
+                "tie_break_rule_id": "tie_v1",
             }
         ],
         "metric_references": [{"metric_id": "metric_v1"}],
@@ -184,3 +191,166 @@ def test_strict_loader_rejects_duplicate_keys_and_non_nfc(tmp_path: Path) -> Non
     non_nfc.write_text(json.dumps({"value": "e\u0301"}), encoding="utf-8")
     with pytest.raises(RegistrationValidationError, match="NFC"):
         load_json_strict(non_nfc)
+
+
+def _repository_fixture(tmp_path: Path) -> tuple[Path, dict[str, object]]:
+    root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "schemas", tmp_path / "schemas")
+    shutil.copytree(root / "docs", tmp_path / "docs")
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["registration_id"] = "m15-test-registration-v1"
+    registration["arms"][1]["execution_spec_digest"] = None
+    (tmp_path / "registrations").mkdir()
+    (tmp_path / "registrations/registration.json").write_text(json.dumps(registration))
+    return tmp_path, registration
+
+
+def _implementation_binding(registration: dict[str, object], binding_id: str) -> dict[str, object]:
+    registration_digest = manifest_digest(registration)
+    digest = "sha256:" + "1" * 64
+    return {
+        "schema_version": 1,
+        "binding_id": binding_id,
+        "binding_kind": "implementation",
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "registration_id": registration["registration_id"],
+        "registration_digest": registration_digest,
+        "arm_id": "heuristic_v0",
+        "source_commit": "0" * 40,
+        "package_or_wheel_digest": digest,
+        "components": {
+            "policy": {"state": "bound", "digest": digest},
+            "fallback_and_safety": {"state": "bound", "digest": digest},
+            "search_algorithm": {"state": "not_applicable"},
+            "engine": {"state": "not_applicable"},
+            "prior": {"state": "not_applicable"},
+            "belief": {"state": "not_applicable"},
+            "model": {"state": "not_applicable"},
+        },
+        "decision_record_schema_digest": digest,
+        "canonicalizer_digest": digest,
+        "contract_set_digest": digest,
+    }
+
+
+def test_run_binding_must_use_an_implementation_from_the_same_registration(
+    tmp_path: Path,
+) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    second = deepcopy(registration)
+    second["registration_id"] = "m15-other-registration-v1"
+    (root / "registrations/other-registration.json").write_text(json.dumps(second))
+    first_impl = _implementation_binding(registration, "implementation-a")
+    second_impl = _implementation_binding(second, "implementation-b")
+    (root / "registrations/implementation-a.json").write_text(json.dumps(first_impl))
+    (root / "registrations/implementation-b.json").write_text(json.dumps(second_impl))
+    run = {
+        "schema_version": 1,
+        "binding_id": "run-a",
+        "binding_kind": "run",
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "run_purpose": "synthetic_acceptance",
+        "registration_id": registration["registration_id"],
+        "registration_digest": manifest_digest(registration),
+        "implementation_binding_digest": manifest_digest(second_impl),
+        "schedule_digest": "sha256:" + "2" * 64,
+        "seed_family_digest": "sha256:" + "3" * 64,
+        "budget_profile_digest": "sha256:" + "4" * 64,
+        "runtime_environment_digest": "sha256:" + "5" * 64,
+        "ruleset_digest": "sha256:" + "6" * 64,
+        "synthetic_fixture_manifest_digest": "sha256:" + "7" * 64,
+    }
+    (root / "registrations/run-a.json").write_text(json.dumps(run))
+    errors = validate_repository_artifacts(root)
+    assert any(
+        "implementation binding belongs to another registration" in error for error in errors
+    )
+
+
+def test_duplicate_binding_ids_are_reported(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    binding = _implementation_binding(registration, "same-binding")
+    (root / "registrations/implementation-a.json").write_text(json.dumps(binding))
+    (root / "registrations/implementation-b.json").write_text(json.dumps(binding))
+    errors = validate_repository_artifacts(root)
+    assert any("duplicate binding_id" in error for error in errors)
+
+
+def test_heuristic_binding_cannot_bind_a_search_component(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    binding = _implementation_binding(registration, "heuristic-with-search")
+    binding["components"]["search_algorithm"] = {
+        "state": "bound",
+        "digest": "sha256:" + "8" * 64,
+    }
+    (root / "registrations/implementation.json").write_text(json.dumps(binding))
+    errors = validate_repository_artifacts(root)
+    assert any("heuristic arm cannot bind search_algorithm" in error for error in errors)
+
+
+def test_registration_execution_spec_digest_must_resolve(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    registration["arms"][1]["execution_spec_digest"] = "sha256:" + "9" * 64
+    (root / "registrations/registration.json").write_text(json.dumps(registration))
+    errors = validate_repository_artifacts(root)
+    assert any("execution specification digest is unresolved" in error for error in errors)
+
+
+def test_calibration_spec_digest_must_resolve(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    registration["budget_profiles"]["deployment_utility"] = {
+        "budget_mode": "calibrated_grid",
+        "work_unit": "search_work_units",
+        "selected_work_value": None,
+        "calibration_spec_digest": "sha256:" + "a" * 64,
+        "benchmark_spec_digest": None,
+    }
+    (root / "registrations/registration.json").write_text(json.dumps(registration))
+    errors = validate_repository_artifacts(root)
+    assert any("calibration digest is unresolved" in error for error in errors)
+
+
+def test_superseded_artifact_requires_an_existing_predecessor(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    binding = _implementation_binding(registration, "implementation-v2")
+    binding["artifact_version"] = 2
+    binding["supersedes_digest"] = "sha256:" + "b" * 64
+    (root / "registrations/implementation.json").write_text(json.dumps(binding))
+    errors = validate_repository_artifacts(root)
+    assert any("superseded artifact is unresolved" in error for error in errors)
+
+
+def test_schema_diagnostics_do_not_echo_invalid_instance_values(tmp_path: Path) -> None:
+    root, registration = _repository_fixture(tmp_path)
+    registration["secret_value"] = "synthetic-secret-that-must-not-be-echoed"
+    (root / "registrations/registration.json").write_text(json.dumps(registration))
+    errors = validate_repository_artifacts(root)
+    assert errors
+    joined = "\n".join(errors)
+    assert "synthetic-secret-that-must-not-be-echoed" not in joined
+    assert "schema violation" in joined
+
+
+def test_reference_requires_accepted_normative_contract_frontmatter(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "example.md").write_text(
+        "---\ndocument_id: example-doc\ndocument_type: contract\n"
+        "status: draft\nnormative: false\nversion: 1\n---\n",
+        encoding="utf-8",
+    )
+    errors = _validate_registration_references(
+        {
+            "contract_references": [{"document_id": "example-doc", "document_version": 1}],
+            "metric_references": [],
+            "estimand_references": [],
+            "analysis_procedure_references": [],
+        },
+        tmp_path,
+    )
+    assert any("not accepted" in error for error in errors)
+    assert any("not normative" in error for error in errors)

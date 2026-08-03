@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
 from battlebelief_lab.registration_validation import (  # noqa: E402
     load_json_strict,
+    schema_issue_summary,
     validate_repository_artifacts,
 )
 from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E402
@@ -46,7 +47,11 @@ def collect_schema_errors(root: Path) -> list[str]:
             errors.append(f"{path.relative_to(root)}: invalid schema: {error}")
             continue
         schema_id = schema.get("$id")
-        if not isinstance(schema_id, str) or not schema_id.startswith("urn:battlebelief:"):
+        if (
+            not isinstance(schema_id, str)
+            or not schema_id.startswith("urn:battlebelief:schema:")
+            or ":v" not in schema_id
+        ):
             errors.append(f"{path.relative_to(root)}: invalid project schema ID")
         elif schema_id in ids:
             errors.append(
@@ -71,7 +76,7 @@ def collect_schema_errors(root: Path) -> list[str]:
         schema = load_json_strict(schema_path)
         validator = Draft202012Validator(schema, format_checker=FormatChecker())
         errors.extend(
-            f"{example_path.relative_to(root)} {issue.json_path}: {issue.message}"
+            f"{example_path.relative_to(root)}: {schema_issue_summary(issue)}"
             for issue in validator.iter_errors(instance)
         )
 

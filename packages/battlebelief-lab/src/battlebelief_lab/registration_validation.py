@@ -19,6 +19,13 @@ class RegistrationValidationError(ValueError):
     """Raised when a registration violates the strict M1.5 contract."""
 
 
+def schema_issue_summary(issue: Any) -> str:
+    """Return a diagnostic that cannot echo an invalid instance value."""
+
+    validator = issue.validator if isinstance(issue.validator, str) else "unknown"
+    return f"schema violation ({validator}) at {issue.json_path}"
+
+
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -29,7 +36,8 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _reject_nonfinite(value: str) -> Any:
-    raise RegistrationValidationError(f"non-finite JSON number: {value}")
+    del value
+    raise RegistrationValidationError("non-finite JSON number")
 
 
 def _validate_value(value: Any) -> None:
@@ -163,6 +171,10 @@ def validate_registration_semantics(registration: Mapping[str, Any]) -> None:
             raise RegistrationValidationError(
                 f"comparison {comparison_id} references undeclared analysis_procedure_id"
             )
+        if comparison.get("technical_outcome_treatment_id") not in analysis_procedure_ids:
+            raise RegistrationValidationError(
+                f"comparison {comparison_id} references undeclared technical outcome treatment"
+            )
 
     budget_profiles = registration.get("budget_profiles")
     if isinstance(budget_profiles, Mapping):
@@ -240,8 +252,8 @@ def _schema_for_artifact(
     return None
 
 
-def _document_index(root: Path) -> dict[str, tuple[int, str]]:
-    result: dict[str, tuple[int, str]] = {}
+def _document_index(root: Path) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
     for path in sorted((root / "docs").rglob("*.md")):
         if "archive" in path.relative_to(root / "docs").parts:
             continue
@@ -251,8 +263,19 @@ def _document_index(root: Path) -> dict[str, tuple[int, str]]:
             continue
         document_id = re.search(r"^document_id:\s*(\S+)\s*$", frontmatter.group(1), re.MULTILINE)
         version = re.search(r"^version:\s*(\d+)\s*$", frontmatter.group(1), re.MULTILINE)
+        status = re.search(r"^status:\s*(\S+)\s*$", frontmatter.group(1), re.MULTILINE)
+        normative = re.search(r"^normative:\s*(true|false)\s*$", frontmatter.group(1), re.MULTILINE)
+        document_type = re.search(
+            r"^document_type:\s*(\S+)\s*$", frontmatter.group(1), re.MULTILINE
+        )
         if document_id is not None and version is not None:
-            result[document_id.group(1)] = (int(version.group(1)), text)
+            result[document_id.group(1)] = {
+                "version": int(version.group(1)),
+                "status": status.group(1) if status is not None else None,
+                "normative": normative is not None and normative.group(1) == "true",
+                "document_type": document_type.group(1) if document_type is not None else None,
+                "text": text,
+            }
     return result
 
 
@@ -270,12 +293,20 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
         if document is None:
             errors.append(f"unknown document reference: {document_id}")
             return
-        if document[0] != document_version:
+        if document["status"] != "accepted":
+            errors.append(f"document is not accepted: {document_id}")
+        if document["normative"] is not True:
+            errors.append(f"document is not normative: {document_id}")
+        if document["document_type"] != "contract":
+            errors.append(f"document is not a contract: {document_id}")
+        if document["version"] != document_version:
             errors.append(f"document version mismatch: {document_id}")
         if identifier_field is not None:
             identifier = reference.get(identifier_field)
+            document_text = document.get("text")
             if not isinstance(identifier, str) or not re.search(
-                rf"(?<![\w-]){re.escape(identifier)}(?![\w-])", document[1]
+                rf"(?<![\w-]){re.escape(identifier)}(?![\w-])",
+                document_text if isinstance(document_text, str) else "",
             ):
                 errors.append(f"unknown {identifier_field}: {identifier}")
 
@@ -317,7 +348,7 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             schema_path, kind = schema_info
             schema = load_json_strict(schema_path)
             errors.extend(
-                f"{relative} {issue.json_path}: {issue.message}"
+                f"{relative}: {schema_issue_summary(issue)}"
                 for issue in Draft202012Validator(
                     schema, format_checker=FormatChecker()
                 ).iter_errors(value)
@@ -329,20 +360,114 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
         except RegistrationValidationError as exc:
             errors.append(f"{relative}: {exc}")
 
-    registrations_by_id: dict[str, tuple[Path, Mapping[str, Any], str]] = {}
+    registrations_by_id: dict[str, list[tuple[Path, Mapping[str, Any], str]]] = {}
+    binding_ids: dict[str, Path] = {}
     for path, value, kind in artifacts:
+        if kind in {"implementation", "run"} and isinstance(value.get("binding_id"), str):
+            binding_id = value["binding_id"]
+            if binding_id in binding_ids:
+                errors.append(
+                    f"{path.relative_to(repository_root)}: duplicate binding_id: {binding_id}"
+                )
+            else:
+                binding_ids[binding_id] = path
         if kind != "registration" or not isinstance(value.get("registration_id"), str):
             continue
         registration_id = value["registration_id"]
-        if registration_id in registrations_by_id:
+        candidates = registrations_by_id.setdefault(registration_id, [])
+        version = value.get("artifact_version")
+        if any(candidate[1].get("artifact_version") == version for candidate in candidates):
             errors.append(
                 f"{path.relative_to(repository_root)}: duplicate registration_id: {registration_id}"
             )
             continue
-        registrations_by_id[registration_id] = (path, value, kind)
+        candidates.append((path, value, kind))
+
+    def artifact_identity(value: Mapping[str, Any], kind: str) -> str | None:
+        field_by_kind = {
+            "registration": "registration_id",
+            "implementation": "binding_id",
+            "run": "binding_id",
+            "calibration_spec": "spec_id",
+            "calibration_evidence": "evidence_id",
+            "search_execution": "spec_id",
+            "synthetic_acceptance": "manifest_id",
+        }
+        field = field_by_kind.get(kind)
+        identifier = value.get(field) if field is not None else None
+        return identifier if isinstance(identifier, str) else None
+
+    supersession: dict[str, str] = {}
+    for path, value, kind in artifacts:
+        digest = manifest_digest(dict(value))
+        version = value.get("artifact_version")
+        predecessor = value.get("supersedes_digest")
+        if not isinstance(version, int) or not isinstance(predecessor, (str, type(None))):
+            continue
+        if predecessor is None:
+            if version != 1:
+                errors.append(
+                    f"{path.relative_to(repository_root)}: first artifact version must be 1"
+                )
+            continue
+        if predecessor == digest:
+            errors.append(f"{path.relative_to(repository_root)}: artifact supersedes itself")
+            continue
+        previous = by_digest.get(predecessor)
+        if previous is None:
+            errors.append(f"{path.relative_to(repository_root)}: superseded artifact is unresolved")
+            continue
+        if previous[2] != kind or artifact_identity(previous[1], previous[2]) != artifact_identity(
+            value, kind
+        ):
+            errors.append(
+                f"{path.relative_to(repository_root)}: superseded artifact identity mismatch"
+            )
+        previous_version = previous[1].get("artifact_version")
+        if not isinstance(previous_version, int) or previous_version >= version:
+            errors.append(f"{path.relative_to(repository_root)}: artifact version does not advance")
+        supersession[digest] = predecessor
+    for digest in supersession:
+        visited: set[str] = set()
+        current: str | None = digest
+        while current is not None and current in supersession:
+            if current in visited:
+                errors.append("artifact supersession cycle detected")
+                break
+            visited.add(current)
+            current = supersession[current]
+
     for path, value, kind in artifacts:
         relative = path.relative_to(repository_root)
         if kind == "registration":
+            for arm in value.get("arms", []):
+                if not isinstance(arm, Mapping):
+                    continue
+                execution_digest = arm.get("execution_spec_digest")
+                if execution_digest is None:
+                    continue
+                execution = (
+                    by_digest.get(execution_digest) if isinstance(execution_digest, str) else None
+                )
+                if execution is None or execution[2] != "search_execution":
+                    errors.append(f"{relative}: execution specification digest is unresolved")
+            budget_profiles = value.get("budget_profiles", {})
+            if isinstance(budget_profiles, Mapping):
+                for profile_name, profile in budget_profiles.items():
+                    if not isinstance(profile, Mapping):
+                        continue
+                    calibration_digest = profile.get("calibration_spec_digest")
+                    if calibration_digest is None:
+                        continue
+                    calibration = (
+                        by_digest.get(calibration_digest)
+                        if isinstance(calibration_digest, str)
+                        else None
+                    )
+                    if calibration is None or calibration[2] != "calibration_spec":
+                        errors.append(
+                            f"{relative}: budget profile {profile_name} calibration digest is unresolved"
+                        )
             errors.extend(
                 f"{relative}: {error}"
                 for error in _validate_registration_references(value, repository_root)
@@ -357,10 +482,25 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 errors.append(f"{relative}: calibration specification digest is unresolved")
                 continue
             specification = spec[1]
-            if value.get("measurement_id") != specification.get("measurement_id"):
-                errors.append(f"{relative}: calibration measurement identity mismatch")
+            if value.get("measurement_profile_id") != specification.get("measurement_profile_id"):
+                errors.append(f"{relative}: calibration measurement profile mismatch")
+            if value.get("selection_measurement_id") != specification.get(
+                "selection_measurement_id"
+            ):
+                errors.append(f"{relative}: calibration selection measurement mismatch")
             if value.get("runtime_limit_ms") != specification.get("runtime_limit_ms"):
                 errors.append(f"{relative}: calibration runtime limit mismatch")
+            required_measurements = specification.get("required_measurement_ids")
+            allowed_measurements = specification.get("allowed_runtime_measurements")
+            if not isinstance(required_measurements, list) or not isinstance(
+                allowed_measurements, list
+            ):
+                continue
+            if not set(required_measurements).issubset(set(allowed_measurements)):
+                errors.append(f"{relative}: calibration required measurements are not allowed")
+            selection_measurement = specification.get("selection_measurement_id")
+            if selection_measurement not in required_measurements:
+                errors.append(f"{relative}: calibration selection measurement is not required")
             grid = specification.get("ordered_work_grid")
             measurements = value.get("runtime_measurements")
             if not isinstance(grid, list) or not isinstance(measurements, list):
@@ -374,14 +514,35 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 errors.append(f"{relative}: calibration measurements do not cover the work grid")
                 continue
             runtime_limit = specification.get("runtime_limit_ms")
+            for measurement in measurements:
+                if not isinstance(measurement, Mapping):
+                    continue
+                values = measurement.get("measurements")
+                if not isinstance(values, Mapping):
+                    continue
+                unknown = set(values).difference(allowed_measurements)
+                if unknown:
+                    errors.append(f"{relative}: calibration has an unknown runtime measurement")
+                if measurement.get("status") in {"completed", "over_limit"} and not set(
+                    required_measurements
+                ).issubset(values):
+                    errors.append(f"{relative}: calibration row lacks required measurements")
+                if set(values).intersection(
+                    specification.get("forbidden_quality_measurements", [])
+                ):
+                    errors.append(
+                        f"{relative}: calibration contains a forbidden quality measurement"
+                    )
             eligible = [
                 measurement["work_value"]
                 for measurement in measurements
                 if isinstance(measurement, Mapping)
-                and measurement.get("status") == "ok"
-                and isinstance(measurement.get("runtime_ms"), (int, float))
+                and measurement.get("status") == "completed"
+                and isinstance(measurement.get("measurements"), Mapping)
+                and isinstance(selection_measurement, str)
+                and isinstance(measurement["measurements"].get(selection_measurement), (int, float))
                 and isinstance(runtime_limit, (int, float))
-                and measurement["runtime_ms"] <= runtime_limit
+                and measurement["measurements"][selection_measurement] <= runtime_limit
             ]
             expected_selected = max(eligible) if eligible else None
             if value.get("selected_work_value") != expected_selected:
@@ -389,16 +550,28 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             continue
         registration_id = value.get("registration_id")
         registration_digest = value.get("registration_digest")
-        registration_entry = (
-            registrations_by_id.get(registration_id) if isinstance(registration_id, str) else None
+        registration_candidates = (
+            registrations_by_id.get(registration_id, []) if isinstance(registration_id, str) else []
         )
-        if registration_entry is None:
+        if not registration_candidates:
             errors.append(f"{relative}: binding references unknown registration")
             continue
-        _, registration, _ = registration_entry
-        expected_digest = manifest_digest(dict(registration))
-        if registration_digest != expected_digest:
+        registration_entry = next(
+            (
+                candidate
+                for candidate in registration_candidates
+                if isinstance(registration_digest, str)
+                and manifest_digest(dict(candidate[1])) == registration_digest
+            ),
+            None,
+        )
+        if registration_entry is None:
             errors.append(f"{relative}: registration digest mismatch")
+            registration_entry = max(
+                registration_candidates,
+                key=lambda candidate: candidate[1].get("artifact_version", 0),
+            )
+        _, registration, _ = registration_entry
         if kind == "implementation":
             arm_ids = {
                 arm.get("arm_id")
@@ -407,6 +580,36 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             }
             if value.get("arm_id") not in arm_ids:
                 errors.append(f"{relative}: binding references unknown arm")
+            arm = next(
+                (
+                    candidate
+                    for candidate in registration.get("arms", [])
+                    if isinstance(candidate, Mapping)
+                    and candidate.get("arm_id") == value.get("arm_id")
+                ),
+                None,
+            )
+            components = value.get("components")
+            if isinstance(arm, Mapping) and isinstance(components, Mapping):
+                search_component = components.get("search_algorithm")
+                search_state = (
+                    search_component.get("state") if isinstance(search_component, Mapping) else None
+                )
+                has_search = arm.get("search_algorithm_id") is not None
+                if has_search and search_state == "not_applicable":
+                    errors.append(
+                        f"{relative}: search arm cannot mark search_algorithm not_applicable"
+                    )
+                if not has_search and search_state != "not_applicable":
+                    errors.append(f"{relative}: heuristic arm cannot bind search_algorithm")
+                if arm.get("policy_kind") == "heuristic":
+                    for component_name in ("engine", "prior", "belief", "model"):
+                        component = components.get(component_name)
+                        if (
+                            isinstance(component, Mapping)
+                            and component.get("state") != "not_applicable"
+                        ):
+                            errors.append(f"{relative}: heuristic arm cannot bind {component_name}")
         else:
             implementation_digest = value.get("implementation_binding_digest")
             implementation = (
@@ -416,6 +619,23 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             )
             if implementation is None or implementation[2] != "implementation":
                 errors.append(f"{relative}: implementation binding digest is unresolved")
+            elif (
+                implementation[1].get("registration_id") != registration_id
+                or implementation[1].get("registration_digest") != registration_digest
+            ):
+                errors.append(f"{relative}: implementation binding belongs to another registration")
+            calibration_evidence_digest = value.get("calibration_evidence_digest")
+            if calibration_evidence_digest is not None:
+                calibration_evidence = (
+                    by_digest.get(calibration_evidence_digest)
+                    if isinstance(calibration_evidence_digest, str)
+                    else None
+                )
+                if (
+                    calibration_evidence is None
+                    or calibration_evidence[2] != "calibration_evidence"
+                ):
+                    errors.append(f"{relative}: calibration evidence digest is unresolved")
             fixture_digest = value.get("synthetic_fixture_manifest_digest")
             if value.get("run_purpose") == "synthetic_acceptance":
                 fixture = by_digest.get(fixture_digest) if isinstance(fixture_digest, str) else None

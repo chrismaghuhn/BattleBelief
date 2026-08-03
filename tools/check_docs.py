@@ -12,6 +12,13 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
+# Allow `python tools/check_docs.py` to import the shared diagnostic helper.
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from battlebelief_lab.registration_validation import schema_issue_summary  # noqa: E402
+
 FRONTMATTER = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 FENCED_CODE = re.compile(r"(?ms)^(`{3,})[^\n]*\n.*?^\1[ \t]*$")
@@ -68,7 +75,7 @@ def collect_doc_errors(root: Path) -> list[str]:
             continue
         frontmatter = jsonable(yaml.safe_load(match.group(1)))
         errors.extend(
-            f"{path.relative_to(root)} {issue.json_path}: {issue.message}"
+            f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
             for issue in validator.iter_errors(frontmatter)
         )
         document_id = frontmatter.get("document_id")

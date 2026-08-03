@@ -4,7 +4,7 @@ title: Dependencies und Installationsprofile
 document_type: architecture
 status: accepted
 normative: true
-version: 6
+version: 7
 applies_to:
   - packaging
 effective_from: 2026-07-29
@@ -38,7 +38,8 @@ battlebelief-runtime
 battlebelief-lab
   DuckDB, Parquet/PyArrow, PyTorch-Training, Dataset-Ingestion,
   Node-/Showdown-Oracle, Teacher, Self-Play, Evaluation, Reporting.
-  M1.5-Registrierungsvalidierung verwendet `jsonschema`.
+  M1.5-Registrierungsvalidierung verwendet `jsonschema[format-nongpl]`;
+  die nicht-GPL Format-Checker sind Teil des isolierten Lab-Profils.
 ```
 
 PyTorch ist keine Pflichtabhängigkeit der Runtime-Base.
