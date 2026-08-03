@@ -4,7 +4,9 @@ BattleBelief is developed through explicit milestones. Each milestone separates 
 
 ## Current status
 
-**Active milestone: M1 — Protocol-safe Prototype**
+**Completed milestone: M1 — Protocol-safe Prototype**
+
+**Next planned milestone: M1.5 — not started**
 
 Implemented on `main`:
 
@@ -22,16 +24,20 @@ Implemented on `main`:
 - authenticated Showdown WebSocket connectivity;
 - request-driven single-room `BattleSession` execution;
 - direct Gen 9 OU challenge coordination;
-- a secrets-safe outgoing challenge CLI.
+- a secrets-safe outgoing challenge CLI;
+- dedicated protocol- and action-safety acceptance smokes;
+- lockstep package version `0.2.0` and the M1 runtime capability status; and
+- measured M1 evidence for the declared synthetic mapping.
 
-Still incomplete for M1:
+Not established by M1:
 
-- acceptance smoke tests;
-- atomic version and capability activation;
-- final milestone evidence;
-- controlled repeatability evidence for the complete direct-battle path.
+- observed live public-protocol coverage;
+- public ladder readiness or validation;
+- engine parity; and
+- battle-strength evidence.
 
-The repository therefore does **not** currently claim:
+No authorized public login or direct-challenge smoke was run. The repository
+therefore does **not** claim:
 
 - public ladder readiness;
 - battle strength or parity with strong agents;

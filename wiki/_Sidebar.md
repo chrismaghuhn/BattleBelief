@@ -5,7 +5,7 @@
 - [[Architecture]]
 - [[Current Status and Roadmap]]
 - [[Development and Contributing]]
-- [[Research, Scope, and Safety]]
+- [[Research, Scope, and Safety|Research-Scope-and-Safety]]
 
 ---
 
