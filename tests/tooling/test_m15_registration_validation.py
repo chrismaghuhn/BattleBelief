@@ -394,7 +394,7 @@ def test_binding_versions_cannot_branch_from_one_predecessor(tmp_path: Path) -> 
     assert any("multiple successors" in error for error in errors)
 
 
-def test_calibration_spec_rejects_unknown_selection_and_inconsistent_measurements() -> None:
+def test_calibration_spec_rejects_unknown_selection_rule() -> None:
     spec = json.loads(
         (
             Path(__file__).resolve().parents[2]
@@ -402,11 +402,23 @@ def test_calibration_spec_rejects_unknown_selection_and_inconsistent_measurement
         ).read_text()
     )
     spec["selection_rule_id"] = "unknown-rule"
-    spec["selection_measurement_id"] = "quality"
-    spec["required_measurement_ids"] = ["wall_time_ms", "quality"]
-    spec["forbidden_quality_measurements"] = ["quality"]
 
     with pytest.raises(RegistrationValidationError, match="selection_rule_id"):
+        validate_calibration_spec(spec)
+
+
+def test_calibration_spec_rejects_inconsistent_measurement_sets() -> None:
+    spec = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "schemas/examples/budget-calibration-spec.example.json"
+        ).read_text()
+    )
+    spec["required_measurement_ids"] = ["wall_time_ms", "quality"]
+    spec["allowed_runtime_measurements"] = ["wall_time_ms", "cpu_time_ms", "quality"]
+    spec["forbidden_quality_measurements"] = ["quality"]
+
+    with pytest.raises(RegistrationValidationError, match="runtime and quality"):
         validate_calibration_spec(spec)
 
 

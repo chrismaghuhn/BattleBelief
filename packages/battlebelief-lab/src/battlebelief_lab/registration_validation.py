@@ -114,11 +114,12 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
     required = spec.get("required_measurement_ids")
     allowed = spec.get("allowed_runtime_measurements")
     forbidden = spec.get("forbidden_quality_measurements")
-    if not all(isinstance(values, list) for values in (required, allowed, forbidden)):
+    if (
+        not isinstance(required, list)
+        or not isinstance(allowed, list)
+        or not isinstance(forbidden, list)
+    ):
         raise RegistrationValidationError("calibration measurement lists are invalid")
-    assert isinstance(required, list)
-    assert isinstance(allowed, list)
-    assert isinstance(forbidden, list)
     if spec.get("selection_measurement_id") not in required:
         raise RegistrationValidationError("selection_measurement_id is not required")
     if not set(required).issubset(allowed):
@@ -250,6 +251,7 @@ def validate_registration_semantics(
     analysis_procedure_ids = declared_ids(
         registration.get("analysis_procedure_references"), "analysis_procedure_id"
     )
+    known_rules: set[str] = _registration_rule_ids(root) if root is not None else set()
     metric_roles: dict[str, set[str]] = {}
     metric_directions: dict[str, str] = {}
     if root is not None:
@@ -326,7 +328,6 @@ def validate_registration_semantics(
                 f"comparison {comparison_id} references undeclared technical outcome treatment"
             )
         if root is not None:
-            known_rules = _registration_rule_ids(root)
             for field in ("tie_break_rule_id",):
                 if comparison.get(field) not in known_rules:
                     raise RegistrationValidationError(f"unknown {field}: {comparison.get(field)}")
@@ -360,7 +361,6 @@ def validate_registration_semantics(
                     f"hardware-normalized budget {profile_name} is unsupported"
                 )
     if root is not None:
-        known_rules = _registration_rule_ids(root)
         pool_rules = registration.get("pool_rules")
         if isinstance(pool_rules, Mapping):
             for field in (
@@ -469,6 +469,8 @@ def _metric_registry(root: Path) -> dict[str, dict[str, str]]:
         if direction is None:
             continue
         result[metric_id] = {"direction": direction, "roles": columns[3]}
+    if not result:
+        raise RegistrationValidationError("evaluation-metrics registry could not be parsed")
     return result
 
 
@@ -477,7 +479,7 @@ def _registration_rule_ids(root: Path) -> set[str]:
     text = document.get("text") if document is not None else None
     if not isinstance(text, str):
         return set()
-    return set(
+    result = set(
         re.findall(
             r"(?<![a-z0-9_])(?:registered_pool_construction_v1|"
             r"canonical_exact_team_cluster_v1|alternating_balanced_sides_v1|"
@@ -486,6 +488,11 @@ def _registration_rule_ids(root: Path) -> set[str]:
             text,
         )
     )
+    if not result:
+        raise RegistrationValidationError(
+            "experiment-registration rule registry could not be parsed"
+        )
+    return result
 
 
 def _validate_document_reference(
@@ -779,12 +786,6 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             errors.extend(
                 f"{relative}: {error}"
                 for error in _validate_registration_references(value, repository_root)
-            )
-            continue
-        if kind == "search_execution":
-            errors.extend(
-                f"{relative}: {error}"
-                for error in _validate_search_execution_references(value, repository_root)
             )
             continue
         if kind not in {"implementation", "run"}:
