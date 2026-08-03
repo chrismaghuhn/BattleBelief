@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-import ipaddress
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlsplit
 
 DEFAULT_SERVER_URL = "wss://sim3.psim.us/showdown/websocket"
 DEFAULT_CHALLENGE_SETUP_TIMEOUT_SECONDS = 120.0
 SHOWDOWN_PASSWORD_ENV = "BATTLEBELIEF_SHOWDOWN_PASSWORD"
-_HOST_LABEL_PATTERN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
+_ALLOWED_SERVER_URLS = frozenset(
+    {
+        DEFAULT_SERVER_URL,
+        "wss://sim3.psim.us:443/showdown/websocket",
+    }
+)
 
 
 class ChallengeConfigError(ValueError):
@@ -58,8 +60,11 @@ def load_challenge_config(
 
 
 def _validate_user_value(value: str, *, field_name: str) -> None:
+    user_id = _to_id(value)
     if (
-        not _to_id(value)
+        not user_id
+        or len(user_id) > 18
+        or not any("a" <= character <= "z" for character in user_id)
         or not value.isprintable()
         or any(character in {",", "|"} for character in value)
     ):
@@ -68,48 +73,10 @@ def _validate_user_value(value: str, *, field_name: str) -> None:
 
 def _to_id(value: str) -> str:
     return "".join(
-        character.lower() for character in value if character.isascii() and character.isalnum()
+        character for character in value.lower() if character.isascii() and character.isalnum()
     )
 
 
 def _validate_server_url(value: str) -> None:
-    if any(
-        character.isspace() or ord(character) < 32 or ord(character) == 127 for character in value
-    ):
+    if value not in _ALLOWED_SERVER_URLS:
         raise ChallengeConfigError("config_error: server URL is invalid")
-
-    try:
-        parsed = urlsplit(value)
-        port = parsed.port
-    except ValueError as exc:
-        raise ChallengeConfigError("config_error: server URL is invalid") from exc
-
-    if (
-        parsed.scheme != "wss"
-        or parsed.hostname is None
-        or not _is_valid_host(parsed.hostname)
-        or parsed.username is not None
-        or parsed.password is not None
-        or (port is not None and not 1 <= port <= 65535)
-        or parsed.fragment
-    ):
-        raise ChallengeConfigError("config_error: server URL is invalid")
-
-
-def _is_valid_host(host: str) -> bool:
-    try:
-        ipaddress.ip_address(host)
-    except ValueError:
-        pass
-    else:
-        return True
-
-    try:
-        ascii_host = host.encode("idna").decode("ascii")
-    except UnicodeError:
-        return False
-    if ascii_host.endswith("."):
-        ascii_host = ascii_host[:-1]
-    if not ascii_host or len(ascii_host) > 253:
-        return False
-    return all(_HOST_LABEL_PATTERN.fullmatch(label) for label in ascii_host.split("."))

@@ -8,6 +8,11 @@ from pathlib import Path
 import pytest
 
 from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_core.errors import (
+    LocalActionGateRejection,
+    NoLegalActionError,
+    StaleRequestIdentity,
+)
 from battlebelief_runtime.adapters.team_files.loader import load_packed_team
 from battlebelief_runtime.adapters.team_files.packed_team import PackedTeam
 from battlebelief_runtime.cli import ChallengeRunner, main
@@ -210,6 +215,10 @@ def test_password_environment_is_read_at_invocation_time(
         ("Ash", "..."),
         ("Ash|injected", "Misty"),
         ("Ash", "Misty, gen9anythinggoes"),
+        ("123", "Misty"),
+        ("A" * 19, "Misty"),
+        ("A" * 18 + "\u212a", "Misty"),
+        ("   ", "Misty"),
     ],
 )
 def test_invalid_user_values_exit_two_before_runner_construction(
@@ -234,6 +243,36 @@ def test_invalid_user_values_exit_two_before_runner_construction(
 
 
 @pytest.mark.parametrize(
+    ("username", "opponent"),
+    [
+        ("@Ash", "Misty"),
+        ("Ash", "@Misty"),
+        ("Misty\u212a", "Ash"),
+    ],
+)
+def test_supported_showdown_display_forms_are_accepted(
+    tmp_path: Path,
+    username: str,
+    opponent: str,
+) -> None:
+    runner = _FakeRunner()
+    args = _challenge_args(_write_team(tmp_path))
+    args[args.index("Ash")] = username
+    args[args.index("Misty")] = opponent
+
+    assert (
+        main(
+            args,
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 0
+    )
+
+    assert len(runner.calls) == 1
+
+
+@pytest.mark.parametrize(
     "server_url",
     [
         "ws://sim3.psim.us/showdown/websocket",
@@ -242,6 +281,11 @@ def test_invalid_user_values_exit_two_before_runner_construction(
         "wss://user:password@sim3.psim.us/showdown/websocket",
         "wss://sim3.psim.us/showdown/websocket\nmalicious",
         "wss://host\\evil/showdown/websocket",
+        "wss://evil.example/showdown/websocket",
+        "wss://sim3.psim.us.evil.example/showdown/websocket",
+        "wss://127.0.0.1/showdown/websocket",
+        "wss://sim3.psim.us/wrong-path",
+        "wss://sim3.psim.us/showdown/websocket?x=1",
     ],
 )
 def test_unsafe_server_url_exits_two_before_runner_construction(
@@ -259,6 +303,22 @@ def test_unsafe_server_url_exits_two_before_runner_construction(
         == 2
     )
     assert calls == []
+
+
+def test_official_server_with_explicit_tls_port_is_accepted(tmp_path: Path) -> None:
+    runner = _FakeRunner()
+    server_url = "wss://sim3.psim.us:443/showdown/websocket"
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path), "--server-url", server_url),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 0
+    )
+
+    assert runner.calls[0][0].server_url == server_url
 
 
 def test_missing_team_exits_two_before_runner_construction(tmp_path: Path) -> None:
@@ -402,6 +462,43 @@ def test_thrown_setup_error_exits_one_with_stable_subcode(
     assert captured.out == ""
     assert captured.err.strip() == "challenge_setup_error:challenge_setup_timeout"
     assert "secret remote response" not in captured.err
+
+
+@pytest.mark.parametrize("delivery", ["raised", "primary_error"])
+@pytest.mark.parametrize(
+    ("error_type", "expected_code"),
+    [
+        (StaleRequestIdentity, "stale_rqid"),
+        (LocalActionGateRejection, "local_action_gate_rejection"),
+        (NoLegalActionError, "no_legal_action_available"),
+    ],
+)
+def test_core_safety_errors_keep_their_stable_code_without_leaking_messages(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    delivery: str,
+    error_type: type[RuntimeError],
+    expected_code: str,
+) -> None:
+    secret_message = "classified-error-secret"
+    error = error_type(secret_message)
+    runner = (
+        _FakeRunner(error=error) if delivery == "raised" else _FakeRunner(result=_result(error))
+    )
+
+    assert (
+        main(
+            _challenge_args(_write_team(tmp_path)),
+            environment={_PASSWORD_ENV: _PASSWORD},
+            runner_factory=_runner_factory(runner),
+        )
+        == 1
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == expected_code
+    assert secret_message not in captured.err
 
 
 def test_challenge_runner_has_injectable_connection_and_coordinator_seams(

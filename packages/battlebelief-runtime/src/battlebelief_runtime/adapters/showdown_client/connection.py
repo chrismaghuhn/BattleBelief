@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from contextlib import suppress
@@ -34,6 +35,8 @@ class _Socket(Protocol):
 
 
 SocketConnector = Callable[..., Awaitable[_Socket]]
+_WEBSOCKET_LOGGER = logging.getLogger("battlebelief_runtime.showdown.websocket")
+_WEBSOCKET_LOGGER.setLevel(logging.INFO)
 
 
 class ShowdownConnection:
@@ -62,6 +65,7 @@ class ShowdownConnection:
         self._open_timeout = open_timeout
         self._read_timeout = read_timeout
         self._write_timeout = write_timeout
+        self._uses_default_socket_connector = socket_connector is None
         self._socket_connector: SocketConnector = (
             socket_connector if socket_connector is not None else cast(SocketConnector, connect)
         )
@@ -75,10 +79,17 @@ class ShowdownConnection:
 
         try:
             try:
-                self._socket = await self._socket_connector(
-                    self._url,
-                    open_timeout=self._open_timeout,
-                )
+                if self._uses_default_socket_connector:
+                    self._socket = await self._socket_connector(
+                        self._url,
+                        open_timeout=self._open_timeout,
+                        logger=_WEBSOCKET_LOGGER,
+                    )
+                else:
+                    self._socket = await self._socket_connector(
+                        self._url,
+                        open_timeout=self._open_timeout,
+                    )
             except TimeoutError as exc:
                 raise TransportTimeout("Showdown connection open timed out") from exc
             except (

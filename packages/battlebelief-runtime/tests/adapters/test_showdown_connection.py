@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
 from collections import deque
 from collections.abc import Awaitable, Callable
 
 import pytest
 from websockets.exceptions import InvalidHandshake, InvalidProxy, InvalidURI
 
+from battlebelief_runtime.adapters.showdown_client import connection as connection_module
 from battlebelief_runtime.adapters.showdown_client.connection import ShowdownConnection
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
 from battlebelief_runtime.errors.protocol import Disconnect, TransportTimeout
@@ -41,6 +43,17 @@ class _FakeSocket:
 
     async def close(self) -> None:
         self.closed = True
+
+
+class _LoggingSocket(_FakeSocket):
+    def __init__(self, frames: list[str]) -> None:
+        super().__init__(frames)
+        self.logger: logging.Logger | None = None
+
+    async def send(self, message: str) -> None:
+        assert self.logger is not None
+        self.logger.debug("> %s", message)
+        await super().send(message)
 
 
 class _ReadTimeoutSocket(_FakeSocket):
@@ -136,6 +149,42 @@ async def test_connection_sends_exact_login_command_and_preserves_challstr() -> 
     assert captured == {"url": _URL, "open_timeout": 10.0}
     assert socket.sent == ["|/trn Ash,0,assertion-token"]
     assert provider.calls == [("Ash", "password", "4|abc|def")]
+
+
+@_async_test
+async def test_websocket_debug_logging_cannot_expose_authentication_or_team_frames(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assertion = "assertion-secret-must-not-leak"
+    packed_team = "packed-team-secret-must-not-leak"
+    socket = _LoggingSocket(["|challstr|4|abc", "|updateuser| ash|1|0|{}"])
+
+    async def connector(
+        _url: str,
+        *,
+        open_timeout: float,
+        logger: logging.Logger,
+    ) -> _LoggingSocket:
+        assert open_timeout == 10.0
+        socket.logger = logger
+        return socket
+
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(connection_module, "connect", connector)
+    connection = ShowdownConnection(
+        url=_URL,
+        username="Ash",
+        password="password-secret-must-not-leak",
+        assertion_provider=_FakeAssertionProvider(assertion),
+    )
+
+    await connection.connect()
+    await connection.send_global(f"|/utm {packed_team}")
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert assertion not in messages
+    assert packed_team not in messages
 
 
 @_async_test

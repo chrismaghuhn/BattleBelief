@@ -9,6 +9,11 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Never, Protocol
 
+from battlebelief_core.errors import (
+    LocalActionGateRejection,
+    NoLegalActionError,
+    StaleRequestIdentity,
+)
 from battlebelief_runtime.adapters.showdown_client import (
     BattleConnection,
     ShowdownAssertionProvider,
@@ -93,11 +98,14 @@ class ChallengeRunner:
 
 _CLASSIFIED_RUNTIME_ERRORS = (
     Disconnect,
+    LocalActionGateRejection,
     MalformedProtocolMessage,
+    NoLegalActionError,
     ReducerInvariantFailure,
     RequestStateReconciliationMismatch,
     ServerInvalidChoice,
     ServerUnavailableChoice,
+    StaleRequestIdentity,
     TeamValidationError,
     TimerOrForfeit,
     TransportTimeout,
