@@ -45,6 +45,25 @@ class TestNoOps:
         assert isinstance(ev, PlayerDeclared)
         assert ev.side_id == "p1"
 
+    @pytest.mark.parametrize(
+        ("payload", "user_id", "display_name"),
+        [
+            ("|player|p1|Misty\u212a|1|", "mistyk", "Misty\u212a"),
+            ("|player|p1|\u00c9Ash|1|", "ash", "\u00c9Ash"),
+        ],
+    )
+    def test_player_uses_showdown_to_id_and_preserves_display_name(
+        self,
+        payload: str,
+        user_id: str,
+        display_name: str,
+    ) -> None:
+        ev = parse_battle_line(payload, 0)
+
+        assert isinstance(ev, PlayerDeclared)
+        assert ev.user_id == user_id
+        assert ev.display_name == display_name
+
     def test_teamsize_is_not_a_noop(self) -> None:
         ev = parse_battle_line("|teamsize|p1|6", 0)
         assert isinstance(ev, TeamSizeDeclared)

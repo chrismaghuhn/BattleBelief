@@ -72,7 +72,9 @@ from battlebelief_runtime.errors.protocol import (
 
 def _to_id(text: str) -> str:
     """Showdown's toID(): lowercase, strip everything except a-z0-9."""
-    return "".join(ch for ch in text.lower() if ch.isalnum())
+    return "".join(
+        character for character in text.lower() if character.isascii() and character.isalnum()
+    )
 
 
 def _split(payload: str) -> tuple[str, list[str]]:

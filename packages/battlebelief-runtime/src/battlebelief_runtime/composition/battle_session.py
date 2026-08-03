@@ -110,6 +110,8 @@ class BattleSession:
                 if line.room_id != self._room_id:
                     continue
                 await self._process_line(line)
+                if self._done:
+                    break
         except Exception as exc:
             self._abort(exc)
 
