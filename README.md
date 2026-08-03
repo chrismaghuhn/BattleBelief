@@ -3,13 +3,14 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** The M0 repository foundation is complete. M1 is in progress:
-> `main` contains immutable protocol and observed-state modeling,
-> request-derived action safety, Showdown protocol and request adapters,
-> packed-team loading, and an authenticated room-preserving connection. The
-> complete battle-session and direct-challenge path is not yet finished. Live
-> battle, belief, search, training, strength, parity, release, and MVP claims
-> are not made.
+> **Status:** M1 is in progress. `main` contains immutable protocol and
+> observed-state modeling, request-derived action safety, Showdown protocol and
+> request adapters, packed-team loading, authenticated room-preserving
+> connectivity, and a request-driven single-room `BattleSession`. Direct
+> challenge coordination, CLI integration, acceptance smokes, version
+> activation, and final M1 evidence are not yet finished. Live public battle,
+> belief, search, training, strength, parity, release, and MVP claims are not
+> made.
 
 BattleBelief targets current Smogon Gen 9 OU first. Teams are fixed before a
 battle; offline team-building and in-battle decision-making are separate
@@ -19,13 +20,16 @@ systems.
 
 BattleBelief investigates whether an explicit open-world belief over complete
 hidden sets, combined with information-set DUCT and an authoritative Showdown
-action-safety gate, improves Gen 9 OU decisions under fixed CPU and
+action-safety gate, improves Gen 9 OU decisions over pre-specified heuristic,
+determinization, and closed-world baselines under fixed CPU and
 reproducibility budgets.
 
 The project develops and measures one layer at a time. Runtime infrastructure,
 search, belief, and optional models must each earn further complexity through
-pre-registered baselines and ablations. See the
-[research strategy and experiment sequence](docs/research/strategy-and-experiments.md).
+pre-specified comparisons and controlled ablations. Formal preregistration
+begins only after M1.5 introduces the corresponding versioned registration
+artifact. See the
+[research strategy and experiment sequence](docs/roadmap/research-strategy-and-experiments.md).
 
 ## Current milestone
 
@@ -37,12 +41,14 @@ implementation on `main` includes:
 - request reconciliation, deterministic heuristic selection, and an
   independent action-safety gate;
 - room-preserving frame decoding and strict Showdown protocol parsing;
-- request reading, command encoding, and packed-team loading; and
+- request reading, command encoding, and packed-team loading;
 - authenticated Showdown WebSocket connectivity with classified transport
-  failures.
+  failures; and
+- request-driven `BattleSession` execution with freshness checks, pending-state
+  reconciliation, and `rqid`-bound `/choose` dispatch.
 
-Battle-session execution, direct challenge coordination, and the remaining M1
-validation and evidence work are still in progress. See the
+Direct challenge coordination and the remaining M1 CLI, smoke, version, and
+evidence work are still in progress. See the
 [M1 protocol-safe prototype plan](docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
 for the detailed scope and task sequence.
 
@@ -52,8 +58,8 @@ for the detailed scope and task sequence.
   includes protocol-state reduction, decision requests, reconciliation,
   deterministic policy, and action safety
 - `battlebelief-runtime`: public live adapters and CLI; currently includes
-  Showdown framing, parsing, requests, command encoding, packed teams, and the
-  authenticated connection layer
+  Showdown framing, parsing, requests, command encoding, packed teams,
+  authenticated connectivity, and the single-room BattleSession
 - `battlebelief-lab`: offline oracle, data, training, evaluation, and reporting
   work for later milestones
 
