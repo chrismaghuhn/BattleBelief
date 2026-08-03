@@ -4,6 +4,7 @@ import asyncio
 import dataclasses
 import json
 from collections.abc import Callable
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +15,6 @@ from battlebelief_core.domain.actions.submission import (
     ActionKind,
     ActionProvenance,
     BattleSubmission,
-    RequestIdentity,
-    SafeSubmissionSet,
 )
 from battlebelief_core.errors import LocalActionGateRejection, StaleRequestIdentity
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
@@ -68,14 +67,12 @@ class _CapturingPolicy:
     ) -> None:
         self._selector = selector
         self.requests: list[DecisionRequest] = []
-        self.safe_set_snapshots: list[SafeSubmissionSet] = []
-        self.identity_snapshots: list[RequestIdentity] = []
+        self.request_snapshots: list[DecisionRequest] = []
         self.candidates: list[BattleSubmission] = []
 
     def select(self, request: DecisionRequest) -> BattleSubmission:
+        self.request_snapshots.append(deepcopy(request))
         self.requests.append(request)
-        self.safe_set_snapshots.append(request.safe_submissions)
-        self.identity_snapshots.append(request.identity)
         candidate = self._selector(request)
         self.candidates.append(candidate)
         return candidate
@@ -128,11 +125,14 @@ def test_equal_value_candidate_is_authorized_without_mutating_gate_inputs() -> N
     request = policy.requests[0]
     offered = request.safe_submissions.submissions[0]
     candidate = policy.candidates[0]
+    snapshot = policy.request_snapshots[0]
     assert result.primary_error is None
     assert candidate is not offered
     assert candidate == offered
-    assert request.identity == policy.identity_snapshots[0]
-    assert request.safe_submissions == policy.safe_set_snapshots[0]
+    assert request == snapshot
+    assert request is not snapshot
+    assert request.identity is not snapshot.identity
+    assert request.safe_submissions is not snapshot.safe_submissions
     assert candidate.provenance == ActionProvenance.EXPLICIT_REQUEST
     assert result.explicit_request_submissions == 1
     assert result.default_submissions == 0
@@ -234,7 +234,8 @@ def test_server_default_is_deterministic_and_keeps_server_provenance() -> None:
         assert policy.candidates[0].provenance == ActionProvenance.SERVER_DEFAULT
         assert result.explicit_request_submissions == 0
         assert result.default_submissions == 1
-        assert policy.requests[0].safe_submissions == policy.safe_set_snapshots[0]
+        assert policy.requests[0] == policy.request_snapshots[0]
+        assert policy.requests[0] is not policy.request_snapshots[0]
         _assert_send_was_authorized(connection, policy, ["/choose default|31"])
 
     assert first_connection.sent_room == second_connection.sent_room

@@ -19,6 +19,7 @@ from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLi
 from battlebelief_runtime.composition.battle_session import (
     BattleSession,
     BattleSessionResult,
+    DecisionPolicy,
 )
 from battlebelief_runtime.errors.actions import ServerInvalidChoice, ServerUnavailableChoice
 from battlebelief_runtime.errors.protocol import (
@@ -94,7 +95,7 @@ class _UnexpectedPolicy:
 def _run(
     lines: list[RoomLine | BaseException],
     *,
-    policy: object,
+    policy: DecisionPolicy,
 ) -> tuple[BattleSessionResult, FakeConnection]:
     connection = FakeConnection(lines)
     session = BattleSession(
@@ -355,14 +356,14 @@ def test_room_control_chat_and_embedded_request_text_are_state_neutral() -> None
     policy = _RecordingPolicy()
     control_policy = _RecordingPolicy()
     metadata = _metadata(active=False)
-    request = _line(_request("move.json", 5))
+    pending_request = _line(_request("move.json", 5))
     reconciliation = _line("|switch|p1a: Garchomp|Garchomp, L50, M|183/183")
-    battle_lines = [*metadata, request, reconciliation]
+    battle_lines = [*metadata, pending_request, reconciliation]
     lines = [
         _line("|title|Ash vs. Misty"),
         _line("|J|ash"),
         *metadata,
-        request,
+        pending_request,
         _line("|c:|1700000000|ash|embedded |request|{} text"),
         reconciliation,
         _line("|L|ash"),
@@ -376,8 +377,8 @@ def test_room_control_chat_and_embedded_request_text_are_state_neutral() -> None
     assert result.room_control_or_chat_count == 4
     assert control_result.room_control_or_chat_count == 0
     assert result.state == control_result.state
-    assert [request.identity for request, _ in policy.selections] == [
-        request.identity for request, _ in control_policy.selections
+    assert [decision_request.identity for decision_request, _ in policy.selections] == [
+        decision_request.identity for decision_request, _ in control_policy.selections
     ]
     _assert_validated_sends(connection, policy, ["/choose move 1|5"], result=result)
     _assert_validated_sends(
@@ -385,6 +386,31 @@ def test_room_control_chat_and_embedded_request_text_are_state_neutral() -> None
         control_policy,
         ["/choose move 1|5"],
         result=control_result,
+    )
+
+
+def test_room_control_after_submission_preserves_duplicate_suppression() -> None:
+    policy = _RecordingPolicy()
+    submitted_request = _line(_request("move.json", 5))
+
+    result, connection = _run(
+        [
+            *_metadata(),
+            submitted_request,
+            _line("|c:|1700000000|ash|hello"),
+            submitted_request,
+        ],
+        policy=policy,
+    )
+
+    assert result.primary_error is None
+    assert result.room_control_or_chat_count == 1
+    assert len(policy.selections) == 1
+    _assert_validated_sends(
+        connection,
+        policy,
+        ["/choose move 1|5"],
+        result=result,
     )
 
 
