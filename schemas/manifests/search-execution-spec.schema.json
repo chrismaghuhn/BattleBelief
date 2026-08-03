@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:manifest:search-execution-spec:1",
+  "title": "Declarative determinization search execution specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "spec_id", "arm_id", "algorithm_version", "world_sampling", "lookahead", "value_aggregation", "action_aggregation", "tie_break", "budget_consumption", "fallback", "contract_reference"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "spec_id": {"type": "string", "minLength": 1},
+    "arm_id": {"const": "determinization_search_v0"},
+    "algorithm_version": {"type": "string", "minLength": 1},
+    "world_sampling": {"type": "object", "additionalProperties": false, "required": ["count", "distribution"], "properties": {"count": {"type": "integer", "minimum": 1}, "distribution": {"type": "string", "minLength": 1}}},
+    "lookahead": {"type": "object", "additionalProperties": false, "required": ["depth", "per_world_work"], "properties": {"depth": {"type": "integer", "minimum": 1}, "per_world_work": {"type": "integer", "minimum": 1}}},
+    "value_aggregation": {"type": "string", "minLength": 1},
+    "action_aggregation": {"type": "string", "minLength": 1},
+    "tie_break": {"type": "string", "minLength": 1},
+    "budget_consumption": {"type": "string", "minLength": 1},
+    "fallback": {"type": "string", "minLength": 1},
+    "contract_reference": {"type": "object", "additionalProperties": false, "required": ["document_id", "document_version"], "properties": {"document_id": {"type": "string", "minLength": 1}, "document_version": {"type": "integer", "minimum": 1}}}
+  }
+}

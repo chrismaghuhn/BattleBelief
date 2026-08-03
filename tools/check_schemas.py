@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,7 +11,26 @@ if str(_ROOT) not in sys.path:
 
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
+from battlebelief_lab.registration_validation import (  # noqa: E402
+    load_json_strict,
+    validate_repository_artifacts,
+)
 from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E402
+
+EXAMPLE_SCHEMA_MAP = {
+    "dataset-manifest.example.json": "dataset-manifest.schema.json",
+    "engine-capability.example.json": "engine-capability.schema.json",
+    "evaluation-claim.example.json": "evaluation-claim.schema.json",
+    "ruleset-snapshot.example.json": "ruleset-snapshot.schema.json",
+    "search-contract.example.json": "search-contract.schema.json",
+    "experiment-registration.example.json": "experiment-registration.schema.json",
+    "evaluation-arm-binding.example.json": "evaluation-arm-binding.schema.json",
+    "evaluation-run-binding.example.json": "evaluation-run-binding.schema.json",
+    "budget-calibration-spec.example.json": "budget-calibration-spec.schema.json",
+    "budget-calibration-evidence.example.json": "budget-calibration-evidence.schema.json",
+    "search-execution-spec.example.json": "search-execution-spec.schema.json",
+    "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
+}
 
 
 def collect_schema_errors(root: Path) -> list[str]:
@@ -21,7 +39,7 @@ def collect_schema_errors(root: Path) -> list[str]:
     ids: dict[str, Path] = {}
 
     for path in sorted(schema_root.rglob("*.schema.json")):
-        schema = json.loads(path.read_text(encoding="utf-8"))
+        schema = load_json_strict(path)
         try:
             Draft202012Validator.check_schema(schema)
         except Exception as error:
@@ -38,22 +56,27 @@ def collect_schema_errors(root: Path) -> list[str]:
         else:
             ids[schema_id] = path
 
-    for example_path in sorted((schema_root / "examples").glob("*.example.json")):
-        name = example_path.name.removesuffix(".example.json")
-        schema_path = schema_root / "manifests" / f"{name}.schema.json"
+    example_paths = sorted((schema_root / "examples").glob("*.example.json"))
+    if {path.name for path in example_paths} != set(EXAMPLE_SCHEMA_MAP):
+        errors.append("schemas/examples: explicit example-to-schema mapping is incomplete")
+    for example_path in example_paths:
+        schema_name = EXAMPLE_SCHEMA_MAP.get(example_path.name)
+        if schema_name is None:
+            continue
+        schema_path = schema_root / "manifests" / schema_name
         if not schema_path.exists():
             errors.append(f"{example_path.relative_to(root)}: schema missing")
             continue
-        instance = json.loads(example_path.read_text(encoding="utf-8"))
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        instance = load_json_strict(example_path)
+        schema = load_json_strict(schema_path)
         validator = Draft202012Validator(schema, format_checker=FormatChecker())
         errors.extend(
             f"{example_path.relative_to(root)} {issue.json_path}: {issue.message}"
             for issue in validator.iter_errors(instance)
         )
 
-    vectors: list[dict[str, Any]] = json.loads(
-        (schema_root / "canonicalization/test-vectors.json").read_text(encoding="utf-8")
+    vectors: list[dict[str, Any]] = load_json_strict(
+        schema_root / "canonicalization/test-vectors.json"
     )
     for vector in vectors:
         actual_bytes = canonicalize(vector["value"])
@@ -63,6 +86,7 @@ def collect_schema_errors(root: Path) -> list[str]:
         actual_digest = manifest_digest(vector["value"])
         if actual_digest != "sha256:" + vector["sha256"]:
             errors.append(f"{vector['name']}: digest differs")
+    errors.extend(validate_repository_artifacts(root))
     return sorted(errors)
 
 

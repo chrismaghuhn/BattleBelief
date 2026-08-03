@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "spec_id": "determinization-search-v0-execution-v1",
+  "arm_id": "determinization_search_v0",
+  "algorithm_version": "v0",
+  "world_sampling": {"count": 16, "distribution": "registered_closed_world_v0"},
+  "lookahead": {"depth": 2, "per_world_work": 64},
+  "value_aggregation": "arithmetic_mean",
+  "action_aggregation": "mean_value_then_stable_action_order",
+  "tie_break": "safe_submission_order",
+  "budget_consumption": "one_work_unit_per_world_transition",
+  "fallback": "deterministic_heuristic_v0",
+  "contract_reference": {"document_id": "research-strategy-and-experiments", "document_version": 1}
+}

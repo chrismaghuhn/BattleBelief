@@ -1,0 +1,356 @@
+"""Strict loading and semantic validation for M1.5 registrations."""
+
+from __future__ import annotations
+
+import json
+import math
+import re
+import unicodedata
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
+
+from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
+
+from battlebelief_core.canonicalization import manifest_digest
+
+
+class RegistrationValidationError(ValueError):
+    """Raised when a registration violates the strict M1.5 contract."""
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise RegistrationValidationError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_nonfinite(value: str) -> Any:
+    raise RegistrationValidationError(f"non-finite JSON number: {value}")
+
+
+def _validate_value(value: Any) -> None:
+    if isinstance(value, str):
+        if unicodedata.normalize("NFC", value) != value:
+            raise RegistrationValidationError("JSON strings must be NFC-normalized")
+        return
+    if isinstance(value, float) and not math.isfinite(value):
+        raise RegistrationValidationError("JSON numbers must be finite")
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            _validate_value(key)
+            _validate_value(child)
+    elif isinstance(value, list):
+        for child in value:
+            _validate_value(child)
+
+
+def load_json_strict(path: Path) -> Any:
+    """Load JSON with duplicate-key, finite-number, and NFC guarantees."""
+
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonfinite,
+        )
+    except RegistrationValidationError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RegistrationValidationError(
+            f"cannot load strict JSON {path.name}: {type(exc).__name__}"
+        ) from exc
+    _validate_value(value)
+    return value
+
+
+def _reject_placeholders(value: Any, *, path: str = "$") -> None:
+    if isinstance(value, str) and value.strip().casefold() in {
+        "todo",
+        "tbd",
+        "fixme",
+        "placeholder",
+    }:
+        raise RegistrationValidationError(f"placeholder value at {path}")
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            _reject_placeholders(child, path=f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_placeholders(child, path=f"{path}[{index}]")
+
+
+def validate_registration_semantics(registration: Mapping[str, Any]) -> None:
+    """Validate cross-field invariants not expressible in JSON Schema."""
+
+    _reject_placeholders(registration)
+    forbidden_unsealed_fields = {
+        "policy_digest",
+        "implementation_digest",
+        "team_pool_digest",
+        "opponent_policy_pool_digest",
+        "schedule_digest",
+        "calibration_evidence_digest",
+    }
+    if forbidden_unsealed_fields.intersection(registration):
+        raise RegistrationValidationError("implementation digest in unsealed registration")
+    arms = registration.get("arms")
+    if not isinstance(arms, list):
+        raise RegistrationValidationError("arms must be a list")
+    arm_ids: set[str] = set()
+    for arm in arms:
+        if not isinstance(arm, Mapping):
+            raise RegistrationValidationError("arm must be an object")
+        arm_id = arm.get("arm_id")
+        if not isinstance(arm_id, str):
+            raise RegistrationValidationError("arm_id must be a string")
+        if arm_id in arm_ids:
+            raise RegistrationValidationError(f"duplicate arm_id: {arm_id}")
+        arm_ids.add(arm_id)
+        if (
+            arm_id.startswith("information_set_duct_")
+            and arm.get("search_algorithm_id") != "information_set_duct_v0"
+        ):
+            raise RegistrationValidationError(
+                f"information_set_duct arm {arm_id} requires search_algorithm_id "
+                "information_set_duct_v0"
+            )
+
+    comparisons = registration.get("comparisons")
+    if not isinstance(comparisons, list):
+        raise RegistrationValidationError("comparisons must be a list")
+    comparison_ids: set[str] = set()
+    for comparison in comparisons:
+        if not isinstance(comparison, Mapping):
+            raise RegistrationValidationError("comparison must be an object")
+        comparison_id = comparison.get("comparison_id")
+        if not isinstance(comparison_id, str):
+            raise RegistrationValidationError("comparison_id must be a string")
+        if comparison_id in comparison_ids:
+            raise RegistrationValidationError(f"duplicate comparison_id: {comparison_id}")
+        comparison_ids.add(comparison_id)
+        for field in ("left_arm_id", "right_arm_id"):
+            arm_id = comparison.get(field)
+            if arm_id not in arm_ids:
+                raise RegistrationValidationError(f"unknown arm referenced by {field}: {arm_id}")
+
+    budget_profiles = registration.get("budget_profiles")
+    if isinstance(budget_profiles, Mapping):
+        for profile_name, profile in budget_profiles.items():
+            if not isinstance(profile, Mapping):
+                raise RegistrationValidationError(
+                    f"budget profile {profile_name} must be an object"
+                )
+            mode = profile.get("budget_mode")
+            selected = profile.get("selected_work_value")
+            calibration = profile.get("calibration_spec_digest")
+            benchmark = profile.get("benchmark_spec_digest")
+            if mode == "fixed" and (
+                not isinstance(selected, int)
+                or selected < 1
+                or calibration is not None
+                or benchmark is not None
+            ):
+                raise RegistrationValidationError(f"fixed budget {profile_name} is inconsistent")
+            if mode == "calibrated_grid" and (
+                selected is not None or not isinstance(calibration, str) or benchmark is not None
+            ):
+                raise RegistrationValidationError(
+                    f"calibrated budget {profile_name} is inconsistent"
+                )
+            if mode == "hardware_normalized" and (
+                selected is not None or calibration is not None or not isinstance(benchmark, str)
+            ):
+                raise RegistrationValidationError(
+                    f"hardware-normalized budget {profile_name} is inconsistent"
+                )
+
+
+_SCHEMA_BY_KIND = {
+    "implementation": "evaluation-arm-binding.schema.json",
+    "run": "evaluation-run-binding.schema.json",
+    "synthetic_acceptance": "synthetic-fixture-manifest.schema.json",
+}
+
+
+def _schema_for_artifact(
+    path: Path, value: Mapping[str, Any], repository_root: Path
+) -> tuple[Path, str] | None:
+    if path.name == "registration.json" or "registration_status" in value:
+        return (
+            repository_root / "schemas/manifests/experiment-registration.schema.json",
+            "registration",
+        )
+    kind = value.get("binding_kind")
+    if isinstance(kind, str) and kind in _SCHEMA_BY_KIND:
+        return (
+            repository_root / "schemas/manifests" / _SCHEMA_BY_KIND[kind],
+            kind,
+        )
+    if value.get("purpose") == "synthetic_acceptance":
+        return (
+            repository_root / "schemas/manifests/synthetic-fixture-manifest.schema.json",
+            "synthetic_acceptance",
+        )
+    if "evidence_id" in value:
+        return (
+            repository_root / "schemas/manifests/budget-calibration-evidence.schema.json",
+            "calibration_evidence",
+        )
+    if "reference_environment_specification" in value:
+        return (
+            repository_root / "schemas/manifests/budget-calibration-spec.schema.json",
+            "calibration_spec",
+        )
+    if value.get("arm_id") == "determinization_search_v0":
+        return (
+            repository_root / "schemas/manifests/search-execution-spec.schema.json",
+            "search_execution",
+        )
+    return None
+
+
+def _document_index(root: Path) -> dict[str, tuple[int, str]]:
+    result: dict[str, tuple[int, str]] = {}
+    for path in sorted((root / "docs").rglob("*.md")):
+        if "archive" in path.relative_to(root / "docs").parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        frontmatter = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        if frontmatter is None:
+            continue
+        document_id = re.search(r"^document_id:\s*(\S+)\s*$", frontmatter.group(1), re.MULTILINE)
+        version = re.search(r"^version:\s*(\d+)\s*$", frontmatter.group(1), re.MULTILINE)
+        if document_id is not None and version is not None:
+            result[document_id.group(1)] = (int(version.group(1)), text)
+    return result
+
+
+def _validate_registration_references(registration: Mapping[str, Any], root: Path) -> list[str]:
+    errors: list[str] = []
+    documents = _document_index(root)
+
+    def check_reference(reference: Mapping[str, Any], identifier_field: str | None = None) -> None:
+        document_id = reference.get("document_id")
+        document_version = reference.get("document_version")
+        if not isinstance(document_id, str):
+            errors.append("document reference has invalid document_id")
+            return
+        document = documents.get(document_id)
+        if document is None:
+            errors.append(f"unknown document reference: {document_id}")
+            return
+        if document[0] != document_version:
+            errors.append(f"document version mismatch: {document_id}")
+        if identifier_field is not None:
+            identifier = reference.get(identifier_field)
+            if not isinstance(identifier, str) or identifier not in document[1]:
+                errors.append(f"unknown {identifier_field}: {identifier}")
+
+    for reference in registration.get("contract_references", []):
+        if isinstance(reference, Mapping):
+            check_reference(reference)
+    for reference in registration.get("metric_references", []):
+        if isinstance(reference, Mapping):
+            check_reference(reference, "metric_id")
+    for reference in registration.get("estimand_references", []):
+        if isinstance(reference, Mapping):
+            check_reference(reference, "estimand_id")
+    for reference in registration.get("analysis_procedure_references", []):
+        if isinstance(reference, Mapping):
+            check_reference(reference, "analysis_procedure_id")
+    return errors
+
+
+def validate_repository_artifacts(root: Path | None = None) -> list[str]:
+    """Validate present registration artifacts; absent future directories are no-op."""
+
+    repository_root = root or Path(__file__).resolve().parents[4]
+    registrations = repository_root / "registrations"
+    if not registrations.exists():
+        return []
+
+    errors: list[str] = []
+    artifacts: list[tuple[Path, Mapping[str, Any], str]] = []
+    by_digest: dict[str, tuple[Path, Mapping[str, Any], str]] = {}
+    for path in sorted(registrations.rglob("*.json")):
+        relative = path.relative_to(repository_root)
+        try:
+            value = load_json_strict(path)
+            if not isinstance(value, Mapping):
+                raise RegistrationValidationError("artifact root must be an object")
+            schema_info = _schema_for_artifact(path, value, repository_root)
+            if schema_info is None or not schema_info[0].exists():
+                raise RegistrationValidationError("artifact kind has no known schema")
+            schema_path, kind = schema_info
+            schema = load_json_strict(schema_path)
+            errors.extend(
+                f"{relative} {issue.json_path}: {issue.message}"
+                for issue in Draft202012Validator(
+                    schema, format_checker=FormatChecker()
+                ).iter_errors(value)
+            )
+            if "registration_status" in value:
+                validate_registration_semantics(value)
+            artifacts.append((path, value, kind))
+            by_digest[manifest_digest(dict(value))] = (path, value, kind)
+        except RegistrationValidationError as exc:
+            errors.append(f"{relative}: {exc}")
+
+    registrations_by_id = {
+        value.get("registration_id"): (path, value, kind)
+        for path, value, kind in artifacts
+        if kind == "registration" and isinstance(value.get("registration_id"), str)
+    }
+    for path, value, kind in artifacts:
+        relative = path.relative_to(repository_root)
+        if kind == "registration":
+            errors.extend(
+                f"{relative}: {error}"
+                for error in _validate_registration_references(value, repository_root)
+            )
+            continue
+        if kind not in {"implementation", "run"}:
+            continue
+        registration_id = value.get("registration_id")
+        registration_digest = value.get("registration_digest")
+        registration_entry = registrations_by_id.get(registration_id)
+        if registration_entry is None:
+            errors.append(f"{relative}: binding references unknown registration")
+            continue
+        _, registration, _ = registration_entry
+        expected_digest = manifest_digest(dict(registration))
+        if registration_digest != expected_digest:
+            errors.append(f"{relative}: registration digest mismatch")
+        if kind == "implementation":
+            arm_ids = {
+                arm.get("arm_id")
+                for arm in registration.get("arms", [])
+                if isinstance(arm, Mapping)
+            }
+            if value.get("arm_id") not in arm_ids:
+                errors.append(f"{relative}: binding references unknown arm")
+        else:
+            implementation_digest = value.get("implementation_binding_digest")
+            implementation = (
+                by_digest.get(implementation_digest)
+                if isinstance(implementation_digest, str)
+                else None
+            )
+            if implementation is None or implementation[2] != "implementation":
+                errors.append(f"{relative}: implementation binding digest is unresolved")
+            fixture_digest = value.get("synthetic_fixture_manifest_digest")
+            if value.get("run_purpose") == "synthetic_acceptance":
+                fixture = by_digest.get(fixture_digest) if isinstance(fixture_digest, str) else None
+                if fixture is None or fixture[2] != "synthetic_acceptance":
+                    errors.append(f"{relative}: synthetic fixture digest is unresolved")
+    return sorted(errors)
+
+
+def artifact_digest(value: Mapping[str, Any]) -> str:
+    """Expose the shared digest operation for later binding validators."""
+
+    return manifest_digest(dict(value))

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "manifest_id": "m15-synthetic-acceptance-fixtures-v1",
+  "purpose": "synthetic_acceptance",
+  "team_fixtures": ["fixture-team-alpha", "fixture-team-beta"],
+  "opponent_policy_fixtures": ["fixture-opponent-heuristic"],
+  "schedule_rows": ["synthetic-row-0", "synthetic-row-1"],
+  "seed_family": {
+    "search_seed": "1111111111111111111111111111111111111111111111111111111111111111",
+    "world_seed": "2222222222222222222222222222222222222222222222222222222222222222",
+    "policy_seed": "3333333333333333333333333333333333333333333333333333333333333333",
+    "simulator_seed": "4444444444444444444444444444444444444444444444444444444444444444",
+    "schedule_seed": "5555555555555555555555555555555555555555555555555555555555555555",
+    "side_assignment_seed": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "budget_profile": {"mode": "synthetic_acceptance", "work_value": 1},
+  "runtime_environment": {"python": "3.14", "platform": "repository-fixture"},
+  "ruleset_snapshot": {"format_id": "gen9ou", "ruleset_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"}
+}

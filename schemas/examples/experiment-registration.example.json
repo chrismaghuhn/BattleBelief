@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "registration_id": "m15-core-comparisons-v1",
+  "registration_status": "frozen",
+  "hypothesis": "A declared policy comparison has a measurable decision effect under the registered protocol.",
+  "null_hypotheses": ["The registered comparison has no measurable decision effect."],
+  "arms": [
+    {
+      "arm_id": "heuristic_v0",
+      "policy_kind": "heuristic",
+      "search_algorithm_id": null,
+      "world_distribution_or_belief_mode": "not_applicable",
+      "lifecycle": "active"
+    },
+    {
+      "arm_id": "determinization_search_v0",
+      "policy_kind": "search",
+      "search_algorithm_id": "determinization_search_v0",
+      "world_distribution_or_belief_mode": "closed_world_v0",
+      "lifecycle": "active",
+      "execution_spec_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "comparisons": [
+    {
+      "comparison_id": "heuristic-vs-determinization",
+      "left_arm_id": "heuristic_v0",
+      "right_arm_id": "determinization_search_v0",
+      "primary_metric_id": "decision_regret_teacher_v1",
+      "estimand_id": "paired_mean_difference_v1",
+      "analysis_procedure_id": "weighted_cluster_bootstrap_v1"
+    }
+  ],
+  "metric_references": [
+    {"document_id": "evaluation-metrics", "document_version": 2, "metric_id": "decision_regret_teacher_v1", "role": "primary"},
+    {"document_id": "evaluation-metrics", "document_version": 2, "metric_id": "fallback_rate_v1", "role": "diagnostic"}
+  ],
+  "estimand_references": [
+    {"document_id": "evaluation-statistical-analysis", "document_version": 2, "estimand_id": "paired_mean_difference_v1"}
+  ],
+  "analysis_procedure_references": [
+    {"document_id": "evaluation-statistical-analysis", "document_version": 2, "analysis_procedure_id": "weighted_cluster_bootstrap_v1"}
+  ],
+  "contract_references": [
+    {"document_id": "contract-manifest-schemas", "document_version": 3},
+    {"document_id": "contract-determinism", "document_version": 1},
+    {"document_id": "contract-provenance", "document_version": 2}
+  ],
+  "pool_access": {"development": "available", "selection": "unopened", "power_pilot": "unopened", "release_holdout": "unopened"},
+  "budget_profiles": {
+    "deployment_utility": {"budget_mode": "fixed", "selected_work_value": 100, "calibration_spec_digest": null, "benchmark_spec_digest": null},
+    "mechanism_ablation": {"budget_mode": "fixed", "selected_work_value": 100, "calibration_spec_digest": null, "benchmark_spec_digest": null}
+  },
+  "decision_gates": [
+    {"decision_id": "search-entry-gate-v1", "version": 1, "stop_rule_id": "no_effect_stop_v1", "pivot_rule_id": "uncertain_effect_pivot_v1"}
+  ]
+}

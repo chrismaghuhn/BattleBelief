@@ -15,7 +15,15 @@ PACKAGE_DIRS = (
     ROOT / "packages/battlebelief-runtime",
     ROOT / "packages/battlebelief-lab",
 )
-EXTERNAL_WHEELS = ("websockets==16.1.1",)
+EXTERNAL_WHEELS = (
+    "attrs==26.1.0",
+    "jsonschema==4.26.0",
+    "jsonschema-specifications==2025.9.1",
+    "referencing==0.37.0",
+    "rfc8785==0.1.4",
+    "rpds-py==2026.6.3",
+    "websockets==16.1.1",
+)
 RUNTIME_STATUS = {
     "package": "battlebelief-runtime",
     "version": VERSION,
@@ -147,7 +155,8 @@ def main() -> int:
                     str(environment_python(core_env)),
                     "-c",
                     "import battlebelief_core; "
-                    f"assert battlebelief_core.__version__ == {VERSION!r}",
+                    f"assert battlebelief_core.__version__ == {VERSION!r}; "
+                    "import battlebelief_core.canonicalization",
                 ]
             ],
         )
@@ -175,6 +184,15 @@ def main() -> int:
         lab_entrypoint = str(entrypoint(lab_env, "battlebelief-lab"))
         assert_output([lab_entrypoint, "--version"], VERSION)
         assert_json_output([lab_entrypoint, "doctor"], LAB_STATUS)
+        run(
+            [
+                str(environment_python(lab_env)),
+                "-c",
+                "from battlebelief_lab.registration_validation import "
+                "validate_repository_artifacts; "
+                "assert validate_repository_artifacts() == []",
+            ]
+        )
         print("PASS: lab")
     return 0
 

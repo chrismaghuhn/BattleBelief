@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:manifest:synthetic-fixture-manifest:1",
+  "title": "Synthetic M1.5 acceptance fixture manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "purpose", "team_fixtures", "opponent_policy_fixtures", "schedule_rows", "seed_family", "budget_profile", "runtime_environment", "ruleset_snapshot"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manifest_id": {"type": "string", "minLength": 1},
+    "purpose": {"const": "synthetic_acceptance"},
+    "team_fixtures": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "opponent_policy_fixtures": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "schedule_rows": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "seed_family": {"type": "object", "additionalProperties": false, "required": ["search_seed", "world_seed", "policy_seed", "simulator_seed", "schedule_seed", "side_assignment_seed"], "properties": {"search_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "world_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "policy_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "simulator_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "schedule_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "side_assignment_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "budget_profile": {"type": "object", "additionalProperties": false, "required": ["mode", "work_value"], "properties": {"mode": {"enum": ["fixed", "synthetic_acceptance"]}, "work_value": {"type": "integer", "minimum": 1}}},
+    "runtime_environment": {"type": "object", "minProperties": 1},
+    "ruleset_snapshot": {"type": "object", "additionalProperties": false, "required": ["format_id", "ruleset_digest"], "properties": {"format_id": {"type": "string", "minLength": 1}, "ruleset_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}
+  }
+}

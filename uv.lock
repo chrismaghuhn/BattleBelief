@@ -64,6 +64,12 @@ wheels = [
 name = "battlebelief-core"
 version = "0.2.0"
 source = { editable = "packages/battlebelief-core" }
+dependencies = [
+    { name = "rfc8785" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "rfc8785", specifier = "==0.1.4" }]
 
 [[package]]
 name = "battlebelief-lab"
@@ -72,12 +78,14 @@ source = { editable = "packages/battlebelief-lab" }
 dependencies = [
     { name = "battlebelief-core" },
     { name = "battlebelief-runtime" },
+    { name = "jsonschema" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "battlebelief-core", editable = "packages/battlebelief-core" },
     { name = "battlebelief-runtime", editable = "packages/battlebelief-runtime" },
+    { name = "jsonschema", specifier = "==4.26.0" },
 ]
 
 [[package]]

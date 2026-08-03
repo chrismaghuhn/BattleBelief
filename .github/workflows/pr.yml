@@ -41,6 +41,7 @@ jobs:
           uv run python tools/check_architecture.py
           uv run python tools/check_docs.py
           uv run python tools/check_schemas.py
+          uv run python tools/validate_m15_registration.py
 
   package-smoke:
     name: package-smoke-${{ matrix.os }}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "binding_id": "heuristic-v0-synthetic-run-v1",
+  "binding_kind": "run",
+  "run_purpose": "synthetic_acceptance",
+  "registration_id": "m15-core-comparisons-v1",
+  "registration_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "implementation_binding_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+  "schedule_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "seed_family_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "budget_profile_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "runtime_environment_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "ruleset_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "synthetic_fixture_manifest_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+}

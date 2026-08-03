@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:manifest:evaluation-run-binding:1",
+  "title": "BattleBelief evaluation run binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding_id", "binding_kind", "run_purpose", "registration_id", "registration_digest", "implementation_binding_digest", "schedule_digest", "seed_family_digest", "budget_profile_digest", "runtime_environment_digest", "ruleset_digest"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "binding_id": {"type": "string", "minLength": 1},
+    "binding_kind": {"const": "run"},
+    "run_purpose": {"enum": ["evaluation", "synthetic_acceptance"]},
+    "registration_id": {"type": "string", "minLength": 1},
+    "registration_digest": {"$ref": "#/$defs/digest"},
+    "implementation_binding_digest": {"$ref": "#/$defs/digest"},
+    "schedule_digest": {"$ref": "#/$defs/digest"},
+    "seed_family_digest": {"$ref": "#/$defs/digest"},
+    "budget_profile_digest": {"$ref": "#/$defs/digest"},
+    "runtime_environment_digest": {"$ref": "#/$defs/digest"},
+    "ruleset_digest": {"$ref": "#/$defs/digest"},
+    "team_pool_digest": {"$ref": "#/$defs/digest"},
+    "opponent_policy_pool_digest": {"$ref": "#/$defs/digest"},
+    "calibration_evidence_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "synthetic_fixture_manifest_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"run_purpose": {"const": "evaluation"}}},
+      "then": {"required": ["team_pool_digest", "opponent_policy_pool_digest"], "not": {"required": ["synthetic_fixture_manifest_digest"]}}
+    },
+    {
+      "if": {"properties": {"run_purpose": {"const": "synthetic_acceptance"}}},
+      "then": {"required": ["synthetic_fixture_manifest_digest"], "not": {"required": ["team_pool_digest", "opponent_policy_pool_digest"]}}
+    }
+  ],
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}

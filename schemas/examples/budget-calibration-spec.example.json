@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "spec_id": "m15-fixed-budget-reference-v1",
+  "budget_mode": "calibrated_grid",
+  "reference_environment_specification": {"python": "3.14", "platform": "ubuntu-24.04"},
+  "calibration_state_construction_rule": "Use the frozen synthetic state fixture in the calibration manifest.",
+  "ordered_work_grid": [32, 64, 128],
+  "selection_rule_id": "largest-value-under-runtime-limit-v1",
+  "allowed_runtime_measurements": ["wall_time_ms", "cpu_time_ms"],
+  "forbidden_quality_measurements": ["battle_outcome", "teacher_regret", "selection_holdout_score"]
+}

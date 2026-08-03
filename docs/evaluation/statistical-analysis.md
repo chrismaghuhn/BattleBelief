@@ -4,7 +4,7 @@ title: Statistischer Analysevertrag
 document_type: contract
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - evaluation
   - gen9ou
@@ -74,3 +74,11 @@ Interaktionstests und Multiplizitätskontrolle.
 Die statistische Bedeutung gleicher Seeds folgt
 [`contract-determinism`](../contracts/determinism.md). Ein gleicher Seed allein
 rechtfertigt keine gepaarte kausale Analyse.
+
+## Maschinenlesbare Analyse-IDs
+
+| ID | Bedeutung |
+|---|---|
+| `weighted_cluster_bootstrap_v1` | vorregistriertes Cluster-Bootstrap-Verfahren |
+| `paired_mean_difference_v1` | registrierter primärer Vergleichsschätzer |
+| `technical_outcomes_full_v1` | vollständige Behandlung technischer Ergebnisse |

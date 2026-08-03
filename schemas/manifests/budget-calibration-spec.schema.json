@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:manifest:budget-calibration-spec:1",
+  "title": "Budget calibration specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "spec_id", "budget_mode", "reference_environment_specification", "calibration_state_construction_rule", "ordered_work_grid", "selection_rule_id", "allowed_runtime_measurements", "forbidden_quality_measurements"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "spec_id": {"type": "string", "minLength": 1},
+    "budget_mode": {"enum": ["calibrated_grid", "hardware_normalized"]},
+    "reference_environment_specification": {"type": "object", "minProperties": 1},
+    "calibration_state_construction_rule": {"type": "string", "minLength": 1},
+    "ordered_work_grid": {"type": "array", "items": {"type": "integer", "minimum": 1}, "minItems": 1, "uniqueItems": true},
+    "selection_rule_id": {"type": "string", "minLength": 1},
+    "allowed_runtime_measurements": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "forbidden_quality_measurements": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+  }
+}

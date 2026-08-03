@@ -13,6 +13,7 @@ authors = [{ name = "BattleBelief contributors" }]
 dependencies = [
   "battlebelief-core==0.2.0",
   "battlebelief-runtime==0.2.0",
+  "jsonschema==4.26.0",
 ]
 
 [project.scripts]

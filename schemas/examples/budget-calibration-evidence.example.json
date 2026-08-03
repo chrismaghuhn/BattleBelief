@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "evidence_id": "m15-calibration-evidence-v1",
+  "calibration_spec_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "actual_environment_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "actual_calibration_state_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "runtime_measurements": [
+    {"work_value": 32, "runtime_ms": 1.5},
+    {"work_value": 64, "runtime_ms": 2.5}
+  ],
+  "selected_work_value": 64
+}

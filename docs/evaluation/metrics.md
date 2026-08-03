@@ -4,7 +4,7 @@ title: Forschungs- und Betriebsmetriken
 document_type: contract
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - research
   - evaluation
@@ -74,3 +74,16 @@ Anwendungsprädikats geprüft“, nicht globale Vollständigkeit.
 
 Die konkreten M5-Schwellen stehen ausschließlich in
 [`evaluation-m5-strength-qualification`](m5-strength-qualification.md).
+
+## Maschinenlesbare Metrik-IDs
+
+Registrierungen referenzieren die folgenden stabilen IDs; die Bedeutung der
+Metriken bleibt in den Abschnitten dieses Contracts:
+
+| ID | Rolle |
+|---|---|
+| `decision_regret_teacher_v1` | primärer Decision-Regret |
+| `teacher_top1_agreement_v1` | Teacher-Agreement-Diagnostik |
+| `battle_outcome_weighted_v1` | gewichtetes Battle-Ergebnis |
+| `end_to_end_latency_ms_v1` | End-to-End-Latenzverteilung |
+| `fallback_rate_v1` | Fallback-Rate |

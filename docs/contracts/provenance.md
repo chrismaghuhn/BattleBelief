@@ -4,7 +4,7 @@ title: Provenance-, Snapshot- und Claim-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 1
+version: 2
 applies_to:
   - release
   - evaluation
@@ -72,3 +72,8 @@ zu einem Tag geschrieben werden.
 
 Canonicalization und Hashbildung folgen
 [`contract-manifest-schemas`](manifest-schemas.md).
+
+Experimentregistrierungen, Implementierungsbindungen und Laufbindungen sind
+unveränderliche Provenienzartefakte. Ihre Lebenszyklus- und
+Supersessionsregeln stehen ausschließlich im
+[`experiment-registration`](experiment-registration.md)-Contract.
