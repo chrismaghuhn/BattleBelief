@@ -169,8 +169,11 @@ looking at action quality or battle results?
 1. **Outcome-blind calibration grid (recommended):** freeze a finite ordered
    work grid and a calibration-state digest; choose the largest value whose
    measured runtime remains inside the deployment budget on the reference
-   environment. The calibration may inspect only runtime and resource
-   measurements, never action quality, wins, or holdout rows.
+   environment. Seal the reference-environment identity, calibration-state
+   digest, ordered grid, selection rule, and measured calibration output as an
+   immutable Calibration Evidence artifact before the registration. The
+   calibration may inspect only runtime and resource measurements, never action
+   quality, wins, or holdout rows.
 2. **Fixed budget value:** freeze an explicit number of transitions,
    simulations, or nodes before any calibration run. This is easiest to audit,
    but it may underuse the reference hardware or exceed the deployment limit.
@@ -178,6 +181,12 @@ looking at action quality or battle results?
    normalize work to a reference CPU profile. This is portable but adds a
    platform-normalization contract and must not become a post-result tuning
    loop.
+
+Regardless of the selected option, a Budget Profile Digest includes the
+immutable reference-environment digest, calibration-state digest, ordered work
+grid, selection-rule ID, calibration-measurements digest, and selected work
+value. Runtime observations from later comparison runs never alter the budget
+identity.
 
 Deployment Utility always uses the same maximum end-to-end wall-time and CPU
 budget for the compared arms. Mechanism Ablation uses the selected Search-work
@@ -312,11 +321,15 @@ unknown properties. Every manifest carries `schema_version`, a stable
 - metric IDs, metric-document versions, estimand IDs, and analysis-procedure
   IDs, without copying their definitions;
 - deployment and mechanism budget profiles;
+- the immutable calibration-evidence digest and selected work-grid value for
+  each applicable budget profile;
 - pool construction, near-duplicate, side, and schedule rules;
 - stop/pivot rules with the selected decision version; and
 - a separate `pool_access` object with `development: "available"` and
   `selection`, `power_pilot`, and `release_holdout` all set to `"unopened"`;
-- no concrete implementation, team, schedule, or pool digests; and
+- no concrete implementation, team, schedule, or evaluation-pool digests; a
+  pre-result calibration-evidence digest is permitted and required for an
+  applicable budget profile; and
 - an explicit `registration_status: "frozen"`; the registration digest is
   recorded externally in the binding/evidence because inserting it into the
   bytes being hashed would be circular.
@@ -709,9 +722,24 @@ input collections without changing their identities cannot silently alter the
 schedule.
 
 Budget profiles contain separate Deployment Utility and Mechanism Ablation
-views. Calibration can select only from a pre-registered work grid using
+views. The harness creates an immutable Calibration Evidence value before the
+registration is frozen. It includes:
+
+```text
+reference_environment_digest
+calibration_state_digest
+ordered_work_grid
+selection_rule_id
+calibration_measurements_digest
+selected_work_value
+```
+
+Calibration can select only from that pre-registered work grid using
 runtime/resource observations; it cannot inspect actions, wins, quality
-metrics, or holdout rows.
+metrics, or holdout rows. The Budget Profile Digest includes the complete
+Calibration Evidence. Identical registered inputs and identical sealed
+calibration evidence therefore produce identical budget identities; variable
+runtime observations from the later comparison cannot change them.
 
 TDD sequence:
 
@@ -726,6 +754,10 @@ TDD sequence:
   selected; otherwise add the external-classifier provenance and unopened-pool
   rejection tests for option 3.
 - [ ] Add tests for both budget views and outcome-blind calibration inputs.
+- [ ] Add tests that the budget identity changes when sealed calibration
+  evidence changes, remains stable when later comparison timings change, and
+  records the reference environment, state digest, grid, rule, measurements,
+  and selected value.
 - [ ] Implement the pure Lab modules with immutable return values.
 - [ ] Run focused Lab tests, architecture checks, and the isolated Lab package
   smoke; no public network access is permitted.
@@ -780,7 +812,8 @@ The first binding is an `ArmImplementationBinding` for `heuristic_v0`, not an
 evaluation-run binding. It records the actual source commit selected for the
 post-Task-20 `main`, the heuristic policy digest, Safety/Fallback digest,
 Decision-Record schema and canonicalizer digests, Runtime and contract
-digests, and component states for Search, engine, Belief, model, team pools,
+digests, immutable calibration-evidence and budget-profile digests, and
+component states for Search, engine, Belief, model, team pools,
 opponent pools, schedules, seeds, and evaluation budgets. Components that are
 not part of an implementation binding are `not_applicable`; components that
 will be supplied only for a later concrete run are `unbound`. No component is
@@ -849,6 +882,8 @@ records:
 - registration and heuristic-binding digest checks;
 - two identical synthetic M1 runs with byte-identical Decision Records;
 - seed, schedule, and budget reproducibility;
+- immutable calibration-evidence contents and budget-profile digest
+  reproducibility;
 - pool partition and near-duplicate disjointness checks;
 - unopened Selection and Release Holdout status;
 - secret and hidden-state leakage checks;
