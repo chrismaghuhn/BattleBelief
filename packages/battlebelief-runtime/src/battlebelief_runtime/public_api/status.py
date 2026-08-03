@@ -1,5 +1,7 @@
 from typing import Final, TypedDict
 
+from battlebelief_runtime import __version__
+
 
 class RuntimeStatus(TypedDict):
     package: str
@@ -11,10 +13,10 @@ class RuntimeStatus(TypedDict):
 
 _STATUS: Final[RuntimeStatus] = {
     "package": "battlebelief-runtime",
-    "version": "0.1.0",
-    "phase": "M0",
+    "version": __version__,
+    "phase": "M1",
     "entrypoint": "ready",
-    "battle_capability": "absent",
+    "battle_capability": "heuristic_direct_challenge",
 }
 
 

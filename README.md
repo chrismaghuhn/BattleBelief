@@ -3,12 +3,11 @@
 An open-source Pokémon Singles research bot for decision-making under hidden
 information.
 
-> **Status:** M1 is in progress. `main` contains the protocol-safe Core,
-> authenticated Showdown connectivity, the request-driven `BattleSession`,
-> direct-challenge coordination, and the secrets-safe challenge CLI. Acceptance
-> smokes, atomic version activation, and final M1 evidence remain incomplete.
-> Live public battle, belief, search, training, strength, parity, release, and
-> MVP claims are not made.
+> **Status:** M1 protocol-safe prototype complete. The runtime can execute one
+> direct Gen 9 OU challenge with a deterministic heuristic policy. Search,
+> belief, training, ladder automation, engine parity, strength, and MVP claims
+> are not implemented. Observed live public-protocol coverage is not
+> established.
 
 ## Target architecture
 
@@ -153,8 +152,8 @@ artifact. See the
 
 ## Current milestone
 
-M1 is building a protocol-safe, heuristic Gen 9 OU prototype. The current
-implementation on `main` includes:
+M1 delivered a protocol-safe, heuristic Gen 9 OU prototype. The implementation
+on `main` includes:
 
 - immutable battle events, visible state, and deterministic reduction;
 - normalized decision requests and conservative safe submission sets;
@@ -166,13 +165,16 @@ implementation on `main` includes:
   failures;
 - request-driven `BattleSession` execution with freshness checks, pending-state
   reconciliation, and `rqid`-bound `/choose` dispatch;
-- direct Gen 9 OU challenge coordination with single-reader room handoff; and
-- a secrets-safe outgoing challenge CLI with pre-network validation.
+- direct Gen 9 OU challenge coordination with single-reader room handoff;
+- a secrets-safe outgoing challenge CLI with pre-network validation;
+- visible protocol- and action-safety acceptance smokes in the stable
+  `pr-gate`; and
+- lockstep package version `0.2.0` with an M1 runtime capability status.
 
-Acceptance smokes, atomic version activation, and final M1 evidence are still
-in progress. See the
-[M1 protocol-safe prototype plan](docs/superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
-for the detailed scope and task sequence.
+The measured [M1 protocol-safe prototype evidence](docs/operations/m1-protocol-safe-evidence.md)
+records the synthetic coverage, checks, and explicit non-claims. No authorized
+public login or direct-challenge smoke was run, so observed live protocol
+coverage remains unestablished. M1.5 has not started.
 
 ## Packages
 
