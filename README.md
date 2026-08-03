@@ -15,6 +15,18 @@ BattleBelief targets current Smogon Gen 9 OU first. Teams are fixed before a
 battle; offline team-building and in-battle decision-making are separate
 systems.
 
+## Research thesis
+
+BattleBelief investigates whether an explicit open-world belief over complete
+hidden sets, combined with information-set DUCT and an authoritative Showdown
+action-safety gate, improves Gen 9 OU decisions under fixed CPU and
+reproducibility budgets.
+
+The project develops and measures one layer at a time. Runtime infrastructure,
+search, belief, and optional models must each earn further complexity through
+pre-registered baselines and ablations. See the
+[research strategy and experiment sequence](docs/research/strategy-and-experiments.md).
+
 ## Current milestone
 
 M1 is building a protocol-safe, heuristic Gen 9 OU prototype. The current
