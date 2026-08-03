@@ -20,6 +20,7 @@ from battlebelief_lab.registration_validation import (  # noqa: E402
     validate_calibration_spec,
     validate_registration_semantics,
     validate_repository_artifacts,
+    validate_synthetic_fixture_manifest,
 )
 from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E402
 
@@ -101,6 +102,8 @@ def collect_schema_errors(root: Path) -> list[str]:
                             f"{example_path.relative_to(root)}: {error}"
                             for error in _validate_search_execution_references(instance, root)
                         )
+                    elif kind == "synthetic_acceptance":
+                        validate_synthetic_fixture_manifest(instance, root)
                 except RegistrationValidationError as error:
                     errors.append(f"{example_path.relative_to(root)}: {error}")
 

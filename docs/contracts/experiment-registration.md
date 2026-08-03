@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 4
+version: 5
 applies_to:
   - research
   - evaluation
@@ -45,20 +45,20 @@ Version tragen. Selbstreferenzen und Supersessionszyklen sind ungültig.
 
 Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 
-| Referenzfeld | Zulässige ID |
-|---|---|
-| `construction_rule_id` | `registered_pool_construction_v1` |
-| `near_duplicate_rule_id` | `canonical_exact_team_cluster_v1` |
-| `side_assignment_rule_id` | `alternating_balanced_sides_v1` |
-| `schedule_rule_id` | `registered_schedule_v1` |
-| `tie_break_rule_id` | `prefer_lower_runtime_v1` |
-| `stop_rule_id` | `no_effect_stop_v1` |
-| `pivot_rule_id` | `uncertain_effect_pivot_v1` |
+| Reference field | Allowed ID | Normative meaning |
+|---|---|---|
+| `construction_rule_id` | `registered_pool_construction_v1` | Constructs disjoint registered evaluation pools. |
+| `near_duplicate_rule_id` | `canonical_exact_team_cluster_v1` | Groups semantically identical complete teams by canonical representation. |
+| `side_assignment_rule_id` | `alternating_balanced_sides_v1` | Assigns sides deterministically and balances even repetitions. |
+| `schedule_rule_id` | `registered_schedule_v1` | Produces schedule rows from the frozen matchup, seed, and side order. |
+| `tie_break_rule_id` | `prefer_lower_runtime_v1` | Resolves a registered tie in favor of the lower runtime. |
+| `stop_rule_id` | `no_effect_stop_v1` | Stops a comparison at the preregistered null-effect criterion. |
+| `pivot_rule_id` | `uncertain_effect_pivot_v1` | Routes an uncertain effect through the preregistered pivot path. |
 
-Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Die
-Semantik jeder Regel bleibt in ihrem jeweiligen normativen Evaluations- oder
-Determinismusvertrag; diese Liste friert nur die referenzierbaren Identitäten
-für die Artefaktvalidierung ein.
+Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Diese
+versionierte Tabelle ist der normative Eigentümer der zulässigen IDs und ihrer
+Minimalbedeutung; spezialisierte Verträge dürfen die Verfahren operationalisieren,
+aber keine abweichende Identität einführen.
 
 ## Komponentenstatus
 

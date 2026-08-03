@@ -17,6 +17,7 @@ from battlebelief_lab.registration_validation import (
     validate_calibration_spec,
     validate_registration_semantics,
     validate_repository_artifacts,
+    validate_synthetic_fixture_manifest,
 )
 
 
@@ -217,6 +218,52 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
 
     assert errors == []
 
+    reference["contract_references"][0]["document_digest"] = "sha256:" + "0" * 64
+    errors = _validate_registration_references(reference, tmp_path)
+
+    assert any("document digest mismatch" in error for error in errors)
+
+
+def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "docs", tmp_path / "docs")
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    metrics_path = tmp_path / "docs/evaluation/metrics.md"
+    historical_metrics = metrics_path.read_bytes()
+    snapshots = tmp_path / "docs/contracts/snapshots"
+    snapshots.mkdir(parents=True)
+    (snapshots / "evaluation-metrics.v4.md").write_bytes(historical_metrics)
+    current_metrics = metrics_path.read_text(encoding="utf-8")
+    current_metrics = current_metrics.replace("version: 4", "version: 5", 1).replace(
+        "niedriger ist besser", "höher ist besser", 1
+    )
+    metrics_path.write_text(current_metrics, encoding="utf-8")
+
+    validate_registration_semantics(registration, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "missing_document_id",
+    ["evaluation-target-population", "evaluation-pool-separation"],
+)
+def test_registration_requires_target_population_and_pool_contracts(
+    missing_document_id: str,
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "schemas/examples/experiment-registration.example.json").read_text()
+    )
+    registration["contract_references"] = [
+        reference
+        for reference in registration["contract_references"]
+        if reference["document_id"] != missing_document_id
+    ]
+
+    with pytest.raises(RegistrationValidationError, match=missing_document_id):
+        validate_registration_semantics(registration, root)
+
 
 def test_duplicate_registration_ids_are_reported(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[2]
@@ -272,6 +319,7 @@ def _repository_fixture(tmp_path: Path) -> tuple[Path, dict[str, object]]:
     root = Path(__file__).resolve().parents[2]
     shutil.copytree(root / "schemas", tmp_path / "schemas")
     shutil.copytree(root / "docs", tmp_path / "docs")
+    shutil.copytree(root / "tests/fixtures", tmp_path / "tests/fixtures")
     registration = json.loads(
         (root / "schemas/examples/experiment-registration.example.json").read_text()
     )
@@ -533,6 +581,40 @@ def test_synthetic_run_binding_must_match_fixture_components(tmp_path: Path) -> 
     errors = validate_repository_artifacts(root)
 
     assert any("synthetic fixture schedule_digest mismatch" in error for error in errors)
+
+
+def test_synthetic_fixture_rejects_changed_team_content(tmp_path: Path) -> None:
+    root, _ = _repository_fixture(tmp_path)
+    fixture = json.loads(
+        (root / "schemas/examples/synthetic-fixture-manifest.example.json").read_text()
+    )
+    team_path = root / "tests/fixtures/teams/fixture-team-alpha.txt"
+    team_path.write_text("tampered team\n", encoding="utf-8")
+
+    with pytest.raises(RegistrationValidationError, match="content digest mismatch"):
+        validate_synthetic_fixture_manifest(fixture, root)
+
+
+def test_synthetic_fixture_rejects_path_traversal(tmp_path: Path) -> None:
+    root, _ = _repository_fixture(tmp_path)
+    fixture = json.loads(
+        (root / "schemas/examples/synthetic-fixture-manifest.example.json").read_text()
+    )
+    fixture["team_fixtures"][0]["repository_path"] = "tests/fixtures/teams/../../secret.txt"
+
+    with pytest.raises(RegistrationValidationError, match="repository path"):
+        validate_synthetic_fixture_manifest(fixture, root)
+
+
+def test_synthetic_fixture_rejects_missing_ruleset_artifact(tmp_path: Path) -> None:
+    root, _ = _repository_fixture(tmp_path)
+    fixture = json.loads(
+        (root / "schemas/examples/synthetic-fixture-manifest.example.json").read_text()
+    )
+    fixture["ruleset_snapshot"]["repository_path"] = "tests/fixtures/rulesets/missing.json"
+
+    with pytest.raises(RegistrationValidationError, match="does not exist"):
+        validate_synthetic_fixture_manifest(fixture, root)
 
 
 def test_valid_synthetic_run_binding_accepts_array_schedule_digest(tmp_path: Path) -> None:

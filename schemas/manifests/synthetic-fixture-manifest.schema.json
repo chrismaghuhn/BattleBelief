@@ -9,12 +9,15 @@
     "schema_version": {"const": 2},
     "manifest_id": {"type": "string", "minLength": 1},
     "purpose": {"const": "synthetic_acceptance"},
-    "team_fixtures": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
-    "opponent_policy_fixtures": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "team_fixtures": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["fixture_id", "repository_path", "content_digest"], "properties": {"fixture_id": {"type": "string", "minLength": 1}, "repository_path": {"type": "string", "pattern": "^tests/fixtures/teams/[^/\\\\]+$"}, "content_digest": {"$ref": "#/$defs/digest"}}}, "minItems": 1},
+    "opponent_policy_fixtures": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["fixture_id", "repository_path", "content_digest"], "properties": {"fixture_id": {"type": "string", "minLength": 1}, "repository_path": {"type": "string", "pattern": "^tests/fixtures/policies/[^/\\\\]+$"}, "content_digest": {"$ref": "#/$defs/digest"}}}, "minItems": 1},
     "schedule_rows": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["row_id", "base_matchup_id", "side_assignment", "repetition_index"], "properties": {"row_id": {"type": "string", "minLength": 1}, "base_matchup_id": {"type": "string", "minLength": 1}, "side_assignment": {"enum": ["p1", "p2"]}, "repetition_index": {"type": "integer", "minimum": 0}}}},
     "seed_family": {"type": "object", "additionalProperties": false, "required": ["search_seed", "world_seed", "policy_seed", "simulator_seed", "schedule_seed", "side_assignment_seed"], "properties": {"search_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "world_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "policy_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "simulator_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "schedule_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "side_assignment_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
     "budget_profile": {"type": "object", "additionalProperties": false, "required": ["mode", "work_value"], "properties": {"mode": {"enum": ["fixed", "synthetic_acceptance"]}, "work_value": {"type": "integer", "minimum": 1}}},
     "runtime_environment": {"type": "object", "minProperties": 1},
-    "ruleset_snapshot": {"type": "object", "additionalProperties": false, "required": ["format_id", "ruleset_digest"], "properties": {"format_id": {"type": "string", "minLength": 1}, "ruleset_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}
+    "ruleset_snapshot": {"type": "object", "additionalProperties": false, "required": ["format_id", "ruleset_digest", "repository_path", "content_digest"], "properties": {"format_id": {"type": "string", "minLength": 1}, "ruleset_digest": {"$ref": "#/$defs/digest"}, "repository_path": {"type": "string", "pattern": "^tests/fixtures/rulesets/[^/\\\\]+$"}, "content_digest": {"$ref": "#/$defs/digest"}}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
   }
 }

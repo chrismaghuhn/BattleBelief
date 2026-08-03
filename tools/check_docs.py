@@ -24,6 +24,7 @@ MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 FENCED_CODE = re.compile(r"(?ms)^(`{3,})[^\n]*\n.*?^\1[ \t]*$")
 LOCAL_PATH = re.compile(r"(?i)(?<![a-z])[a-z]:[\\/]|file://|%3a(?:%2f|/)")
 OLD_NAMES = re.compile(r"(?i)urn:pokemonbot|pokemonbot[-_](?:core|runtime|lab)")
+CONTRACT_SNAPSHOT_PARTS = ("contracts", "snapshots")
 
 
 def jsonable(value: Any) -> Any:
@@ -62,6 +63,7 @@ def collect_doc_errors(root: Path) -> list[str]:
         path
         for path in docs_root.rglob("*.md")
         if "archive" not in path.relative_to(docs_root).parts
+        and path.relative_to(docs_root).parts[:2] != CONTRACT_SNAPSHOT_PARTS
     )
 
     documents: dict[str, tuple[Path, dict[str, Any]]] = {}
@@ -117,6 +119,8 @@ def collect_doc_errors(root: Path) -> list[str]:
         ):
             errors.append(f"{document_id}: old namespace in current normative document")
 
+    errors.extend(collect_contract_snapshot_errors(root, schema, validator))
+
     authority = json.loads((root / "config/docs-authority.json").read_text(encoding="utf-8"))
     for definition in authority["definitions"]:
         literal = "".join(definition["parts"])
@@ -151,6 +155,59 @@ def collect_doc_errors(root: Path) -> list[str]:
     expected_coverage = list(range(1, len(snapshot.read_text(encoding="utf-8").splitlines()) + 1))
     if coverage != expected_coverage:
         errors.append("migration matrix has gaps, overlaps, or wrong order")
+    return sorted(errors)
+
+
+def collect_contract_snapshot_errors(
+    root: Path, schema: dict[str, Any], validator: Draft202012Validator
+) -> list[str]:
+    """Validate snapshots without treating them as current documents."""
+
+    docs_root = root / "docs"
+    snapshot_root = docs_root / "contracts/snapshots"
+    if not snapshot_root.exists():
+        return []
+
+    errors: list[str] = []
+    identities: set[tuple[str, int]] = set()
+    for path in sorted(snapshot_root.rglob("*.md")):
+        relative = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        match = FRONTMATTER.match(text)
+        if match is None:
+            errors.append(f"{relative}: missing frontmatter")
+            continue
+        frontmatter = jsonable(yaml.safe_load(match.group(1)))
+        errors.extend(
+            f"{relative}: {schema_issue_summary(issue)}"
+            for issue in validator.iter_errors(frontmatter)
+        )
+        document_id = frontmatter.get("document_id")
+        version = frontmatter.get("version")
+        if (
+            isinstance(document_id, str)
+            and isinstance(version, int)
+            and not isinstance(version, bool)
+        ):
+            identity = (document_id, version)
+            if identity in identities:
+                errors.append(f"duplicate contract snapshot: {document_id} v{version}")
+            identities.add(identity)
+        if frontmatter.get("document_type") != "contract":
+            errors.append(f"{relative}: snapshot must have document_type contract")
+        if not frontmatter.get("normative"):
+            errors.append(f"{relative}: contract snapshot must be normative")
+        if has_unclosed_fence(text):
+            errors.append(f"{relative}: unbalanced code fences")
+        prose = FENCED_CODE.sub("", text)
+        if LOCAL_PATH.search(prose):
+            errors.append(f"{relative}: local path")
+        for link in MARKDOWN_LINK.findall(prose):
+            target = link.strip().strip("<>").split("#", 1)[0]
+            if not target or re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I):
+                continue
+            if not (path.parent / target).resolve().exists():
+                errors.append(f"{relative}: broken link {link}")
     return sorted(errors)
 
 

@@ -21,6 +21,18 @@ class RegistrationValidationError(ValueError):
     """Raised when a registration violates the strict M1.5 contract."""
 
 
+_REQUIRED_CONTRACT_REFERENCES = frozenset(
+    {
+        "contract-manifest-schemas",
+        "contract-determinism",
+        "contract-provenance",
+        "experiment-registration",
+        "evaluation-target-population",
+        "evaluation-pool-separation",
+    }
+)
+
+
 def schema_issue_summary(issue: Any) -> str:
     """Return a diagnostic that cannot echo an invalid instance value."""
 
@@ -252,15 +264,34 @@ def validate_registration_semantics(
     analysis_procedure_ids = declared_ids(
         registration.get("analysis_procedure_references"), "analysis_procedure_id"
     )
-    rule_registry: dict[str, set[str]] = (
-        _registration_rule_registry(root) if root is not None else {}
-    )
+    rule_registry: dict[str, set[str]] = {}
     metric_roles: dict[str, set[str]] = {}
     metric_directions: dict[str, str] = {}
     statistical_registry: dict[str, set[str]] = {}
     if root is not None:
-        metric_registry = _metric_registry(root)
-        statistical_registry = _statistical_registry(root)
+        documents = _document_index(root)
+        contract_references = registration.get("contract_references")
+        if not isinstance(contract_references, list):
+            raise RegistrationValidationError("contract_references must be a list")
+        contract_ids = {
+            reference.get("document_id")
+            for reference in contract_references
+            if isinstance(reference, Mapping)
+        }
+        missing_contracts = sorted(_REQUIRED_CONTRACT_REFERENCES.difference(contract_ids))
+        if missing_contracts:
+            raise RegistrationValidationError(
+                f"missing required contract reference: {missing_contracts[0]}"
+            )
+        rule_registry = _registration_rule_registry_from_references(contract_references, documents)
+        metric_registry = _metric_registry_from_references(
+            registration.get("metric_references"), documents
+        )
+        statistical_registry = _statistical_registry_from_references(
+            registration.get("estimand_references"),
+            registration.get("analysis_procedure_references"),
+            documents,
+        )
         metric_references = registration.get("metric_references")
         for reference in metric_references if isinstance(metric_references, list) else []:
             if isinstance(reference, Mapping) and isinstance(reference.get("metric_id"), str):
@@ -555,6 +586,150 @@ def _statistical_registry(root: Path) -> dict[str, set[str]]:
     return result
 
 
+def _resolve_bound_document(
+    reference: Mapping[str, Any],
+    documents: Mapping[tuple[str, int], list[dict[str, object]]],
+) -> dict[str, object]:
+    """Resolve exactly the document identity and digest carried by a reference."""
+
+    document_id = reference.get("document_id")
+    document_version = reference.get("document_version")
+    document_digest = reference.get("document_digest")
+    if not isinstance(document_id, str) or not isinstance(document_version, int):
+        raise RegistrationValidationError("bound document reference has invalid identity")
+    if isinstance(document_version, bool) or not isinstance(document_digest, str):
+        raise RegistrationValidationError(f"bound document reference is incomplete: {document_id}")
+    document = next(
+        (
+            candidate
+            for candidate in documents.get((document_id, document_version), [])
+            if candidate.get("document_digest") == document_digest
+        ),
+        None,
+    )
+    if document is None:
+        raise RegistrationValidationError(
+            f"bound document reference cannot be resolved: {document_id} v{document_version}"
+        )
+    return document
+
+
+def _metric_registry_from_references(
+    references: Any,
+    documents: Mapping[tuple[str, int], list[dict[str, object]]],
+) -> dict[str, dict[str, str]]:
+    """Read metric semantics only from documents bound by the registration."""
+
+    if not isinstance(references, list):
+        raise RegistrationValidationError("metric_references must be a list")
+    result: dict[str, dict[str, str]] = {}
+    for reference in references:
+        if not isinstance(reference, Mapping) or not isinstance(reference.get("metric_id"), str):
+            continue
+        document = _resolve_bound_document(reference, documents)
+        text = document.get("text")
+        if not isinstance(text, str):
+            raise RegistrationValidationError("evaluation-metrics registry has no text")
+        parsed: dict[str, dict[str, str]] = {}
+        for line in text.splitlines():
+            columns = [column.strip() for column in line.strip().strip("|").split("|")]
+            if len(columns) != 4 or not columns[0].startswith("`"):
+                continue
+            metric_id = columns[0].strip("`")
+            direction_text = columns[2].replace("\ufffd", "ö").replace("Ã¶", "ö")
+            direction = {
+                "niedriger ist besser": "lower_is_better",
+                "höher ist besser": "higher_is_better",
+            }.get(direction_text)
+            if direction is not None:
+                parsed[metric_id] = {"direction": direction, "roles": columns[3]}
+        metric_id = reference["metric_id"]
+        if metric_id not in parsed:
+            raise RegistrationValidationError(f"unknown metric_id: {metric_id}")
+        result[metric_id] = parsed[metric_id]
+    if not result:
+        raise RegistrationValidationError("evaluation-metrics registry could not be parsed")
+    return result
+
+
+def _registration_rule_registry_from_references(
+    references: Any,
+    documents: Mapping[tuple[str, int], list[dict[str, object]]],
+) -> dict[str, set[str]]:
+    """Read rule IDs from the exact bound registration contract."""
+
+    if not isinstance(references, list):
+        raise RegistrationValidationError("contract_references must be a list")
+    reference = next(
+        (
+            candidate
+            for candidate in references
+            if isinstance(candidate, Mapping)
+            and candidate.get("document_id") == "experiment-registration"
+        ),
+        None,
+    )
+    if reference is None:
+        raise RegistrationValidationError("experiment-registration contract reference is missing")
+    document = _resolve_bound_document(reference, documents)
+    text = document.get("text")
+    result: dict[str, set[str]] = {}
+    if isinstance(text, str):
+        for line in text.splitlines():
+            columns = [column.strip().strip("`") for column in line.strip().strip("|").split("|")]
+            if len(columns) >= 2 and columns[0].endswith("_id") and columns[1]:
+                result.setdefault(columns[0], set()).add(columns[1])
+    if not result:
+        raise RegistrationValidationError(
+            "experiment-registration rule registry could not be parsed"
+        )
+    return result
+
+
+def _statistical_registry_from_references(
+    estimand_references: Any,
+    analysis_references: Any,
+    documents: Mapping[tuple[str, int], list[dict[str, object]]],
+) -> dict[str, set[str]]:
+    """Read statistical IDs only from exactly referenced analysis documents."""
+
+    if not isinstance(estimand_references, list) or not isinstance(analysis_references, list):
+        raise RegistrationValidationError("statistical references must be lists")
+    result: dict[str, set[str]] = {}
+    seen_documents: set[tuple[str, int, str]] = set()
+    for reference in [*estimand_references, *analysis_references]:
+        if not isinstance(reference, Mapping):
+            continue
+        document = _resolve_bound_document(reference, documents)
+        document_version = reference.get("document_version")
+        if not isinstance(document_version, int) or isinstance(document_version, bool):
+            raise RegistrationValidationError("bound document reference has invalid version")
+        key = (
+            str(reference.get("document_id")),
+            document_version,
+            str(reference.get("document_digest")),
+        )
+        if key in seen_documents:
+            continue
+        seen_documents.add(key)
+        text = document.get("text")
+        if not isinstance(text, str):
+            continue
+        for line in text.splitlines():
+            columns = [column.strip().strip("`") for column in line.strip().strip("|").split("|")]
+            if len(columns) == 3 and columns[0] in {
+                "estimand_id",
+                "analysis_procedure_id",
+                "technical_outcome_treatment_id",
+            }:
+                result.setdefault(columns[0], set()).add(columns[1])
+    if not result:
+        raise RegistrationValidationError(
+            "evaluation-statistical-analysis registry could not be parsed"
+        )
+    return result
+
+
 def _validate_document_reference(
     reference: Mapping[str, Any],
     documents: Mapping[tuple[str, int], list[dict[str, object]]],
@@ -692,6 +867,84 @@ def _validate_search_execution_references(
     return errors
 
 
+def _resolve_fixture_path(root: Path, value: Any, expected_root: str) -> Path:
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise RegistrationValidationError("fixture repository path is invalid")
+    normalized = value.replace("\\", "/")
+    parts = normalized.split("/")
+    if (
+        normalized.startswith("/")
+        or re.match(r"^[A-Za-z]:", normalized)
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise RegistrationValidationError("fixture repository path is invalid")
+    candidate = (root / Path(*parts)).resolve()
+    allowed_root = (root / expected_root).resolve()
+    try:
+        candidate.relative_to(allowed_root)
+    except ValueError as exc:
+        raise RegistrationValidationError(
+            "fixture repository path escapes its fixture root"
+        ) from exc
+    if not candidate.is_file():
+        raise RegistrationValidationError(f"fixture repository path does not exist: {normalized}")
+    return candidate
+
+
+def _validate_fixture_file(
+    root: Path, entry: Mapping[str, Any], expected_root: str, label: str
+) -> None:
+    fixture_path = _resolve_fixture_path(root, entry.get("repository_path"), expected_root)
+    expected_digest = entry.get("content_digest")
+    actual_digest = "sha256:" + hashlib.sha256(fixture_path.read_bytes()).hexdigest()
+    if expected_digest != actual_digest:
+        raise RegistrationValidationError(f"{label} content digest mismatch")
+
+
+def validate_synthetic_fixture_manifest(fixture: Mapping[str, Any], root: Path) -> None:
+    """Validate fixture identities and content without opening evaluation pools."""
+
+    fixture_ids: set[str] = set()
+    for field, expected_root, label in (
+        ("team_fixtures", "tests/fixtures/teams", "team fixture"),
+        ("opponent_policy_fixtures", "tests/fixtures/policies", "policy fixture"),
+    ):
+        entries = fixture.get(field)
+        if not isinstance(entries, list):
+            raise RegistrationValidationError(f"{label} list is invalid")
+        for entry in entries:
+            if not isinstance(entry, Mapping) or not isinstance(entry.get("fixture_id"), str):
+                raise RegistrationValidationError(f"{label} identity is invalid")
+            fixture_id = entry["fixture_id"]
+            if fixture_id in fixture_ids:
+                raise RegistrationValidationError(f"duplicate fixture_id: {fixture_id}")
+            fixture_ids.add(fixture_id)
+            _validate_fixture_file(root, entry, expected_root, label)
+            if label == "policy fixture":
+                policy = load_json_strict(
+                    _resolve_fixture_path(root, entry.get("repository_path"), expected_root)
+                )
+                if not isinstance(policy, Mapping):
+                    raise RegistrationValidationError("policy fixture must contain an object")
+
+    ruleset = fixture.get("ruleset_snapshot")
+    if not isinstance(ruleset, Mapping):
+        raise RegistrationValidationError("ruleset snapshot is invalid")
+    ruleset_path = _resolve_fixture_path(
+        root, ruleset.get("repository_path"), "tests/fixtures/rulesets"
+    )
+    actual_digest = "sha256:" + hashlib.sha256(ruleset_path.read_bytes()).hexdigest()
+    if ruleset.get("content_digest") != actual_digest:
+        raise RegistrationValidationError("ruleset snapshot content digest mismatch")
+    ruleset_value = load_json_strict(ruleset_path)
+    if not isinstance(ruleset_value, Mapping):
+        raise RegistrationValidationError("ruleset snapshot artifact must contain an object")
+    if ruleset_value.get("format_id") != ruleset.get("format_id") or ruleset_value.get(
+        "ruleset_digest"
+    ) != ruleset.get("ruleset_digest"):
+        raise RegistrationValidationError("ruleset snapshot identity mismatch")
+
+
 def validate_repository_artifacts(root: Path | None = None) -> list[str]:
     """Validate present registration artifacts; absent future directories are no-op."""
 
@@ -729,6 +982,8 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     f"{relative}: {error}"
                     for error in _validate_search_execution_references(value, repository_root)
                 )
+            elif kind == "synthetic_acceptance":
+                validate_synthetic_fixture_manifest(value, repository_root)
             artifacts.append((path, value, kind))
             by_digest[manifest_digest(dict(value))] = (path, value, kind)
         except RegistrationValidationError as exc:
