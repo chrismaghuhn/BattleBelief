@@ -1946,6 +1946,9 @@ anzunehmen ist nicht implementiert.
 
 ```text
 connect and authenticate
+→ socket |/cmd userdetails OUR_USER_ID
+→ consume the matching named-account query response as a causal bootstrap barrier
+→ exclude every room observed before that barrier and require searching == []
 → socket |/utm PACKED_TEAM
 → socket |/challenge OPPONENT, gen9ou
 → observe global challenge state and room frames
@@ -1956,6 +1959,24 @@ connect and authenticate
 ```
 
 Keine `/search`-, `/cancelsearch`- oder Ladder-Kommandos werden implementiert.
+
+Der erste beliebige `|updatesearch|`-Snapshot ist keine zulässige
+Bootstrap-Grenze, weil `cancelReady()` beim Guest-zu-Named-Login bereits einen
+Guest-Snapshot sendet. Der Coordinator fordert deshalb nach erfolgreicher
+Authentifizierung selbst `|/cmd userdetails OUR_USER_ID` an und verwendet nur
+die auf denselben normalisierten User gebundene
+`|queryresponse|userdetails|JSON`-Antwort als kausale Grenze. Bis zu dieser
+Antwort werden alle beobachteten Raum-IDs sowie alle `updatesearch.games`-IDs
+als Bestandsräume ausgeschlossen. Der letzte vor der Grenze beobachtete,
+streng typisierte `updatesearch.searching`-Zustand muss leer sein; andernfalls
+bricht M1 vor `/utm` und `/challenge` mit `unknown_protocol_event` fail-closed
+ab und sendet insbesondere kein `/cancelsearch`.
+
+Die Kausalität beruht auf der FIFO-Ausgabe des gepinnten Servers: Beim Merge
+in einen bereits vorhandenen Named-Account sendet `mergeConnection()` dessen
+`updateReady()` einschließlich Named-`updatesearch` vor der später
+verarbeiteten Query-Antwort. Beim frischen Rename ohne vorhandenen Account
+existiert dagegen noch kein fremder Tab mit eigener Ladder-Suche.
 
 ### Challenge-State-Normalisierung
 
@@ -2069,6 +2090,15 @@ Tests prüfen exakte `|/utm`-/`|/challenge`-Socket-Kommandos, Room-Discovery,
 Fremdraumfilter, Pufferreihenfolge, Teamvalidation, alle drei beobachtbaren
 Setup-Subcodes und sauberes Close. Weitere Tests beweisen:
 
+- ein vor dem Named-Login gepufferter Guest-`updatesearch`-Snapshot kann einen
+  danach reconnectenden Bestandsraum nicht als neuen Challenge-Raum
+  qualifizieren;
+- der selbst angeforderte, auf den eigenen User korrelierte
+  `userdetails`-Response bildet die Bootstrap-Grenze;
+- nichtleeres `updatesearch.searching` bricht vor `/utm` und `/challenge`
+  fail-closed ab;
+- Digest und `member_count` des versiegelten Packed Teams stimmen mit dem
+  tatsächlichen Packed-Team-Inhalt überein;
 - dokumentiertes `updatechallenges` und die gepinnte PM-`/challenge`-Form
   ergeben wertgleiche Pending-/Not-Pending-Beobachtungen;
 - gewöhnlicher PM-Chat mit `/challenge` im Inhalt wird nicht als Zustand

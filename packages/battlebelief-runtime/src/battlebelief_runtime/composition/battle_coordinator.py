@@ -41,6 +41,7 @@ _FORMAT_ID = "gen9ou"
 _GAME_TYPE = "singles"
 _GENERATION = 9
 _TIER = "[Gen 9] OU"
+_USER_DETAILS_PREFIX = "|queryresponse|userdetails|"
 _TEAM_VALIDATION_PREFIXES = (
     "Your team was rejected for the following reason:\n\n- ",
     "Your team was rejected for the following reasons:\n\n- ",
@@ -84,6 +85,12 @@ class _RoomCandidate:
     generation: int | None = None
     tier: str | None = None
     metadata_error: MalformedProtocolMessage | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _SearchSnapshot:
+    searching: tuple[str, ...]
+    room_ids: frozenset[str]
 
 
 class _SessionConnection:
@@ -164,6 +171,8 @@ class BattleCoordinator:
         packed_digest = hashlib.sha256(team.packed.encode("utf-8")).hexdigest()
         if packed_digest != team.sealed.digest:
             raise TeamValidationError("packed team digest does not match its sealed team")
+        if len(team.packed.split("]")) != team.sealed.member_count:
+            raise TeamValidationError("packed team member count does not match its sealed team")
         self._connection = connection
         self._our_user_id = normalized_our_user_id
         self._opponent_display = opponent_display
@@ -231,21 +240,45 @@ class BattleCoordinator:
         ever_pending = False
         latest_status: OutgoingChallengeStatus | None = None
         bootstrap_complete = False
+        latest_search_snapshot: _SearchSnapshot | None = None
         excluded_room_ids: set[str] = set()
         timeout = asyncio.timeout(self._setup_timeout)
         try:
             async with timeout:
+                await self._connection.send_global(f"|/cmd userdetails {self._our_user_id}")
                 async for line in source:
                     if line.room_id is None:
                         if line.payload.startswith("|updatesearch|"):
-                            existing_room_ids = _read_existing_room_ids(line.payload)
+                            search_snapshot = _read_search_snapshot(line.payload)
                             if not bootstrap_complete:
-                                excluded_room_ids.update(existing_room_ids)
-                                bootstrap_complete = True
-                                await self._connection.send_global(f"|/utm {self._team.packed}")
-                                await self._connection.send_global(
-                                    f"|/challenge {self._opponent_display}, {_FORMAT_ID}"
+                                excluded_room_ids.update(search_snapshot.room_ids)
+                                latest_search_snapshot = search_snapshot
+                            elif search_snapshot.searching:
+                                raise UnknownProtocolEvent(
+                                    "named account started a search during challenge setup"
                                 )
+                            continue
+                        if not bootstrap_complete and line.payload.startswith(_USER_DETAILS_PREFIX):
+                            excluded_room_ids.update(
+                                _read_user_details_room_ids(line.payload, self._our_user_id)
+                            )
+                            # The matching response is a FIFO barrier for the command sent
+                            # after named updateuser. On an existing-account merge,
+                            # updateReady's named updatesearch is therefore the latest
+                            # snapshot; a fresh account cannot already own a ladder search.
+                            if latest_search_snapshot is None:
+                                raise MalformedProtocolMessage(
+                                    "named account bootstrap omitted updatesearch"
+                                )
+                            if latest_search_snapshot.searching:
+                                raise UnknownProtocolEvent(
+                                    "named account already has an active search"
+                                )
+                            bootstrap_complete = True
+                            await self._connection.send_global(f"|/utm {self._team.packed}")
+                            await self._connection.send_global(
+                                f"|/challenge {self._opponent_display}, {_FORMAT_ID}"
+                            )
                             continue
                         observation = challenge_reader.read(line.payload)
                         if observation is not None:
@@ -445,7 +478,7 @@ def _global_wire_type(payload: str) -> str | None:
     return parts[1]
 
 
-def _read_existing_room_ids(payload: str) -> set[str]:
+def _read_search_snapshot(payload: str) -> _SearchSnapshot:
     try:
         decoded = json.loads(payload.removeprefix("|updatesearch|"))
     except json.JSONDecodeError as exc:
@@ -453,19 +486,63 @@ def _read_existing_room_ids(payload: str) -> set[str]:
     if not isinstance(decoded, dict):
         raise MalformedProtocolMessage("updatesearch json must be an object")
     data = cast(dict[str, Any], decoded)
+    if "searching" not in data:
+        raise MalformedProtocolMessage("updatesearch.searching is required")
+    searching = data.get("searching")
+    if not isinstance(searching, list) or any(
+        not isinstance(format_id, str) or format_id == "" for format_id in searching
+    ):
+        raise MalformedProtocolMessage("updatesearch.searching must contain nonempty format IDs")
     if "games" not in data:
         raise MalformedProtocolMessage("updatesearch.games is required")
     games = data.get("games")
     if games is None:
-        return set()
-    if not isinstance(games, dict):
+        room_ids: set[str] = set()
+    elif not isinstance(games, dict):
         raise MalformedProtocolMessage("updatesearch.games must be an object or null")
+    else:
+        room_ids = set()
+        for room_id, title in cast(dict[str, Any], games).items():
+            if room_id == "" or not isinstance(title, str):
+                raise MalformedProtocolMessage(
+                    "updatesearch.games must map nonempty room IDs to string titles"
+                )
+            room_ids.add(room_id)
+    return _SearchSnapshot(
+        searching=tuple(cast(list[str], searching)),
+        room_ids=frozenset(room_ids),
+    )
+
+
+def _read_user_details_room_ids(payload: str, expected_user_id: str) -> set[str]:
+    try:
+        decoded = json.loads(payload.removeprefix(_USER_DETAILS_PREFIX))
+    except json.JSONDecodeError as exc:
+        raise MalformedProtocolMessage(f"invalid userdetails json: {exc}") from exc
+    if not isinstance(decoded, dict):
+        raise MalformedProtocolMessage("userdetails json must be an object")
+    data = cast(dict[str, Any], decoded)
+    user_id = data.get("userid")
+    if not isinstance(user_id, str) or user_id == "":
+        raise MalformedProtocolMessage("userdetails.userid must be a nonempty string")
+    if user_id != expected_user_id:
+        raise UnknownProtocolEvent("userdetails response was not correlated to our user")
+    if "rooms" not in data:
+        raise MalformedProtocolMessage("userdetails.rooms is required")
+    rooms = data.get("rooms")
+    if not isinstance(rooms, dict):
+        raise UnknownProtocolEvent("userdetails response did not expose account rooms")
 
     room_ids: set[str] = set()
-    for room_id, title in cast(dict[str, Any], games).items():
-        if room_id == "" or not isinstance(title, str):
+    for room_id_with_auth, room_data in cast(dict[str, Any], rooms).items():
+        if not isinstance(room_id_with_auth, str) or not isinstance(room_data, dict):
             raise MalformedProtocolMessage(
-                "updatesearch.games must map nonempty room IDs to string titles"
+                "userdetails.rooms must map room IDs to room metadata objects"
             )
+        room_id = room_id_with_auth
+        if room_id and not (room_id[0].isascii() and room_id[0].isalnum()):
+            room_id = room_id[1:]
+        if not re.fullmatch(r"[a-z0-9-]+", room_id):
+            raise MalformedProtocolMessage("userdetails.rooms contains an invalid room ID")
         room_ids.add(room_id)
     return room_ids

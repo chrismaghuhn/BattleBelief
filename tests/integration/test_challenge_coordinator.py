@@ -35,11 +35,12 @@ def _team(
     packed: str = "packed-team-secret",
     *,
     digest: str | None = None,
+    member_count: int = 1,
 ) -> PackedTeam:
     return PackedTeam(
         sealed=SealedTeam(
             digest=digest or hashlib.sha256(packed.encode("utf-8")).hexdigest(),
-            member_count=1,
+            member_count=member_count,
         ),
         packed=packed,
     )
@@ -98,6 +99,37 @@ def _not_pending_state() -> RoomLine:
     return RoomLine(None, '|updatechallenges|{"challengeTo":null}')
 
 
+def _search_snapshot(
+    *,
+    searching: tuple[str, ...] = (),
+    games: dict[str, str] | None = None,
+) -> RoomLine:
+    return RoomLine(
+        None,
+        "|updatesearch|"
+        + json.dumps(
+            {"searching": list(searching), "games": games},
+            separators=(",", ":"),
+        ),
+    )
+
+
+def _user_details_response(*room_ids: str, user_id: str = "ash") -> RoomLine:
+    return RoomLine(
+        None,
+        "|queryresponse|userdetails|"
+        + json.dumps(
+            {
+                "id": user_id,
+                "userid": user_id,
+                "name": user_id.title(),
+                "rooms": {room_id: {} for room_id in room_ids},
+            },
+            separators=(",", ":"),
+        ),
+    )
+
+
 class _RecordingConnection:
     def __init__(
         self,
@@ -105,7 +137,7 @@ class _RecordingConnection:
         *,
         include_bootstrap: bool = True,
     ) -> None:
-        bootstrap = (RoomLine(None, '|updatesearch|{"searching":[],"games":null}'),)
+        bootstrap = (_search_snapshot(), _user_details_response())
         self._incoming = (*bootstrap, *incoming) if include_bootstrap else tuple(incoming)
         self.events: list[tuple[str, str | None]] = []
         self.lines_calls = 0
@@ -150,10 +182,8 @@ class _CommandAwareConnection(_RecordingConnection):
     async def _line_stream(self) -> AsyncIterator[RoomLine]:
         games = {self._new_room: "[Gen 9] OU Battle"} if self._challenge_sent else None
         self.events.append(("bootstrap", json.dumps(games, sort_keys=True)))
-        yield RoomLine(
-            None,
-            "|updatesearch|" + json.dumps({"searching": [], "games": games}, separators=(",", ":")),
-        )
+        yield _search_snapshot(games=games)
+        yield _user_details_response()
         async for line in super()._line_stream():
             yield line
 
@@ -195,6 +225,7 @@ def test_coordinator_sends_exact_commands_discovers_unpredictable_room_and_close
 
     assert result.primary_error is None
     assert connection.sent_global == [
+        "|/cmd userdetails ash",
         "|/utm packed-team-secret",
         "|/challenge @Misty, gen9ou",
     ]
@@ -204,6 +235,7 @@ def test_coordinator_sends_exact_commands_discovers_unpredictable_room_and_close
     assert connection.close_calls == 1
     assert connection.events == [
         ("connect", None),
+        ("global", "|/cmd userdetails ash"),
         ("global", "|/utm packed-team-secret"),
         ("global", "|/challenge @Misty, gen9ou"),
         ("room", "battle-unpredictable-room-name|/choose team 123456|7"),
@@ -292,7 +324,8 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
             *(line.payload for line in room_lines),
         ]
     )
-    socket = _FakeSocket([guest_frame, auth_frame, battle_frame])
+    query_response_frame = _user_details_response().payload
+    socket = _FakeSocket([guest_frame, auth_frame, query_response_frame, battle_frame])
 
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         return socket
@@ -318,9 +351,10 @@ def test_actual_connection_preserves_same_frame_lines_through_single_reader_hand
     assert result.primary_error is None
     assert result.explicit_request_submissions == 1
     assert connection.lines_calls == 1
-    assert socket.recv_calls == 3
+    assert socket.recv_calls == 4
     assert socket.sent == [
         "|/trn Ash,0,assertion-token",
+        "|/cmd userdetails ash",
         "|/utm packed-team-secret",
         "|/challenge @Misty, gen9ou",
         "battle-unpredictable-room-name|/choose team 123456|7",
@@ -350,7 +384,8 @@ def test_actual_connection_reports_conflicting_metadata_after_handoff_from_same_
             "|win|Ash",
         )
     )
-    socket = _FakeSocket([auth_frame, battle_frame])
+    query_response_frame = _user_details_response().payload
+    socket = _FakeSocket([auth_frame, query_response_frame, battle_frame])
 
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         return socket
@@ -375,9 +410,10 @@ def test_actual_connection_reports_conflicting_metadata_after_handoff_from_same_
 
     assert isinstance(result.primary_error, MalformedProtocolMessage)
     assert connection.lines_calls == 1
-    assert socket.recv_calls == 2
+    assert socket.recv_calls == 3
     assert socket.sent == [
         "|/trn Ash,0,assertion-token",
+        "|/cmd userdetails ash",
         "|/utm packed-team-secret",
         "|/challenge @Misty, gen9ou",
         "battle-unpredictable-room-name|/choose team 123456|7",
@@ -408,6 +444,7 @@ def test_actual_connection_excludes_a_target_room_buffered_during_login() -> Non
     bootstrap_frame = (
         '|updatesearch|{"searching":[],"games":{"battle-old-ash-misty":"[Gen 9] OU Battle"}}'
     )
+    query_response_frame = _user_details_response(old_room).payload
     new_room_frame = "\n".join(
         (
             f">{new_room}",
@@ -417,7 +454,16 @@ def test_actual_connection_excludes_a_target_room_buffered_during_login() -> Non
             "|win|Ash",
         )
     )
-    socket = _FakeSocket([guest_frame, auth_frame, old_room_frame, bootstrap_frame, new_room_frame])
+    socket = _FakeSocket(
+        [
+            guest_frame,
+            auth_frame,
+            old_room_frame,
+            bootstrap_frame,
+            query_response_frame,
+            new_room_frame,
+        ]
+    )
 
     async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
         return socket
@@ -442,14 +488,96 @@ def test_actual_connection_excludes_a_target_room_buffered_during_login() -> Non
 
     assert result.primary_error is None
     assert connection.lines_calls == 1
-    assert socket.recv_calls == 5
+    assert socket.recv_calls == 6
     assert socket.sent[-1] == f"{new_room}|/choose team 123456|7"
     assert not any(message.startswith(old_room) for message in socket.sent)
     assert (
         socket.events.index(("recv", bootstrap_frame))
+        < socket.events.index(("recv", query_response_frame))
         < socket.events.index(("send", "|/utm packed-team-secret"))
         < socket.events.index(("send", "|/challenge @Misty, gen9ou"))
     )
+    assert socket.closed
+
+
+def test_guest_search_snapshot_cannot_qualify_a_reconnected_named_account_room() -> None:
+    old_room = "battle-old-ash-misty"
+    new_room = "battle-new-ash-misty"
+    guest_frame = "\n".join(
+        (
+            "|updateuser| Guest 123|0|1|{}",
+            "|customgroups|{}",
+            "|formats|,1|Singles||[Gen 9] OU,",
+            "|challstr|4|abc",
+            '|updatesearch|{"searching":[],"games":null}',
+        )
+    )
+    auth_frame = "|updateuser| Ash|1|0|{}"
+    old_room_frame = "\n".join(
+        (
+            f">{old_room}",
+            *(line.payload for line in _room_setup_lines(old_room, terminal=False)),
+            "|teampreview",
+            _request("team-preview.json", 3),
+        )
+    )
+    named_snapshot_frame = (
+        '|updatesearch|{"searching":[],"games":{"battle-old-ash-misty":"[Gen 9] OU Battle"}}'
+    )
+    query_response_frame = (
+        '|queryresponse|userdetails|{"id":"ash","userid":"ash","name":"Ash",'
+        '"rooms":{"battle-old-ash-misty":{"p1":" Ash","p2":" Misty"}}}'
+    )
+    new_room_frame = "\n".join(
+        (
+            f">{new_room}",
+            *(line.payload for line in _room_setup_lines(new_room, terminal=False)),
+            "|teampreview",
+            _request("team-preview.json", 7),
+            "|win|Ash",
+        )
+    )
+    socket = _FakeSocket(
+        [
+            guest_frame,
+            auth_frame,
+            old_room_frame,
+            named_snapshot_frame,
+            query_response_frame,
+            new_room_frame,
+        ]
+    )
+
+    async def connector(*_args: object, **_kwargs: object) -> _FakeSocket:
+        return socket
+
+    connection = _CountingShowdownConnection(
+        url="wss://example.invalid/showdown/websocket",
+        username="Ash",
+        password="password",
+        assertion_provider=_AssertionProvider(),
+        socket_connector=connector,
+    )
+
+    result = asyncio.run(
+        BattleCoordinator(
+            connection,
+            _OUR_USER_ID,
+            _OPPONENT_DISPLAY,
+            _team(),
+            setup_timeout=0.1,
+        ).run()
+    )
+
+    assert result.primary_error is None
+    assert connection.lines_calls == 1
+    assert socket.sent[-1] == f"{new_room}|/choose team 123456|7"
+    assert not any(message.startswith(old_room) for message in socket.sent)
+    assert socket.sent[1:4] == [
+        "|/cmd userdetails ash",
+        "|/utm packed-team-secret",
+        "|/challenge @Misty, gen9ou",
+    ]
     assert socket.closed
 
 
@@ -921,6 +1049,7 @@ def test_login_buffered_old_target_room_is_never_selected_for_the_new_challenge(
                 None,
                 '|updatesearch|{"searching":[],"games":{"battle-old-ash-misty":"[Gen 9] OU Battle"}}',
             ),
+            _user_details_response(old_room),
             RoomLine(None, "|B|battle-new-ash-misty|Ash|Misty"),
             *new_lines,
         ],
@@ -943,13 +1072,15 @@ def test_login_snapshot_is_consumed_before_the_challenge_command_can_create_a_ro
     result = _run(connection)
 
     assert result.primary_error is None
-    assert connection.events[:4] == [
+    assert connection.events[:5] == [
         ("connect", None),
+        ("global", "|/cmd userdetails ash"),
         ("bootstrap", "null"),
         ("global", "|/utm packed-team-secret"),
         ("global", "|/challenge @Misty, gen9ou"),
     ]
     assert connection.sent_global == [
+        "|/cmd userdetails ash",
         "|/utm packed-team-secret",
         "|/challenge @Misty, gen9ou",
     ]
@@ -981,6 +1112,11 @@ def test_later_search_snapshot_does_not_reclassify_the_new_room_as_existing() ->
     "payload",
     (
         "|updatesearch|not-json",
+        '|updatesearch|{"games":null}',
+        '|updatesearch|{"searching":null,"games":null}',
+        '|updatesearch|{"searching":"gen9ou","games":null}',
+        '|updatesearch|{"searching":[1],"games":null}',
+        '|updatesearch|{"searching":[""],"games":null}',
         '|updatesearch|{"searching":[]}',
         '|updatesearch|{"searching":[],"games":[]}',
         '|updatesearch|{"searching":[],"games":{"battle-old":1}}',
@@ -1035,6 +1171,104 @@ def test_constructor_rejects_packed_team_digest_mismatch_before_side_effects() -
         )
 
     assert connection.events == []
+
+
+def test_constructor_rejects_packed_team_member_count_mismatch_before_side_effects() -> None:
+    connection = _RecordingConnection([])
+
+    with pytest.raises(TeamValidationError):
+        BattleCoordinator(
+            connection,
+            _OUR_USER_ID,
+            _OPPONENT_DISPLAY,
+            _team("member-one]member-two", member_count=1),
+            setup_timeout=0.1,
+        )
+
+    assert connection.events == []
+
+
+def test_named_account_active_search_fails_closed_before_challenge_commands() -> None:
+    connection = _RecordingConnection(
+        [
+            RoomLine(None, '|updatesearch|{"searching":["gen9ou"],"games":null}'),
+            RoomLine(
+                None,
+                '|queryresponse|userdetails|{"id":"ash","userid":"ash","name":"Ash","rooms":{}}',
+            ),
+            *_room_setup_lines(),
+        ],
+        include_bootstrap=False,
+    )
+
+    with pytest.raises(UnknownProtocolEvent):
+        _run(connection)
+
+    assert connection.sent_global == ["|/cmd userdetails ash"]
+    assert connection.sent_room == []
+
+
+def test_userdetails_rooms_exclude_an_existing_room_that_arrives_after_bootstrap() -> None:
+    old_room = "battle-old-ash-misty"
+    new_room = "battle-new-ash-misty"
+    connection = _RecordingConnection(
+        [
+            _search_snapshot(),
+            _user_details_response(f"@{old_room}"),
+            *_room_setup_lines(old_room, terminal=False),
+            RoomLine(old_room, "|teampreview"),
+            RoomLine(old_room, _request("team-preview.json", 3)),
+            RoomLine(old_room, "|win|Ash"),
+            *_room_setup_lines(new_room, terminal=False),
+            RoomLine(new_room, "|teampreview"),
+            RoomLine(new_room, _request("team-preview.json", 7)),
+            RoomLine(new_room, "|win|Ash"),
+        ],
+        include_bootstrap=False,
+    )
+
+    result = _run(connection)
+
+    assert result.primary_error is None
+    assert connection.sent_room == [(new_room, "/choose team 123456|7")]
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_type"),
+    (
+        ("|queryresponse|userdetails|not-json", MalformedProtocolMessage),
+        ("|queryresponse|userdetails|[]", MalformedProtocolMessage),
+        (
+            '|queryresponse|userdetails|{"userid":"","rooms":{}}',
+            MalformedProtocolMessage,
+        ),
+        (
+            '|queryresponse|userdetails|{"userid":"brock","rooms":{}}',
+            UnknownProtocolEvent,
+        ),
+        (
+            '|queryresponse|userdetails|{"userid":"ash"}',
+            MalformedProtocolMessage,
+        ),
+        (
+            '|queryresponse|userdetails|{"userid":"ash","rooms":false}',
+            UnknownProtocolEvent,
+        ),
+    ),
+)
+def test_invalid_or_uncorrelated_userdetails_fails_closed_before_challenge_commands(
+    payload: str,
+    error_type: type[RuntimeError],
+) -> None:
+    connection = _RecordingConnection(
+        [_search_snapshot(), RoomLine(None, payload)],
+        include_bootstrap=False,
+    )
+
+    with pytest.raises(error_type):
+        _run(connection)
+
+    assert connection.sent_global == ["|/cmd userdetails ash"]
 
 
 class _DelayedSessionConnection(_RecordingConnection):
@@ -1184,7 +1418,7 @@ def test_setup_send_failure_closes_without_a_retry() -> None:
     assert connection.lines_calls == 1
     assert connection.events == [
         ("connect", None),
-        ("global", "|/utm packed-team-secret"),
+        ("global", "|/cmd userdetails ash"),
         ("close", None),
     ]
 
