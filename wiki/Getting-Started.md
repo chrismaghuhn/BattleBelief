@@ -68,25 +68,29 @@ The opponent must accept the challenge before the battle begins.
 
 ## Configure the password safely
 
-The Showdown password is read only from `BATTLEBELIEF_SHOWDOWN_PASSWORD`. There is intentionally no password command-line option.
+The Showdown password is read only from `BATTLEBELIEF_SHOWDOWN_PASSWORD`. There is intentionally no password command-line option. Enter the secret interactively or load it from an approved secret manager; do not type a literal password into a shell command.
 
 ### PowerShell
 
 ```powershell
-$env:BATTLEBELIEF_SHOWDOWN_PASSWORD = "your-password"
+$credential = Get-Credential -UserName YOUR_USERNAME -Message "Enter the Showdown password"
+$env:BATTLEBELIEF_SHOWDOWN_PASSWORD = $credential.GetNetworkCredential().Password
 uv run battlebelief challenge --username YOUR_USERNAME --opponent OPPONENT_USERNAME --team .\team.txt
 ```
 
-Remove it from the current PowerShell session afterward:
+Remove the secret and credential object from the current PowerShell session afterward:
 
 ```powershell
 Remove-Item Env:BATTLEBELIEF_SHOWDOWN_PASSWORD
+Remove-Variable credential
 ```
 
 ### Bash
 
 ```bash
-export BATTLEBELIEF_SHOWDOWN_PASSWORD='your-password'
+read -r -s -p 'Showdown password: ' BATTLEBELIEF_SHOWDOWN_PASSWORD
+printf '\n'
+export BATTLEBELIEF_SHOWDOWN_PASSWORD
 uv run battlebelief challenge --username YOUR_USERNAME --opponent OPPONENT_USERNAME --team ./team.txt
 unset BATTLEBELIEF_SHOWDOWN_PASSWORD
 ```
