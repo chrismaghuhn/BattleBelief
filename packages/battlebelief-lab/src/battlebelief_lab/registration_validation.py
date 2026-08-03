@@ -546,8 +546,8 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
             }
             result.setdefault((document_id.group(1), int(version.group(1))), []).append(record)
 
-    snapshot_root = docs_root / "archive/contract-snapshots"
-    metadata_schema_path = root / "schemas/documents/contract-snapshot-metadata.schema.json"
+    snapshot_root = docs_root / "archive/document-snapshots"
+    metadata_schema_path = root / "schemas/documents/document-snapshot-metadata.schema.json"
     if not snapshot_root.exists():
         return result
     try:
@@ -556,7 +556,7 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
         metadata_validator = Draft202012Validator(metadata_schema, format_checker=FormatChecker())
     except Exception as exc:
         raise RegistrationValidationError(
-            f"cannot load contract snapshot metadata schema: {type(exc).__name__}"
+            f"cannot load document snapshot metadata schema: {type(exc).__name__}"
         ) from exc
 
     for metadata_path in sorted(snapshot_root.rglob("*.metadata.json")):
@@ -564,17 +564,17 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
             metadata = load_json_strict(metadata_path)
         except RegistrationValidationError as exc:
             raise RegistrationValidationError(
-                f"invalid contract snapshot metadata {metadata_path.name}"
+                f"invalid document snapshot metadata {metadata_path.name}"
             ) from exc
         schema_errors = list(metadata_validator.iter_errors(metadata))
         if schema_errors:
             raise RegistrationValidationError(
-                f"invalid contract snapshot metadata {metadata_path.name}: "
+                f"invalid document snapshot metadata {metadata_path.name}: "
                 f"{schema_issue_summary(schema_errors[0])}"
             )
         if not isinstance(metadata, Mapping):
             raise RegistrationValidationError(
-                f"invalid contract snapshot metadata {metadata_path.name}"
+                f"invalid document snapshot metadata {metadata_path.name}"
             )
         snapshot_path_text = metadata["snapshot_path"]
         if not isinstance(snapshot_path_text, str):
@@ -582,7 +582,7 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
         normalized = snapshot_path_text.replace("\\", "/")
         parts = normalized.split("/")
         if (
-            not normalized.startswith("docs/archive/contract-snapshots/")
+            not normalized.startswith("docs/archive/document-snapshots/")
             or any(part in {"", ".", ".."} for part in parts)
             or re.match(r"^[A-Za-z]:", normalized)
         ):
@@ -593,37 +593,42 @@ def _document_index(root: Path) -> dict[tuple[str, int], list[dict[str, object]]
             resolved_snapshot.relative_to(snapshot_root.resolve())
         except ValueError as exc:
             raise RegistrationValidationError(
-                "contract snapshot path escapes archive root"
+                "document snapshot path escapes archive root"
             ) from exc
         if resolved_snapshot != snapshot_path:
-            raise RegistrationValidationError("contract snapshot path is not stable")
+            raise RegistrationValidationError("document snapshot path is not stable")
         expected_snapshot_path = metadata_path.with_name(
             metadata_path.name.removesuffix(".metadata.json") + ".md"
         )
         if snapshot_path != expected_snapshot_path:
-            raise RegistrationValidationError("contract snapshot path does not match metadata")
+            raise RegistrationValidationError("document snapshot path does not match metadata")
         if not snapshot_path.is_file():
-            raise RegistrationValidationError("contract snapshot file is missing")
+            raise RegistrationValidationError("document snapshot file is missing")
         actual_digest = "sha256:" + hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
         if metadata["snapshot_digest"] != actual_digest:
-            raise RegistrationValidationError("contract snapshot digest mismatch")
+            raise RegistrationValidationError("document snapshot digest mismatch")
         if metadata["source_digest"] != metadata["snapshot_digest"]:
-            raise RegistrationValidationError("contract snapshot source digest mismatch")
+            raise RegistrationValidationError("document snapshot source digest mismatch")
         try:
             text = snapshot_path.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
-            raise RegistrationValidationError("contract snapshot is not valid UTF-8") from exc
+            raise RegistrationValidationError("document snapshot is not valid UTF-8") from exc
         identity = (metadata["document_id"], metadata["document_version"])
         existing = result.get(identity, [])
-        if any(candidate.get("document_digest") != actual_digest for candidate in existing):
+        if any(
+            candidate.get("document_digest") == actual_digest
+            and "document-snapshots" in str(candidate.get("path")).replace("\\", "/")
+            for candidate in existing
+        ):
             raise RegistrationValidationError(
-                f"current document and contract snapshot differ: {metadata['document_id']}"
+                f"duplicate document snapshot: {metadata['document_id']} "
+                f"v{metadata['document_version']}"
             )
         record = {
             "version": metadata["document_version"],
-            "status": "accepted",
-            "normative": True,
-            "document_type": "contract",
+            "status": metadata["status"],
+            "normative": metadata["normative"],
+            "document_type": metadata["document_type"],
             "text": text,
             "path": snapshot_path,
             "document_digest": actual_digest,
@@ -646,7 +651,7 @@ def _latest_document(
     candidates.sort(
         key=lambda record: (
             record["version"] if isinstance(record["version"], int) else -1,
-            "contracts/snapshots" not in str(record["path"]).replace("\\", "/"),
+            "document-snapshots" not in str(record["path"]).replace("\\", "/"),
         ),
         reverse=True,
     )

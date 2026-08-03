@@ -4,7 +4,7 @@ title: Provenance-, Snapshot- und Claim-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 6
 applies_to:
   - release
   - evaluation
@@ -76,8 +76,8 @@ Canonicalization und Hashbildung folgen
 Experimentregistrierungen, Implementierungsbindungen und Laufbindungen sind
 unveränderliche Provenienzartefakte. Dokumentreferenzen binden neben ID und
 Version den SHA-256-Digest der konkreten UTF-8-Datei; versionierte Snapshots
-sidecar-registrierte, byte-identische Snapshots unter
-`docs/archive/contract-snapshots/` bewahren ältere Referenzen auf. Ihre
+sidecar-registrierte, typisierte und byte-identische Snapshots unter
+`docs/archive/document-snapshots/` bewahren ältere Referenzen auf. Ihre
 Lebenszyklus- und
 Supersessionsregeln stehen ausschließlich im
 [`experiment-registration`](experiment-registration.md)-Contract.

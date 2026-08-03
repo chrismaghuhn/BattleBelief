@@ -1,12 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:battlebelief:schema:documents:contract-snapshot-metadata:v1",
-  "title": "BattleBelief contract snapshot metadata",
+  "$id": "urn:battlebelief:schema:documents:document-snapshot-metadata:v1",
+  "title": "BattleBelief document snapshot metadata",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "document_id",
     "document_version",
+    "document_type",
+    "status",
+    "normative",
     "source_path",
     "source_digest",
     "snapshot_path",
@@ -20,6 +23,32 @@
     "document_version": {
       "type": "integer",
       "minimum": 1
+    },
+    "document_type": {
+      "enum": [
+        "contract",
+        "architecture",
+        "operation",
+        "adr",
+        "roadmap",
+        "research",
+        "audit",
+        "archive",
+        "guide"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "accepted",
+        "deprecated",
+        "superseded",
+        "archived"
+      ]
+    },
+    "normative": {
+      "type": "boolean"
     },
     "source_path": {
       "$ref": "#/$defs/repositoryPath"

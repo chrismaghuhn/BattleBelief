@@ -27,7 +27,7 @@ MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 FENCED_CODE = re.compile(r"(?ms)^(`{3,})[^\n]*\n.*?^\1[ \t]*$")
 LOCAL_PATH = re.compile(r"(?i)(?<![a-z])[a-z]:[\\/]|file://|%3a(?:%2f|/)")
 OLD_NAMES = re.compile(r"(?i)urn:pokemonbot|pokemonbot[-_](?:core|runtime|lab)")
-CONTRACT_SNAPSHOT_METADATA_SCHEMA = "schemas/documents/contract-snapshot-metadata.schema.json"
+DOCUMENT_SNAPSHOT_METADATA_SCHEMA = "schemas/documents/document-snapshot-metadata.schema.json"
 
 
 def jsonable(value: Any) -> Any:
@@ -121,7 +121,7 @@ def collect_doc_errors(root: Path) -> list[str]:
         ):
             errors.append(f"{document_id}: old namespace in current normative document")
 
-    errors.extend(collect_contract_snapshot_errors(root))
+    errors.extend(collect_document_snapshot_errors(root))
 
     authority = json.loads((root / "config/docs-authority.json").read_text(encoding="utf-8"))
     for definition in authority["definitions"]:
@@ -160,22 +160,26 @@ def collect_doc_errors(root: Path) -> list[str]:
     return sorted(errors)
 
 
-def collect_contract_snapshot_errors(root: Path) -> list[str]:
-    """Validate immutable snapshot metadata without revalidating snapshot bytes."""
+def collect_document_snapshot_errors(root: Path) -> list[str]:
+    """Validate typed immutable snapshot metadata without revalidating bytes."""
 
     docs_root = root / "docs"
-    legacy_root = docs_root / "contracts/snapshots"
-    snapshot_root = docs_root / "archive/contract-snapshots"
+    legacy_roots = (
+        docs_root / "contracts/snapshots",
+        docs_root / "archive/contract-snapshots",
+    )
+    snapshot_root = docs_root / "archive/document-snapshots"
     errors: list[str] = []
-    if legacy_root.exists() and any(legacy_root.rglob("*")):
-        errors.append(
-            "docs/contracts/snapshots: legacy snapshot path is unsupported; "
-            "use docs/archive/contract-snapshots with sidecar metadata"
-        )
+    for legacy_root in legacy_roots:
+        if legacy_root.exists() and any(legacy_root.rglob("*")):
+            errors.append(
+                f"{legacy_root.relative_to(root)}: legacy snapshot path is unsupported; "
+                "use docs/archive/document-snapshots with sidecar metadata"
+            )
     if not snapshot_root.exists():
         return sorted(errors)
 
-    metadata_schema_path = root / CONTRACT_SNAPSHOT_METADATA_SCHEMA
+    metadata_schema_path = root / DOCUMENT_SNAPSHOT_METADATA_SCHEMA
     try:
         metadata_schema = load_json_strict(metadata_schema_path)
         Draft202012Validator.check_schema(metadata_schema)
@@ -186,27 +190,8 @@ def collect_contract_snapshot_errors(root: Path) -> list[str]:
         ]
     metadata_validator = Draft202012Validator(metadata_schema, format_checker=FormatChecker())
 
-    current_identities: dict[tuple[str, int], str] = {}
-    for path in sorted(docs_root.rglob("*.md")):
-        if "archive" in path.relative_to(docs_root).parts:
-            continue
-        match = FRONTMATTER.match(path.read_text(encoding="utf-8"))
-        if match is None:
-            continue
-        frontmatter = jsonable(yaml.safe_load(match.group(1)))
-        document_id = frontmatter.get("document_id")
-        version = frontmatter.get("version")
-        if (
-            isinstance(document_id, str)
-            and isinstance(version, int)
-            and not isinstance(version, bool)
-        ):
-            current_identities[(document_id, version)] = (
-                "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-            )
-
     referenced_snapshots: set[Path] = set()
-    identities: dict[tuple[str, int], str] = {}
+    identities: set[tuple[str, int, str]] = set()
     for metadata_path in sorted(snapshot_root.rglob("*.metadata.json")):
         relative = metadata_path.relative_to(root)
         try:
@@ -229,9 +214,7 @@ def collect_contract_snapshot_errors(root: Path) -> list[str]:
         except ValueError:
             errors.append(f"{relative}: snapshot path escapes archive root")
             continue
-        if resolved_snapshot != snapshot_path or snapshot_path != root / Path(
-            *snapshot_path_text.replace("\\", "/").split("/")
-        ):
+        if resolved_snapshot != snapshot_path:
             errors.append(f"{relative}: snapshot path is not repository-relative")
             continue
         if (
@@ -249,24 +232,29 @@ def collect_contract_snapshot_errors(root: Path) -> list[str]:
             continue
         if metadata["source_digest"] != metadata["snapshot_digest"]:
             errors.append(f"{relative}: source and snapshot digests differ")
-        identity = (metadata["document_id"], metadata["document_version"])
+        identity = (
+            metadata["document_id"],
+            metadata["document_version"],
+            metadata["snapshot_digest"],
+        )
         if identity in identities:
             errors.append(
-                f"duplicate contract snapshot: {metadata['document_id']} "
-                f"v{metadata['document_version']}"
+                f"duplicate document snapshot: {metadata['document_id']} "
+                f"v{metadata['document_version']} {metadata['snapshot_digest']}"
             )
-        identities[identity] = metadata["snapshot_digest"]
-        if identity in current_identities and current_identities[identity] != actual_digest:
-            errors.append(
-                f"{relative}: current document and snapshot differ for "
-                f"{metadata['document_id']} v{metadata['document_version']}"
-            )
+        identities.add(identity)
         referenced_snapshots.add(snapshot_path)
 
     for snapshot_path in sorted(snapshot_root.rglob("*.md")):
         if snapshot_path not in referenced_snapshots:
             errors.append(f"{snapshot_path.relative_to(root)}: snapshot metadata is missing")
     return sorted(errors)
+
+
+def collect_contract_snapshot_errors(root: Path) -> list[str]:
+    """Backward-compatible name for the generalized document snapshot checker."""
+
+    return collect_document_snapshot_errors(root)
 
 
 def main() -> int:

@@ -13,6 +13,7 @@ from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
     _schema_for_artifact,
     _validate_registration_references,
+    _validate_search_execution_references,
     validate_calibration_evidence,
     validate_calibration_spec,
     validate_registration_semantics,
@@ -194,7 +195,7 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
         "status: accepted\nnormative: true\nversion: 2\n---\nnew\n",
         encoding="utf-8",
     )
-    snapshots = docs / "archive/contract-snapshots"
+    snapshots = docs / "archive/document-snapshots"
     snapshots.mkdir(parents=True)
     snapshot = snapshots / "example-doc.v1.md"
     snapshot.write_bytes(b"historical document bytes\n")
@@ -204,9 +205,12 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
             {
                 "document_id": "example-doc",
                 "document_version": 1,
+                "document_type": "contract",
+                "status": "accepted",
+                "normative": True,
                 "source_path": "docs/example.md",
                 "source_digest": digest,
-                "snapshot_path": "docs/archive/contract-snapshots/example-doc.v1.md",
+                "snapshot_path": "docs/archive/document-snapshots/example-doc.v1.md",
                 "snapshot_digest": digest,
             }
         ),
@@ -244,7 +248,7 @@ def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_pat
     )
     metrics_path = tmp_path / "docs/evaluation/metrics.md"
     historical_metrics = metrics_path.read_bytes()
-    snapshots = tmp_path / "docs/archive/contract-snapshots"
+    snapshots = tmp_path / "docs/archive/document-snapshots"
     snapshots.mkdir(parents=True)
     (snapshots / "evaluation-metrics.v4.md").write_bytes(historical_metrics)
     metrics_digest = "sha256:" + hashlib.sha256(historical_metrics).hexdigest()
@@ -253,9 +257,12 @@ def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_pat
             {
                 "document_id": "evaluation-metrics",
                 "document_version": 4,
+                "document_type": "contract",
+                "status": "accepted",
+                "normative": True,
                 "source_path": "docs/evaluation/metrics.md",
                 "source_digest": metrics_digest,
-                "snapshot_path": "docs/archive/contract-snapshots/evaluation-metrics.v4.md",
+                "snapshot_path": "docs/archive/document-snapshots/evaluation-metrics.v4.md",
                 "snapshot_digest": metrics_digest,
             }
         ),
@@ -265,9 +272,101 @@ def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_pat
     current_metrics = current_metrics.replace("version: 4", "version: 5", 1).replace(
         "niedriger ist besser", "höher ist besser", 1
     )
+    current_metrics = current_metrics.replace("version: 5", "version: 4", 1)
     metrics_path.write_text(current_metrics, encoding="utf-8")
 
     validate_registration_semantics(registration, tmp_path)
+
+
+def test_non_normative_roadmap_snapshot_resolves_for_search_spec(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "schemas", tmp_path / "schemas")
+    shutil.copytree(root / "docs", tmp_path / "docs")
+    roadmap_path = tmp_path / "docs/roadmap/research-strategy-and-experiments.md"
+    historical_roadmap = roadmap_path.read_bytes()
+    snapshots = tmp_path / "docs/archive/document-snapshots"
+    snapshots.mkdir(parents=True)
+    snapshot = snapshots / "roadmap-research-strategy-and-experiments.v1.md"
+    snapshot.write_bytes(historical_roadmap)
+    digest = "sha256:" + hashlib.sha256(historical_roadmap).hexdigest()
+    (snapshots / "roadmap-research-strategy-and-experiments.v1.metadata.json").write_text(
+        json.dumps(
+            {
+                "document_id": "roadmap-research-strategy-and-experiments",
+                "document_version": 1,
+                "document_type": "roadmap",
+                "status": "accepted",
+                "normative": False,
+                "source_path": "docs/roadmap/research-strategy-and-experiments.md",
+                "source_digest": digest,
+                "snapshot_path": (
+                    "docs/archive/document-snapshots/"
+                    "roadmap-research-strategy-and-experiments.v1.md"
+                ),
+                "snapshot_digest": digest,
+            }
+        ),
+        encoding="utf-8",
+    )
+    current = roadmap_path.read_text(encoding="utf-8").replace("version: 1", "version: 2", 1)
+    roadmap_path.write_text(current, encoding="utf-8")
+    specification = json.loads(
+        (root / "schemas/examples/search-execution-spec.example.json").read_text()
+    )
+
+    assert _validate_search_execution_references(specification, tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("document_type", "normative"),
+    [("contract", False), ("roadmap", True)],
+)
+def test_snapshot_reference_enforces_document_type_and_normative_flag(
+    tmp_path: Path, document_type: str, normative: bool
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "schemas", tmp_path / "schemas")
+    shutil.copytree(root / "docs", tmp_path / "docs")
+    roadmap_path = tmp_path / "docs/roadmap/research-strategy-and-experiments.md"
+    snapshot_bytes = roadmap_path.read_bytes()
+    snapshots = tmp_path / "docs/archive/document-snapshots"
+    snapshots.mkdir(parents=True)
+    snapshot = snapshots / "roadmap-research-strategy-and-experiments.v1.md"
+    snapshot.write_bytes(snapshot_bytes)
+    digest = "sha256:" + hashlib.sha256(snapshot_bytes).hexdigest()
+    (snapshots / "roadmap-research-strategy-and-experiments.v1.metadata.json").write_text(
+        json.dumps(
+            {
+                "document_id": "roadmap-research-strategy-and-experiments",
+                "document_version": 1,
+                "document_type": document_type,
+                "status": "accepted",
+                "normative": normative,
+                "source_path": "docs/roadmap/research-strategy-and-experiments.md",
+                "source_digest": digest,
+                "snapshot_path": (
+                    "docs/archive/document-snapshots/"
+                    "roadmap-research-strategy-and-experiments.v1.md"
+                ),
+                "snapshot_digest": digest,
+            }
+        ),
+        encoding="utf-8",
+    )
+    roadmap_path.write_text(
+        roadmap_path.read_text(encoding="utf-8").replace("version: 1", "version: 2", 1),
+        encoding="utf-8",
+    )
+    specification = json.loads(
+        (root / "schemas/examples/search-execution-spec.example.json").read_text()
+    )
+
+    errors = _validate_search_execution_references(specification, tmp_path)
+
+    assert any(
+        "document type mismatch" in error or "document must be non-normative" in error
+        for error in errors
+    )
 
 
 @pytest.mark.parametrize(
