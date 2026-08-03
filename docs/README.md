@@ -37,7 +37,7 @@ Autoritätsordnung, Frontmatter, Versionierung, Migration und CI-Gates stehen in
 8. [Search-v0](contracts/search-v0.md)
 9. [Determinismus](contracts/determinism.md)
 10. [Evaluationsstruktur](evaluation/pool-separation.md)
-11. [Forschungsstrategie und Experimentfolge](research/strategy-and-experiments.md)
+11. [Forschungsstrategie und Experimentfolge](roadmap/research-strategy-and-experiments.md)
 12. [Roadmap](roadmap/milestones.md)
 
 ## Aktuelle akzeptierte normative Quellen
@@ -93,7 +93,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [ADR-0001 Information-Set DUCT](adr/ADR-0001-information-set-duct-v0.md)
 - [ADR-0003 BattleBelief-Naming und Drei-Pakete-Monorepo](adr/ADR-0003-battlebelief-naming.md)
 - [ADR-0004 Sauberer Showdown-Runtime-Adapter](adr/ADR-0004-clean-showdown-runtime-adapter.md)
-- [Forschungsstrategie und Experimentfolge](research/strategy-and-experiments.md)
+- [Forschungsstrategie und Experimentfolge](roadmap/research-strategy-and-experiments.md)
 - [Roadmap](roadmap/milestones.md)
 - [M0-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m0-foundation.md)
 - [M1-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m1-protocol-safe-prototype.md)
