@@ -123,6 +123,21 @@ def validate_registration_semantics(registration: Mapping[str, Any]) -> None:
     if not isinstance(comparisons, list):
         raise RegistrationValidationError("comparisons must be a list")
     comparison_ids: set[str] = set()
+    metric_ids = {
+        reference.get("metric_id")
+        for reference in registration.get("metric_references", [])
+        if isinstance(reference, Mapping)
+    }
+    estimand_ids = {
+        reference.get("estimand_id")
+        for reference in registration.get("estimand_references", [])
+        if isinstance(reference, Mapping)
+    }
+    analysis_procedure_ids = {
+        reference.get("analysis_procedure_id")
+        for reference in registration.get("analysis_procedure_references", [])
+        if isinstance(reference, Mapping)
+    }
     for comparison in comparisons:
         if not isinstance(comparison, Mapping):
             raise RegistrationValidationError("comparison must be an object")
@@ -136,6 +151,18 @@ def validate_registration_semantics(registration: Mapping[str, Any]) -> None:
             arm_id = comparison.get(field)
             if arm_id not in arm_ids:
                 raise RegistrationValidationError(f"unknown arm referenced by {field}: {arm_id}")
+        if comparison.get("primary_metric_id") not in metric_ids:
+            raise RegistrationValidationError(
+                f"comparison {comparison_id} references undeclared primary_metric_id"
+            )
+        if comparison.get("estimand_id") not in estimand_ids:
+            raise RegistrationValidationError(
+                f"comparison {comparison_id} references undeclared estimand_id"
+            )
+        if comparison.get("analysis_procedure_id") not in analysis_procedure_ids:
+            raise RegistrationValidationError(
+                f"comparison {comparison_id} references undeclared analysis_procedure_id"
+            )
 
     budget_profiles = registration.get("budget_profiles")
     if isinstance(budget_profiles, Mapping):
@@ -205,7 +232,7 @@ def _schema_for_artifact(
             repository_root / "schemas/manifests/budget-calibration-spec.schema.json",
             "calibration_spec",
         )
-    if value.get("arm_id") == "determinization_search_v0":
+    if {"spec_id", "world_sampling", "lookahead"}.issubset(value):
         return (
             repository_root / "schemas/manifests/search-execution-spec.schema.json",
             "search_execution",
@@ -247,7 +274,9 @@ def _validate_registration_references(registration: Mapping[str, Any], root: Pat
             errors.append(f"document version mismatch: {document_id}")
         if identifier_field is not None:
             identifier = reference.get(identifier_field)
-            if not isinstance(identifier, str) or identifier not in document[1]:
+            if not isinstance(identifier, str) or not re.search(
+                rf"(?<![\w-]){re.escape(identifier)}(?![\w-])", document[1]
+            ):
                 errors.append(f"unknown {identifier_field}: {identifier}")
 
     for reference in registration.get("contract_references", []):
@@ -300,11 +329,17 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
         except RegistrationValidationError as exc:
             errors.append(f"{relative}: {exc}")
 
-    registrations_by_id = {
-        value.get("registration_id"): (path, value, kind)
-        for path, value, kind in artifacts
-        if kind == "registration" and isinstance(value.get("registration_id"), str)
-    }
+    registrations_by_id: dict[str, tuple[Path, Mapping[str, Any], str]] = {}
+    for path, value, kind in artifacts:
+        if kind != "registration" or not isinstance(value.get("registration_id"), str):
+            continue
+        registration_id = value["registration_id"]
+        if registration_id in registrations_by_id:
+            errors.append(
+                f"{path.relative_to(repository_root)}: duplicate registration_id: {registration_id}"
+            )
+            continue
+        registrations_by_id[registration_id] = (path, value, kind)
     for path, value, kind in artifacts:
         relative = path.relative_to(repository_root)
         if kind == "registration":
@@ -314,10 +349,49 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             )
             continue
         if kind not in {"implementation", "run"}:
+            if kind != "calibration_evidence":
+                continue
+            spec_digest = value.get("calibration_spec_digest")
+            spec = by_digest.get(spec_digest) if isinstance(spec_digest, str) else None
+            if spec is None or spec[2] != "calibration_spec":
+                errors.append(f"{relative}: calibration specification digest is unresolved")
+                continue
+            specification = spec[1]
+            if value.get("measurement_id") != specification.get("measurement_id"):
+                errors.append(f"{relative}: calibration measurement identity mismatch")
+            if value.get("runtime_limit_ms") != specification.get("runtime_limit_ms"):
+                errors.append(f"{relative}: calibration runtime limit mismatch")
+            grid = specification.get("ordered_work_grid")
+            measurements = value.get("runtime_measurements")
+            if not isinstance(grid, list) or not isinstance(measurements, list):
+                continue
+            work_values = [
+                measurement.get("work_value")
+                for measurement in measurements
+                if isinstance(measurement, Mapping)
+            ]
+            if len(work_values) != len(set(work_values)) or set(work_values) != set(grid):
+                errors.append(f"{relative}: calibration measurements do not cover the work grid")
+                continue
+            runtime_limit = specification.get("runtime_limit_ms")
+            eligible = [
+                measurement["work_value"]
+                for measurement in measurements
+                if isinstance(measurement, Mapping)
+                and measurement.get("status") == "ok"
+                and isinstance(measurement.get("runtime_ms"), (int, float))
+                and isinstance(runtime_limit, (int, float))
+                and measurement["runtime_ms"] <= runtime_limit
+            ]
+            expected_selected = max(eligible) if eligible else None
+            if value.get("selected_work_value") != expected_selected:
+                errors.append(f"{relative}: selected calibration work value is not reproducible")
             continue
         registration_id = value.get("registration_id")
         registration_digest = value.get("registration_digest")
-        registration_entry = registrations_by_id.get(registration_id)
+        registration_entry = (
+            registrations_by_id.get(registration_id) if isinstance(registration_id, str) else None
+        )
         if registration_entry is None:
             errors.append(f"{relative}: binding references unknown registration")
             continue

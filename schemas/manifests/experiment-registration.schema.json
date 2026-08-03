@@ -39,7 +39,7 @@
           "search_algorithm_id": {"type": ["string", "null"]},
           "world_distribution_or_belief_mode": {"type": "string", "minLength": 1},
           "lifecycle": {"enum": ["active", "deferred", "disabled"]},
-          "execution_spec_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+          "execution_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
         }
       }
     },
@@ -161,8 +161,8 @@
       "properties": {
         "budget_mode": {"enum": ["fixed", "calibrated_grid", "hardware_normalized"]},
         "selected_work_value": {"type": ["integer", "null"], "minimum": 1},
-        "calibration_spec_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
-        "benchmark_spec_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+        "calibration_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "benchmark_spec_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
       },
       "allOf": [
         {
@@ -171,11 +171,11 @@
         },
         {
           "if": {"properties": {"budget_mode": {"const": "calibrated_grid"}}},
-          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "benchmark_spec_digest": {"const": null}}}
+          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"$ref": "#/$defs/digest"}, "benchmark_spec_digest": {"const": null}}}
         },
         {
           "if": {"properties": {"budget_mode": {"const": "hardware_normalized"}}},
-          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"const": null}, "benchmark_spec_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}
+          "then": {"properties": {"selected_work_value": {"const": null}, "calibration_spec_digest": {"const": null}, "benchmark_spec_digest": {"$ref": "#/$defs/digest"}}}
         }
       ]
     }

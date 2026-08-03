@@ -188,9 +188,10 @@ def main() -> int:
             [
                 str(environment_python(lab_env)),
                 "-c",
+                "from pathlib import Path; "
                 "from battlebelief_lab.registration_validation import "
                 "validate_repository_artifacts; "
-                "assert validate_repository_artifacts() == []",
+                f"assert validate_repository_artifacts(Path({str(ROOT)!r})) == []",
             ]
         )
         print("PASS: lab")

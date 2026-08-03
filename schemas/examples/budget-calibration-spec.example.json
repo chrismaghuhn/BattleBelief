@@ -6,6 +6,8 @@
   "calibration_state_construction_rule": "Use the frozen synthetic state fixture in the calibration manifest.",
   "ordered_work_grid": [32, 64, 128],
   "selection_rule_id": "largest-value-under-runtime-limit-v1",
+  "measurement_id": "wall_time_ms_v1",
+  "runtime_limit_ms": 5.0,
   "allowed_runtime_measurements": ["wall_time_ms", "cpu_time_ms"],
   "forbidden_quality_measurements": ["battle_outcome", "teacher_regret", "selection_holdout_score"]
 }

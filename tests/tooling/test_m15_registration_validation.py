@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
+    _schema_for_artifact,
+    _validate_registration_references,
     validate_registration_semantics,
+    validate_repository_artifacts,
 )
 
 
@@ -39,8 +43,14 @@ def _registration() -> dict[str, object]:
                 "comparison_id": "heuristic-vs-search",
                 "left_arm_id": "heuristic_v0",
                 "right_arm_id": "determinization_search_v0",
+                "primary_metric_id": "metric_v1",
+                "estimand_id": "estimand_v1",
+                "analysis_procedure_id": "analysis_v1",
             }
         ],
+        "metric_references": [{"metric_id": "metric_v1"}],
+        "estimand_references": [{"estimand_id": "estimand_v1"}],
+        "analysis_procedure_references": [{"analysis_procedure_id": "analysis_v1"}],
     }
 
 
@@ -70,6 +80,73 @@ def test_information_set_arm_requires_pinned_search_id() -> None:
     arms[1]["search_algorithm_id"] = "other_search"
     with pytest.raises(RegistrationValidationError, match="information_set_duct"):
         validate_registration_semantics(registration)
+
+
+def test_comparison_references_must_be_declared() -> None:
+    registration = _registration()
+    registration["metric_references"] = [{"metric_id": "declared"}]
+    registration["estimand_references"] = [{"estimand_id": "declared"}]
+    registration["analysis_procedure_references"] = [{"analysis_procedure_id": "declared"}]
+    registration["comparisons"][0].update(
+        {
+            "primary_metric_id": "missing",
+            "estimand_id": "missing",
+            "analysis_procedure_id": "missing",
+        }
+    )
+    with pytest.raises(RegistrationValidationError, match="primary_metric_id"):
+        validate_registration_semantics(registration)
+
+
+def test_search_execution_schema_classification_is_structural() -> None:
+    root = Path(__file__).resolve().parents[2]
+    value = {
+        "spec_id": "information-set-duct-v0-execution-v1",
+        "arm_id": "information_set_duct_v0",
+        "world_sampling": {},
+        "lookahead": {},
+    }
+    result = _schema_for_artifact(root / "registrations/spec.json", value, root)
+    assert result is not None
+    assert result[1] == "search_execution"
+
+
+def test_reference_matching_does_not_accept_identifier_substrings(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "example.md").write_text(
+        "---\ndocument_id: example-doc\nversion: 1\n---\n\n`paired_mean_difference_v1`\n",
+        encoding="utf-8",
+    )
+    errors = _validate_registration_references(
+        {
+            "contract_references": [],
+            "metric_references": [
+                {
+                    "document_id": "example-doc",
+                    "document_version": 1,
+                    "metric_id": "mean_difference_v1",
+                }
+            ],
+            "estimand_references": [],
+            "analysis_procedure_references": [],
+        },
+        tmp_path,
+    )
+    assert any("unknown metric_id" in error for error in errors)
+
+
+def test_duplicate_registration_ids_are_reported(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    shutil.copytree(root / "schemas", tmp_path / "schemas")
+    shutil.copytree(root / "docs", tmp_path / "docs")
+    registrations = tmp_path / "registrations"
+    registrations.mkdir()
+    source = root / "schemas/examples/experiment-registration.example.json"
+    for name in ("one.json", "two.json"):
+        (registrations / name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = validate_repository_artifacts(tmp_path)
+    assert any("duplicate registration_id" in error for error in errors)
 
 
 def test_unsealed_registration_cannot_contain_implementation_digest() -> None:
