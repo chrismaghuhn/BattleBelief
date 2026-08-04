@@ -92,6 +92,14 @@ def test_measurement_run_result_error_taxonomy_and_status_matrix_are_closed() ->
     )
 
 
+def test_measurement_run_result_counter_boundaries_match_jcs_schema() -> None:
+    maximum = 9_007_199_254_740_991
+    accepted = _result(explicit_submission_count=maximum)
+    assert accepted.explicit_submission_count == maximum
+    with pytest.raises(ValueError, match="JCS-safe"):
+        _result(explicit_submission_count=maximum + 1)
+
+
 def test_measurement_run_result_binds_known_final_outcome() -> None:
     state = replace(ObservedState.initial("ash"), winner="Ash")
     result = _result(

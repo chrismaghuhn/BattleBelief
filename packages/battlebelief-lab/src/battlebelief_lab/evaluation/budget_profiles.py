@@ -75,6 +75,7 @@ class CalibrationSpecification:
         for name in (
             "measurement_profile_id",
             "selection_measurement_id",
+            "calibration_state_construction_rule",
         ):
             if type(getattr(self, name)) is not str or not getattr(self, name):
                 raise ValueError(f"{name} must be a non-empty string")
@@ -86,6 +87,18 @@ class CalibrationSpecification:
             raise ValueError("runtime_limit_ms must be positive")
         if not self.required_measurement_ids:
             raise ValueError("required_measurement_ids must not be empty")
+        for name in (
+            "required_measurement_ids",
+            "allowed_runtime_measurements",
+            "forbidden_quality_measurements",
+        ):
+            values = getattr(self, name)
+            if type(values) is not tuple or any(
+                type(value) is not str or not value for value in values
+            ):
+                raise ValueError(f"{name} must contain non-empty string IDs")
+            if len(set(values)) != len(values):
+                raise ValueError(f"{name} must not contain duplicates")
         if self.selection_measurement_id not in self.required_measurement_ids:
             raise ValueError("selection measurement must be required")
         if not set(self.required_measurement_ids).issubset(self.allowed_runtime_measurements):
@@ -148,8 +161,10 @@ class BudgetProfile:
             raise ValueError("calibration_spec_digest must be a sha256 digest or null")
         if self.mode is BudgetMode.CALIBRATED_GRID and self.calibration_spec_digest is None:
             raise ValueError("calibrated_grid requires a calibration specification")
-        if self.mode is not BudgetMode.CALIBRATED_GRID and self.calibration_spec_digest is not None:
+        if self.mode is BudgetMode.FIXED and self.calibration_spec_digest is not None:
             raise ValueError("fixed budgets do not carry calibration evidence")
+        if self.mode is BudgetMode.HARDWARE_NORMALIZED:
+            raise ValueError("hardware_normalized budgets are not supported in M1.5")
 
     def to_dict(self) -> dict[str, object]:
         return {

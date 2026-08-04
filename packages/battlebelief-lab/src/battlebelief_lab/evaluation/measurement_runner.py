@@ -332,8 +332,10 @@ def validate_measurement_run_result_document(
             final_observed_state_digest=document["final_observed_state_digest"],
             trace_status=TraceStatus(document["trace_status"]),
         )
-    except (KeyError, TypeError, ValueError):
-        return ["measurement-run-result semantic validation failed"]
+    except KeyError as error:
+        return [f"measurement-run-result is missing field {error.args[0]}"]
+    except (TypeError, ValueError) as error:
+        return [f"measurement-run-result semantic validation failed: {error}"]
     return validate_measurement_run_result(result, decision_records=decision_records)
 
 
@@ -418,7 +420,9 @@ class MeasurementRunner:
         primary_error = session_result.primary_error
         if lifecycle_failed and primary_error is None:
             primary_error = TraceSinkFailure()
-        primary_error_class = _stable_error_code(primary_error) if primary_error else None
+        primary_error_class = (
+            _stable_error_code(primary_error) if primary_error is not None else None
+        )
         run_status = (
             RunStatus.TRACE_FAILED
             if trace_error and primary_error is None

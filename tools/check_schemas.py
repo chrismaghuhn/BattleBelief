@@ -181,11 +181,6 @@ def collect_schema_errors(root: Path) -> list[str]:
             for error in errors
         ):
             classified = _schema_for_artifact(example_path, instance, root)
-            if example_path.name == "measurement-run-result.example.json":
-                errors.extend(
-                    f"{example_path.relative_to(root)}: {error}"
-                    for error in validate_measurement_run_result_document(instance)
-                )
             if classified is not None:
                 kind = classified[1]
                 try:
@@ -200,6 +195,11 @@ def collect_schema_errors(root: Path) -> list[str]:
                         )
                     elif kind == "synthetic_acceptance":
                         validate_synthetic_fixture_manifest(instance, root)
+                    elif kind == "measurement_run_result":
+                        errors.extend(
+                            f"{example_path.relative_to(root)}: schema violation: {error}"
+                            for error in validate_measurement_run_result_document(instance)
+                        )
                 except RegistrationValidationError as error:
                     errors.append(f"{example_path.relative_to(root)}: {error}")
 

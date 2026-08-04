@@ -483,6 +483,15 @@ _SCHEMA_BY_KIND = {
 def _schema_for_artifact(
     path: Path, value: Mapping[str, Any], repository_root: Path
 ) -> tuple[Path, str] | None:
+    if path.name == "measurement-run-result.example.json" or {
+        "run_status",
+        "battle_outcome",
+        "trace_status",
+    }.issubset(value):
+        return (
+            repository_root / "schemas/records/measurement-run-result.schema.json",
+            "measurement_run_result",
+        )
     if path.name == "registration.json" or "registration_status" in value:
         return (
             repository_root / "schemas/manifests/experiment-registration.schema.json",
