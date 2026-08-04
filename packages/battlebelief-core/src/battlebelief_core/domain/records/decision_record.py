@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -25,26 +25,6 @@ _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _ARM_ID_RE = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 _ERROR_CODE_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
-_ALLOWED_ERROR_CODES = frozenset(
-    {
-        "challenge_setup_error",
-        "command_encoding_failed",
-        "disconnect",
-        "local_action_gate_rejection",
-        "malformed_protocol_message",
-        "no_legal_action_available",
-        "reducer_invariant_failure",
-        "request_state_reconciliation_mismatch",
-        "server_invalid_choice",
-        "server_unavailable_choice",
-        "send_failed",
-        "stale_rqid",
-        "team_validation_error",
-        "timer_or_forfeit",
-        "transport_timeout",
-        "unknown_protocol_event",
-    }
-)
 
 
 def _require_safe_integer(name: str, value: object) -> None:
@@ -63,6 +43,25 @@ class DecisionRecordStatus(StrEnum):
     SUPERSEDED_BEFORE_SELECTION = "superseded_before_selection"
     TERMINALLY_DISCARDED = "terminally_discarded"
     RECONCILIATION_REJECTED = "reconciliation_rejected"
+
+
+class DecisionRecordErrorCode(StrEnum):
+    """Versioned, public error taxonomy for terminal Decision Records."""
+
+    NO_LEGAL_ACTION_AVAILABLE = "no_legal_action_available"
+    LOCAL_ACTION_GATE_REJECTION = "local_action_gate_rejection"
+    COMMAND_ENCODING_FAILED = "command_encoding_failed"
+    SEND_FAILED = "send_failed"
+    SERVER_INVALID_CHOICE = "server_invalid_choice"
+    SERVER_UNAVAILABLE_CHOICE = "server_unavailable_choice"
+    REQUEST_STATE_RECONCILIATION_MISMATCH = "request_state_reconciliation_mismatch"
+    STALE_RQID = "stale_rqid"
+    DISCONNECT = "disconnect"
+    TRANSPORT_TIMEOUT = "transport_timeout"
+    TIMER_OR_FORFEIT = "timer_or_forfeit"
+    UNKNOWN_PROTOCOL_EVENT = "unknown_protocol_event"
+    MALFORMED_PROTOCOL_MESSAGE = "malformed_protocol_message"
+    REDUCER_INVARIANT_FAILURE = "reducer_invariant_failure"
 
 
 def _require_digest(name: str, value: str) -> None:
@@ -163,15 +162,42 @@ class RunScopePayload:
 
 
 @dataclass(frozen=True, slots=True)
+class ResolvedDecisionRecordBinding:
+    """Resolved provenance identities from one immutable evaluation binding."""
+
+    evaluation_run_binding_digest: str
+    arm_id: str
+    runtime_and_contract_digests: RuntimeAndContractDigests
+
+    def __post_init__(self) -> None:
+        _require_digest("evaluation_run_binding_digest", self.evaluation_run_binding_digest)
+        if (
+            type(self.arm_id) is not str
+            or len(self.arm_id) > 128
+            or not _ARM_ID_RE.fullmatch(self.arm_id)
+        ):
+            raise ValueError("arm_id must be a valid arm ID")
+
+
+@dataclass(frozen=True, slots=True)
 class MeasurementRunContext:
     payload: RunContextPayload
     run_context_digest: str
+    resolved_binding: ResolvedDecisionRecordBinding | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         _require_digest("run_context_digest", self.run_context_digest)
         expected = manifest_digest(self.payload.to_dict())
         if self.run_context_digest != expected:
             raise ValueError("run_context_digest does not match payload")
+        if (
+            self.resolved_binding is not None
+            and self.payload.evaluation_run_binding_digest
+            != self.resolved_binding.evaluation_run_binding_digest
+        ):
+            raise ValueError("run context does not match resolved evaluation binding")
 
     def to_dict(self) -> dict[str, object]:
         value = self.payload.to_dict()
@@ -182,22 +208,33 @@ class MeasurementRunContext:
     def create(
         cls,
         *,
-        evaluation_run_binding_digest: str,
+        resolved_binding: ResolvedDecisionRecordBinding,
         run_scope: RunScopePayload,
         battle_ordinal: int,
     ) -> MeasurementRunContext:
         run_scope_digest = derive_run_scope_digest(run_scope)
+        if run_scope.runtime_digest != resolved_binding.runtime_and_contract_digests.runtime_digest:
+            raise ValueError("run scope runtime digest does not match resolved binding")
+        if (
+            run_scope.contract_set_digest
+            != resolved_binding.runtime_and_contract_digests.contract_set_digest
+        ):
+            raise ValueError("run scope contract digest does not match resolved binding")
         battle_id_digest = derive_battle_id_digest(
             run_scope_digest, run_scope.schedule_row_id, battle_ordinal
         )
         payload = RunContextPayload(
             schema_version=1,
-            evaluation_run_binding_digest=evaluation_run_binding_digest,
+            evaluation_run_binding_digest=resolved_binding.evaluation_run_binding_digest,
             run_scope_digest=run_scope_digest,
             battle_id_digest=battle_id_digest,
             battle_ordinal=battle_ordinal,
         )
-        return cls(payload=payload, run_context_digest=manifest_digest(payload.to_dict()))
+        return cls(
+            payload=payload,
+            run_context_digest=manifest_digest(payload.to_dict()),
+            resolved_binding=resolved_binding,
+        )
 
 
 def derive_run_scope_digest(run_scope: RunScopePayload) -> str:
@@ -307,7 +344,7 @@ def validate_decision_record_envelope(document: Mapping[str, Any]) -> list[str]:
     return errors
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class DecisionRecord:
     record_schema_version: int
     record_status: DecisionRecordStatus
@@ -319,9 +356,78 @@ class DecisionRecord:
     safe_submission_set_digest: str
     selected_submission: BattleSubmission | None
     submission_provenance: ActionProvenance | None
-    fallback_or_error_class: str | None
+    fallback_or_error_class: DecisionRecordErrorCode | None
     policy_or_arm_id: str
     runtime_and_contract_digests: RuntimeAndContractDigests
+    _run_context: MeasurementRunContext = field(repr=False, compare=False)
+    _resolved_binding: ResolvedDecisionRecordBinding = field(repr=False, compare=False)
+
+    def __init__(
+        self,
+        *,
+        record_schema_version: int,
+        record_status: DecisionRecordStatus,
+        run_context: MeasurementRunContext,
+        resolved_binding: ResolvedDecisionRecordBinding,
+        decision_index: int,
+        request_identity: RequestIdentity | PublicRequestIdentity,
+        observed_state_digest: str,
+        safe_submission_set_digest: str,
+        selected_submission: BattleSubmission | None,
+        submission_provenance: ActionProvenance | None,
+        fallback_or_error_class: str | DecisionRecordErrorCode | None,
+    ) -> None:
+        if run_context.payload.evaluation_run_binding_digest != (
+            resolved_binding.evaluation_run_binding_digest
+        ):
+            raise ValueError("record binding does not match run context")
+        object.__setattr__(self, "record_schema_version", record_schema_version)
+        object.__setattr__(self, "record_status", record_status)
+        object.__setattr__(self, "run_context_digest", run_context.run_context_digest)
+        object.__setattr__(self, "battle_id_digest", run_context.payload.battle_id_digest)
+        object.__setattr__(self, "decision_index", decision_index)
+        object.__setattr__(self, "request_identity", request_identity)
+        object.__setattr__(self, "observed_state_digest", observed_state_digest)
+        object.__setattr__(self, "safe_submission_set_digest", safe_submission_set_digest)
+        object.__setattr__(self, "selected_submission", selected_submission)
+        object.__setattr__(self, "submission_provenance", submission_provenance)
+        object.__setattr__(self, "fallback_or_error_class", fallback_or_error_class)
+        object.__setattr__(self, "policy_or_arm_id", resolved_binding.arm_id)
+        object.__setattr__(
+            self,
+            "runtime_and_contract_digests",
+            resolved_binding.runtime_and_contract_digests,
+        )
+        object.__setattr__(self, "_run_context", run_context)
+        object.__setattr__(self, "_resolved_binding", resolved_binding)
+        self.__post_init__()
+
+    @classmethod
+    def create(cls, **kwargs: Any) -> DecisionRecord:
+        return cls(**kwargs)
+
+    def with_updates(self, **changes: Any) -> DecisionRecord:
+        allowed = {
+            "record_schema_version",
+            "record_status",
+            "decision_index",
+            "request_identity",
+            "observed_state_digest",
+            "safe_submission_set_digest",
+            "selected_submission",
+            "submission_provenance",
+            "fallback_or_error_class",
+        }
+        unknown = set(changes) - allowed
+        if unknown:
+            raise TypeError(f"unsupported DecisionRecord updates: {sorted(unknown)}")
+        values = {name: getattr(self, name) for name in allowed}
+        values.update(changes)
+        return type(self)(
+            **values,
+            run_context=self._run_context,
+            resolved_binding=self._resolved_binding,
+        )
 
     def __post_init__(self) -> None:
         if type(self.record_schema_version) is not int or self.record_schema_version != 1:
@@ -355,8 +461,11 @@ class DecisionRecord:
                 self.fallback_or_error_class
             ):
                 raise ValueError("fallback_or_error_class must be a stable code")
-            if self.fallback_or_error_class not in _ALLOWED_ERROR_CODES:
-                raise ValueError("fallback_or_error_class is not an allowed code")
+            try:
+                error_code = DecisionRecordErrorCode(self.fallback_or_error_class)
+            except ValueError as exc:
+                raise ValueError("fallback_or_error_class is not an allowed code") from exc
+            object.__setattr__(self, "fallback_or_error_class", error_code)
         if self.selected_submission is None and self.submission_provenance is not None:
             raise ValueError("submission provenance requires a selected submission")
         if (
@@ -364,6 +473,40 @@ class DecisionRecord:
             and self.submission_provenance != self.selected_submission.provenance
         ):
             raise ValueError("submission provenance must match selected submission")
+        status_error_codes: dict[DecisionRecordStatus, frozenset[DecisionRecordErrorCode]] = {
+            DecisionRecordStatus.POLICY_REJECTED: frozenset(
+                {DecisionRecordErrorCode.NO_LEGAL_ACTION_AVAILABLE}
+            ),
+            DecisionRecordStatus.ACTION_GATE_REJECTED: frozenset(
+                {DecisionRecordErrorCode.LOCAL_ACTION_GATE_REJECTION}
+            ),
+            DecisionRecordStatus.COMMAND_ENCODING_FAILED: frozenset(
+                {DecisionRecordErrorCode.COMMAND_ENCODING_FAILED}
+            ),
+            DecisionRecordStatus.SEND_FAILED: frozenset(
+                {
+                    DecisionRecordErrorCode.SEND_FAILED,
+                    DecisionRecordErrorCode.SERVER_INVALID_CHOICE,
+                    DecisionRecordErrorCode.SERVER_UNAVAILABLE_CHOICE,
+                }
+            ),
+            DecisionRecordStatus.SESSION_ABORTED: frozenset(
+                {
+                    DecisionRecordErrorCode.DISCONNECT,
+                    DecisionRecordErrorCode.TRANSPORT_TIMEOUT,
+                    DecisionRecordErrorCode.TIMER_OR_FORFEIT,
+                    DecisionRecordErrorCode.UNKNOWN_PROTOCOL_EVENT,
+                    DecisionRecordErrorCode.MALFORMED_PROTOCOL_MESSAGE,
+                    DecisionRecordErrorCode.REDUCER_INVARIANT_FAILURE,
+                }
+            ),
+            DecisionRecordStatus.RECONCILIATION_REJECTED: frozenset(
+                {
+                    DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
+                    DecisionRecordErrorCode.STALE_RQID,
+                }
+            ),
+        }
         selected_required = {
             DecisionRecordStatus.SUBMITTED,
             DecisionRecordStatus.ACTION_GATE_REJECTED,
@@ -381,7 +524,7 @@ class DecisionRecord:
             DecisionRecordStatus.SUBMITTED,
             DecisionRecordStatus.WAIT_NOOP,
         }
-        error_required = set(DecisionRecordStatus) - error_forbidden
+        error_required = set(status_error_codes)
         if self.record_status in selected_required and self.selected_submission is None:
             raise ValueError("record status requires selected_submission")
         if self.record_status in selection_forbidden and self.selected_submission is not None:
@@ -390,6 +533,10 @@ class DecisionRecord:
             raise ValueError("record status must not contain an error class")
         if self.record_status in error_required and self.fallback_or_error_class is None:
             raise ValueError("record status requires an error class")
+        if self.record_status in status_error_codes and (
+            self.fallback_or_error_class not in status_error_codes[self.record_status]
+        ):
+            raise ValueError("error class is not valid for record status")
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -409,7 +556,9 @@ class DecisionRecord:
             "submission_provenance": (
                 None if self.submission_provenance is None else self.submission_provenance.value
             ),
-            "fallback_or_error_class": self.fallback_or_error_class,
+            "fallback_or_error_class": (
+                None if self.fallback_or_error_class is None else self.fallback_or_error_class.value
+            ),
             "policy_or_arm_id": self.policy_or_arm_id,
             "runtime_and_contract_digests": self.runtime_and_contract_digests.to_dict(),
         }

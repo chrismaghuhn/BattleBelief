@@ -163,6 +163,31 @@ class TestBattleSubmissionMove:
         with pytest.raises((AttributeError, TypeError)):
             s.slot = 2  # type: ignore[misc]
 
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"slot": True},
+            {"move_id": 1},
+            {"terastallize": 1},
+            {"kind": "move"},
+            {"provenance": "explicit_request"},
+            {"move_id": "Secret Nickname"},
+        ],
+    )
+    def test_move_rejects_schema_incompatible_runtime_types(
+        self, kwargs: dict[str, object]
+    ) -> None:
+        values: dict[str, object] = {
+            "kind": ActionKind.MOVE,
+            "provenance": ActionProvenance.EXPLICIT_REQUEST,
+            "slot": 1,
+            "move_id": "surf",
+            "terastallize": False,
+        }
+        values.update(kwargs)
+        with pytest.raises(ValueError):
+            BattleSubmission(**values)  # type: ignore[arg-type]
+
 
 class TestBattleSubmissionSwitch:
     def test_valid_switch(self) -> None:

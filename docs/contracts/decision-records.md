@@ -111,3 +111,35 @@ ist Bestandteil des Payloads und wird damit sowohl von `record_id` als auch von
 
 Fehlertexte werden nie serialisiert; `fallback_or_error_class` enthält nur
 stabile Klassifikationscodes oder `null`.
+
+Die Record-Fehlercode-Taxonomie ist in Version 1 geschlossen und wird in den
+beiden Record-Schemas als Enum gespiegelt:
+
+```text
+no_legal_action_available
+local_action_gate_rejection
+command_encoding_failed
+send_failed
+server_invalid_choice
+server_unavailable_choice
+request_state_reconciliation_mismatch
+stale_rqid
+disconnect
+transport_timeout
+timer_or_forfeit
+unknown_protocol_event
+malformed_protocol_message
+reducer_invariant_failure
+```
+
+Die Codes sind statusgebunden: `policy_rejected` verwendet
+`no_legal_action_available`, `action_gate_rejected` verwendet
+`local_action_gate_rejection`, `command_encoding_failed` verwendet seinen
+gleichnamigen Code, `send_failed` verwendet nur den Send-/Serverfehlerbereich,
+`reconciliation_rejected` verwendet `request_state_reconciliation_mismatch`
+oder `stale_rqid`, und `session_aborted` verwendet nur
+klassifizierte Transport-, Timer- oder Protokollabbruchcodes. Die rein
+dispositionellen Zustände `superseded_before_selection` und
+`terminally_discarded` tragen `null`; sie benötigen keinen erfundenen
+Fehlercode. Setupfehler wie Teamvalidierung und Challenge-Setup werden nicht
+als Decision Record serialisiert.

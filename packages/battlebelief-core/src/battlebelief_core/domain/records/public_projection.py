@@ -22,6 +22,8 @@ from battlebelief_core.domain.state.values import EvidenceInterval, HpObservatio
 PublicValue = Any
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
+_ANNOTATION_TYPES = frozenset({"already", "from", "of", "silent", "still", "upkeep", "wisher"})
+_EFFECT_TYPES = frozenset({"ability", "condition", "item", "move"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,12 +75,20 @@ def project_request_identity(
 ) -> Mapping[str, PublicValue]:
     """Project an identity without serializing its room identifier."""
 
+    public_identity = (
+        PublicRequestIdentity.from_internal(identity)
+        if isinstance(identity, RequestIdentity)
+        else identity
+    )
+    if not isinstance(public_identity, PublicRequestIdentity):
+        raise ValueError("identity must be a RequestIdentity or PublicRequestIdentity")
+
     return cast(
         Mapping[str, PublicValue],
         _freeze(
             {
-                "rqid": identity.rqid,
-                "request_digest": identity.request_digest,
+                "rqid": public_identity.rqid,
+                "request_digest": public_identity.request_digest,
             }
         ),
     )
@@ -227,10 +237,13 @@ def _project_visible_evidence(evidence: Any) -> dict[str, PublicValue]:
             projection["hit_count"] = hit_count
     elif evidence.kind in {"activate", "block", "prepare", "fieldactivate"}:
         effect = evidence.effect or ""
-        effect_id = effect.split(":", 1)[1].strip() if effect.startswith("move:") else effect
-        normalized = _showdown_id(effect_id)
-        if normalized:
-            projection["effect_id"] = normalized
+        if ":" in effect:
+            effect_type, effect_value = effect.split(":", 1)
+            normalized_type = _showdown_id(effect_type)
+            normalized_value = _showdown_id(effect_value.strip())
+            if normalized_type in _EFFECT_TYPES and normalized_value:
+                projection["effect_type"] = normalized_type
+                projection["effect_id"] = normalized_value
     if evidence.annotations:
         projection["annotations"] = [_project_annotation(value) for value in evidence.annotations]
     return projection
@@ -242,7 +255,10 @@ def _project_annotation(annotation: str) -> dict[str, PublicValue]:
     if not annotation.startswith("[") or "]" not in annotation:
         return {"type": "unknown"}
     label, remainder = annotation[1:].split("]", 1)
-    projection: dict[str, PublicValue] = {"type": _showdown_id(label)}
+    normalized_label = _showdown_id(label)
+    projection: dict[str, PublicValue] = {
+        "type": normalized_label if normalized_label in _ANNOTATION_TYPES else "unknown"
+    }
     target = remainder.strip()
     if ": " in target:
         position = target.split(": ", 1)[0]

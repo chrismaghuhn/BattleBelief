@@ -16,6 +16,8 @@ from battlebelief_core.domain.actions.submission import (
 from battlebelief_core.domain.records.decision_record import (
     DecisionRecord,
     DecisionRecordStatus,
+    MeasurementRunContext,
+    ResolvedDecisionRecordBinding,
     RunScopePayload,
     RuntimeAndContractDigests,
     derive_battle_id_digest,
@@ -117,6 +119,32 @@ def test_submission_schema_matches_domain_action_invariants() -> None:
     assert list(validator.iter_errors(invalid_status))
 
 
+def test_record_schema_closes_error_taxonomy_and_status_pairings() -> None:
+    schema = json.loads(
+        (ROOT / "schemas/records/decision-record-payload.schema.json").read_text(encoding="utf-8")
+    )
+    payload = json.loads(
+        (ROOT / "schemas/examples/decision-record-payload.example.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(schema)
+
+    unknown_code = json.loads(json.dumps(payload))
+    unknown_code["fallback_or_error_class"] = "banana"
+    assert list(validator.iter_errors(unknown_code))
+
+    wrong_status_code = json.loads(json.dumps(payload))
+    wrong_status_code["record_status"] = "action_gate_rejected"
+    wrong_status_code["fallback_or_error_class"] = "disconnect"
+    assert list(validator.iter_errors(wrong_status_code))
+
+    terminal_disposition = json.loads(json.dumps(payload))
+    terminal_disposition["record_status"] = "terminally_discarded"
+    terminal_disposition["selected_submission"] = None
+    terminal_disposition["submission_provenance"] = None
+    terminal_disposition["fallback_or_error_class"] = None
+    assert list(validator.iter_errors(terminal_disposition)) == []
+
+
 def test_decision_record_cross_version_vector_is_stable() -> None:
     vectors = json.loads(
         (ROOT / "schemas" / "canonicalization" / "decision-record-test-vectors.json").read_text(
@@ -148,11 +176,35 @@ def test_decision_record_cross_version_vector_is_stable() -> None:
 
 def test_domain_record_serialization_is_envelope_schema_valid() -> None:
     digest = "sha256:" + "a" * 64
-    record = DecisionRecord(
+    binding = ResolvedDecisionRecordBinding(
+        evaluation_run_binding_digest=digest,
+        arm_id="heuristic_v0",
+        runtime_and_contract_digests=RuntimeAndContractDigests(
+            runtime_digest=digest,
+            contract_set_digest=digest,
+            policy_digest=digest,
+            fallback_and_safety_digest=digest,
+        ),
+    )
+    context = MeasurementRunContext.create(
+        resolved_binding=binding,
+        run_scope=RunScopePayload(
+            registration_digest=digest,
+            arm_binding_digest=digest,
+            schedule_digest=digest,
+            schedule_row_id="row-0",
+            budget_profile_digest=digest,
+            seed_family_digest=digest,
+            runtime_digest=digest,
+            contract_set_digest=digest,
+        ),
+        battle_ordinal=0,
+    )
+    record = DecisionRecord.create(
         record_schema_version=1,
         record_status=DecisionRecordStatus.SUBMITTED,
-        run_context_digest=digest,
-        battle_id_digest=digest,
+        run_context=context,
+        resolved_binding=binding,
         decision_index=0,
         request_identity=RequestIdentity("battle-room", 1, digest),
         observed_state_digest=digest,
@@ -165,13 +217,6 @@ def test_domain_record_serialization_is_envelope_schema_valid() -> None:
         ),
         submission_provenance=ActionProvenance.EXPLICIT_REQUEST,
         fallback_or_error_class=None,
-        policy_or_arm_id="heuristic_v0",
-        runtime_and_contract_digests=RuntimeAndContractDigests(
-            runtime_digest=digest,
-            contract_set_digest=digest,
-            policy_digest=digest,
-            fallback_and_safety_digest=digest,
-        ),
     )
     schema = json.loads(
         (ROOT / "schemas/records/decision-record.schema.json").read_text(encoding="utf-8")

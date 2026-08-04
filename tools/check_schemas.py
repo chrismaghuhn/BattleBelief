@@ -11,6 +11,13 @@ if str(_ROOT) not in sys.path:
 
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
+from battlebelief_core.domain.records.decision_record import (  # noqa: E402
+    RunScopePayload,
+    derive_battle_id_digest,
+    derive_run_scope_digest,
+    validate_decision_record_envelope,
+    validate_measurement_run_context,
+)
 from battlebelief_lab.registration_validation import (  # noqa: E402
     RegistrationValidationError,
     _schema_for_artifact,
@@ -134,6 +141,44 @@ def collect_schema_errors(root: Path) -> list[str]:
         actual_digest = manifest_digest(vector["value"])
         if actual_digest != "sha256:" + vector["sha256"]:
             errors.append(f"{vector['name']}: digest differs")
+
+    decision_vectors = load_json_strict(
+        schema_root / "canonicalization/decision-record-test-vectors.json"
+    )
+    payload_schema = load_json_strict(schema_root / "records/decision-record-payload.schema.json")
+    for vector in decision_vectors:
+        name = vector.get("name", "decision-record-vector")
+        payload = vector.get("value")
+        if not isinstance(payload, dict):
+            errors.append(f"{name}: decision-record payload is not an object")
+            continue
+        errors.extend(
+            f"{name}: {schema_issue_summary(issue)}"
+            for issue in Draft202012Validator(payload_schema).iter_errors(payload)
+        )
+        run_context = vector.get("run_context")
+        if not isinstance(run_context, dict):
+            errors.append(f"{name}: measurement-run context is not an object")
+            continue
+        errors.extend(f"{name}: {error}" for error in validate_measurement_run_context(run_context))
+        envelope = {
+            "record_id": vector.get("record_id"),
+            "record_digest": vector.get("record_digest"),
+            "payload": payload,
+        }
+        errors.extend(f"{name}: {error}" for error in validate_decision_record_envelope(envelope))
+        try:
+            scope = RunScopePayload(**vector["run_scope"])
+            if derive_run_scope_digest(scope) != vector.get("run_scope_digest"):
+                errors.append(f"{name}: run_scope_digest differs")
+            if derive_battle_id_digest(
+                vector["run_scope_digest"],
+                scope.schedule_row_id,
+                vector["battle_ordinal"],
+            ) != vector.get("battle_id_digest"):
+                errors.append(f"{name}: battle_id_digest differs")
+        except (KeyError, TypeError, ValueError) as error:
+            errors.append(f"{name}: run-scope identity is invalid: {error}")
     errors.extend(validate_repository_artifacts(root))
     return sorted(errors)
 

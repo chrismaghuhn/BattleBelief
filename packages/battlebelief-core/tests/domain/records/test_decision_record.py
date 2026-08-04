@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -14,6 +14,7 @@ from battlebelief_core.domain.records.decision_record import (
     DecisionRecord,
     DecisionRecordStatus,
     MeasurementRunContext,
+    ResolvedDecisionRecordBinding,
     RunScopePayload,
     RuntimeAndContractDigests,
     derive_record_id,
@@ -39,11 +40,35 @@ def _move() -> BattleSubmission:
 
 
 def _record() -> DecisionRecord:
-    return DecisionRecord(
+    binding = ResolvedDecisionRecordBinding(
+        evaluation_run_binding_digest="sha256:" + "8" * 64,
+        arm_id="heuristic_v0",
+        runtime_and_contract_digests=RuntimeAndContractDigests(
+            runtime_digest="sha256:" + "f" * 64,
+            contract_set_digest="sha256:" + "1" * 64,
+            policy_digest="sha256:" + "2" * 64,
+            fallback_and_safety_digest="sha256:" + "3" * 64,
+        ),
+    )
+    context = MeasurementRunContext.create(
+        resolved_binding=binding,
+        run_scope=RunScopePayload(
+            registration_digest="sha256:" + "1" * 64,
+            arm_binding_digest="sha256:" + "2" * 64,
+            schedule_digest="sha256:" + "3" * 64,
+            schedule_row_id="row-0",
+            budget_profile_digest="sha256:" + "4" * 64,
+            seed_family_digest="sha256:" + "5" * 64,
+            runtime_digest="sha256:" + "f" * 64,
+            contract_set_digest="sha256:" + "1" * 64,
+        ),
+        battle_ordinal=0,
+    )
+    return DecisionRecord.create(
         record_schema_version=1,
         record_status=DecisionRecordStatus.SUBMITTED,
-        run_context_digest="sha256:" + "b" * 64,
-        battle_id_digest="sha256:" + "c" * 64,
+        run_context=context,
+        resolved_binding=binding,
         decision_index=0,
         request_identity=_identity(),
         observed_state_digest="sha256:" + "d" * 64,
@@ -51,13 +76,6 @@ def _record() -> DecisionRecord:
         selected_submission=_move(),
         submission_provenance=ActionProvenance.EXPLICIT_REQUEST,
         fallback_or_error_class=None,
-        policy_or_arm_id="heuristic_v0",
-        runtime_and_contract_digests=RuntimeAndContractDigests(
-            runtime_digest="sha256:" + "f" * 64,
-            contract_set_digest="sha256:" + "1" * 64,
-            policy_digest="sha256:" + "2" * 64,
-            fallback_and_safety_digest="sha256:" + "3" * 64,
-        ),
     )
 
 
@@ -99,7 +117,16 @@ def test_run_scope_and_context_derivation_is_explicit_and_room_independent() -> 
     assert first == second
     assert "room" not in str(scope.to_dict()).casefold()
     context = MeasurementRunContext.create(
-        evaluation_run_binding_digest="sha256:" + "8" * 64,
+        resolved_binding=ResolvedDecisionRecordBinding(
+            evaluation_run_binding_digest="sha256:" + "8" * 64,
+            arm_id="heuristic_v0",
+            runtime_and_contract_digests=RuntimeAndContractDigests(
+                runtime_digest="sha256:" + "6" * 64,
+                contract_set_digest="sha256:" + "7" * 64,
+                policy_digest="sha256:" + "1" * 64,
+                fallback_and_safety_digest="sha256:" + "2" * 64,
+            ),
+        ),
         run_scope=scope,
         battle_ordinal=0,
     )
@@ -121,8 +148,7 @@ def test_record_is_immutable_and_does_not_expose_room_or_account_data() -> None:
 
 def test_command_encoding_failure_keeps_selected_submission_without_send_claim() -> None:
     record = _record()
-    encoding_failure = replace(
-        record,
+    encoding_failure = record.with_updates(
         record_status=DecisionRecordStatus.COMMAND_ENCODING_FAILED,
         fallback_or_error_class="command_encoding_failed",
     )
@@ -145,7 +171,16 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
         contract_set_digest="sha256:" + "7" * 64,
     )
     context = MeasurementRunContext.create(
-        evaluation_run_binding_digest="sha256:" + "8" * 64,
+        resolved_binding=ResolvedDecisionRecordBinding(
+            evaluation_run_binding_digest="sha256:" + "8" * 64,
+            arm_id="heuristic_v0",
+            runtime_and_contract_digests=RuntimeAndContractDigests(
+                runtime_digest="sha256:" + "6" * 64,
+                contract_set_digest="sha256:" + "7" * 64,
+                policy_digest="sha256:" + "1" * 64,
+                fallback_and_safety_digest="sha256:" + "2" * 64,
+            ),
+        ),
         run_scope=scope,
         battle_ordinal=0,
     )
@@ -155,7 +190,16 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
 
     with pytest.raises(ValueError):
         MeasurementRunContext.create(
-            evaluation_run_binding_digest="sha256:" + "8" * 64,
+            resolved_binding=ResolvedDecisionRecordBinding(
+                evaluation_run_binding_digest="sha256:" + "8" * 64,
+                arm_id="heuristic_v0",
+                runtime_and_contract_digests=RuntimeAndContractDigests(
+                    runtime_digest="sha256:" + "6" * 64,
+                    contract_set_digest="sha256:" + "7" * 64,
+                    policy_digest="sha256:" + "1" * 64,
+                    fallback_and_safety_digest="sha256:" + "2" * 64,
+                ),
+            ),
             run_scope=scope,
             battle_ordinal=True,  # type: ignore[arg-type]
         )
@@ -186,7 +230,12 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
             ActionProvenance.EXPLICIT_REQUEST,
             "superseded",
         ),
-        (DecisionRecordStatus.TERMINALLY_DISCARDED, None, None, None),
+        (
+            DecisionRecordStatus.TERMINALLY_DISCARDED,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            None,
+        ),
         (
             DecisionRecordStatus.RECONCILIATION_REJECTED,
             _move(),
@@ -202,8 +251,7 @@ def test_terminal_status_matrix_rejects_impossible_records(
     error: str | None,
 ) -> None:
     with pytest.raises(ValueError):
-        replace(
-            _record(),
+        _record().with_updates(
             record_status=status,
             selected_submission=selected,
             submission_provenance=provenance,
@@ -213,13 +261,12 @@ def test_terminal_status_matrix_rejects_impossible_records(
 
 def test_fallback_or_error_class_rejects_raw_error_text_and_negative_rqid() -> None:
     with pytest.raises(ValueError, match="stable code"):
-        replace(
-            _record(),
+        _record().with_updates(
             record_status=DecisionRecordStatus.SEND_FAILED,
             fallback_or_error_class="Timeout: /var/run/showdown.sock",
         )
     with pytest.raises(ValueError):
-        replace(_record(), request_identity=_identity_with_rqid(-1))
+        _record().with_updates(request_identity=_identity_with_rqid(-1))
 
 
 @pytest.mark.parametrize(
@@ -229,14 +276,52 @@ def test_fallback_or_error_class_rejects_raw_error_text_and_negative_rqid() -> N
         ("decision_index", True),
         ("record_status", "submitted"),
         ("submission_provenance", "explicit_request"),
-        ("policy_or_arm_id", True),
-        ("policy_or_arm_id", "/tmp/private"),
-        ("policy_or_arm_id", "internal.example.com"),
     ],
 )
 def test_domain_rejects_schema_type_and_arm_id_mismatches(field: str, value: object) -> None:
     with pytest.raises(ValueError):
-        replace(_record(), **{field: value})
+        _record().with_updates(**{field: value})
+
+
+def test_error_codes_are_status_bound_and_disposition_only_statuses_are_null() -> None:
+    with pytest.raises(ValueError):
+        _record().with_updates(
+            record_status=DecisionRecordStatus.POLICY_REJECTED,
+            fallback_or_error_class="disconnect",
+        )
+    with pytest.raises(ValueError):
+        _record().with_updates(
+            record_status=DecisionRecordStatus.SESSION_ABORTED,
+            fallback_or_error_class="no_legal_action_available",
+        )
+    with pytest.raises(ValueError):
+        _record().with_updates(
+            record_status=DecisionRecordStatus.TERMINALLY_DISCARDED,
+            fallback_or_error_class="disconnect",
+        )
+
+    discarded = _record().with_updates(
+        record_status=DecisionRecordStatus.TERMINALLY_DISCARDED,
+        selected_submission=None,
+        submission_provenance=None,
+        fallback_or_error_class=None,
+    )
+    assert discarded.to_payload()["fallback_or_error_class"] is None
+
+
+@pytest.mark.parametrize("arm_id", [True, "/tmp/private", "internal.example.com", "a" * 129])
+def test_resolved_binding_rejects_invalid_arm_ids(arm_id: object) -> None:
+    with pytest.raises(ValueError):
+        ResolvedDecisionRecordBinding(
+            evaluation_run_binding_digest=_DIGEST,
+            arm_id=arm_id,  # type: ignore[arg-type]
+            runtime_and_contract_digests=RuntimeAndContractDigests(
+                runtime_digest=_DIGEST,
+                contract_set_digest=_DIGEST,
+                policy_digest=_DIGEST,
+                fallback_and_safety_digest=_DIGEST,
+            ),
+        )
 
 
 def _identity_with_rqid(rqid: int) -> RequestIdentity:

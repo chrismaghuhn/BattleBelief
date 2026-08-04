@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from battlebelief_core.domain.actions.submission import (
     ActionKind,
     ActionProvenance,
@@ -35,7 +37,7 @@ def _move(slot: int) -> BattleSubmission:
         kind=ActionKind.MOVE,
         provenance=ActionProvenance.EXPLICIT_REQUEST,
         slot=slot,
-        move_id=f"move-{slot}",
+        move_id=f"move{slot}",
     )
 
 
@@ -139,6 +141,45 @@ def test_public_evidence_preserves_safe_hit_count_values() -> None:
 
     assert observed_state_digest(two_hits) != observed_state_digest(five_hits)
     assert project_observed_state(two_hits)["visible_evidence"][0]["hit_count"] == 2
+
+
+def test_public_evidence_rejects_unknown_effects_and_annotation_labels() -> None:
+    state = replace(
+        ObservedState.initial("ash"),
+        visible_evidence=(
+            VisibleEvidence(
+                1,
+                "activate",
+                "p1",
+                1,
+                "SecretNickname",
+                "SecretNickname",
+                ("[SecretNickname] p1a: SecretNickname",),
+            ),
+        ),
+    )
+
+    encoded = canonical_public_bytes(project_observed_state(state)).decode("utf-8")
+
+    assert "secretnickname" not in encoded
+    assert '"effect_id"' not in encoded
+    assert '"type":"unknown"' in encoded
+
+
+def test_public_evidence_preserves_structured_known_effects() -> None:
+    state = replace(
+        ObservedState.initial("ash"),
+        visible_evidence=(VisibleEvidence(1, "activate", "p1", 1, None, "move: Protect", ()),),
+    )
+
+    projection = project_observed_state(state)
+    assert projection["visible_evidence"][0]["effect_id"] == "protect"
+    assert projection["visible_evidence"][0]["effect_type"] == "move"
+
+
+def test_request_identity_projection_validates_internal_identity() -> None:
+    with pytest.raises(ValueError):
+        project_request_identity(RequestIdentity("room", True, "not-a-digest"))
 
 
 def test_submission_order_is_semantic_but_mapping_order_is_not() -> None:

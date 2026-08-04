@@ -61,7 +61,7 @@
         },
         "fallback_or_error_class": {
           "anyOf": [
-            {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+            {"$ref": "#/$defs/errorCode"},
             {"type": "null"}
           ]
         },
@@ -78,16 +78,32 @@
           "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "null"}}}
         },
         {
-          "if": {"properties": {"record_status": {"enum": ["policy_rejected", "superseded_before_selection", "terminally_discarded", "reconciliation_rejected"]}}},
-          "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
+          "if": {"properties": {"record_status": {"enum": ["superseded_before_selection", "terminally_discarded"]}}},
+          "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "null"}}}
         },
         {
-          "if": {"properties": {"record_status": {"enum": ["action_gate_rejected", "command_encoding_failed", "send_failed"]}}},
-          "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
+          "if": {"properties": {"record_status": {"const": "policy_rejected"}}},
+          "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"const": "no_legal_action_available"}}}
+        },
+        {
+          "if": {"properties": {"record_status": {"const": "reconciliation_rejected"}}},
+          "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"enum": ["request_state_reconciliation_mismatch", "stale_rqid"]}}}
+        },
+        {
+          "if": {"properties": {"record_status": {"const": "action_gate_rejected"}}},
+          "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"const": "local_action_gate_rejection"}}}
+        },
+        {
+          "if": {"properties": {"record_status": {"const": "command_encoding_failed"}}},
+          "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"const": "command_encoding_failed"}}}
+        },
+        {
+          "if": {"properties": {"record_status": {"const": "send_failed"}}},
+          "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"enum": ["send_failed", "server_invalid_choice", "server_unavailable_choice"]}}}
         },
         {
           "if": {"properties": {"record_status": {"const": "session_aborted"}}},
-          "then": {"properties": {"fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
+          "then": {"properties": {"fallback_or_error_class": {"enum": ["disconnect", "transport_timeout", "timer_or_forfeit", "unknown_protocol_event", "malformed_protocol_message", "reducer_invariant_failure"]}}}
         },
         {
           "if": {"properties": {"submission_provenance": {"const": "explicit_request"}}},
@@ -107,6 +123,25 @@
         }
       ]
     },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "no_legal_action_available",
+        "local_action_gate_rejection",
+        "command_encoding_failed",
+        "send_failed",
+        "server_invalid_choice",
+        "server_unavailable_choice",
+        "request_state_reconciliation_mismatch",
+        "stale_rqid",
+        "disconnect",
+        "transport_timeout",
+        "timer_or_forfeit",
+        "unknown_protocol_event",
+        "malformed_protocol_message",
+        "reducer_invariant_failure"
+      ]
+    },
     "requestIdentity": {
       "type": "object",
       "additionalProperties": false,
@@ -120,7 +155,7 @@
     "moveSubmission": {
       "type": "object", "additionalProperties": false,
       "required": ["kind", "provenance", "slot", "move_id", "terastallize", "team_order"],
-      "properties": {"kind": {"const": "move"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "integer", "minimum": 1, "maximum": 4}, "move_id": {"type": "string", "minLength": 1}, "terastallize": {"type": "boolean"}, "team_order": {"type": "array", "maxItems": 0}}
+      "properties": {"kind": {"const": "move"}, "provenance": {"const": "explicit_request"}, "slot": {"type": "integer", "minimum": 1, "maximum": 4}, "move_id": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[a-z0-9]+$"}, "terastallize": {"type": "boolean"}, "team_order": {"type": "array", "maxItems": 0}}
     },
     "switchSubmission": {
       "type": "object", "additionalProperties": false,

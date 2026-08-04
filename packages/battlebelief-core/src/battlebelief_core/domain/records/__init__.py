@@ -2,8 +2,10 @@
 
 from battlebelief_core.domain.records.decision_record import (
     DecisionRecord,
+    DecisionRecordErrorCode,
     DecisionRecordStatus,
     MeasurementRunContext,
+    ResolvedDecisionRecordBinding,
     RunContextPayload,
     RunScopePayload,
     RuntimeAndContractDigests,
@@ -29,9 +31,11 @@ from battlebelief_core.domain.records.public_projection import (
 
 __all__ = [
     "DecisionRecord",
+    "DecisionRecordErrorCode",
     "DecisionRecordStatus",
     "MeasurementRunContext",
     "PublicRequestIdentity",
+    "ResolvedDecisionRecordBinding",
     "RunContextPayload",
     "RunScopePayload",
     "RuntimeAndContractDigests",
