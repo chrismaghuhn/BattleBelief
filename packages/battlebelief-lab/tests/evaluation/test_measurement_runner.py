@@ -10,6 +10,7 @@ from battlebelief_core.domain.actions.submission import ActionProvenance
 from battlebelief_core.domain.records.decision_record import DecisionRecordStatus
 from battlebelief_core.domain.records.public_projection import observed_state_digest
 from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_core.errors import TraceSinkFailure
 from battlebelief_lab.evaluation.matchup_blocks import BaseMatchupKey
 from battlebelief_lab.evaluation.measurement_runner import (
     BattleOutcome,
@@ -183,6 +184,31 @@ class _Ledger:
     accepted_record_digests: tuple[str, ...] = ()
 
 
+class _TraceOnlySession:
+    def __init__(self, trace_sink: object) -> None:
+        self.trace_sink = trace_sink
+
+    async def run(self) -> object:
+        return SimpleNamespace(
+            state=ObservedState.initial("ash"),
+            primary_error=None,
+            trace_error=TraceSinkFailure(),
+            record_error=None,
+            room_control_or_chat_count=0,
+            explicit_request_submissions=0,
+            default_submissions=0,
+        )
+
+    def failure_result(self, error: BaseException) -> object:
+        raise AssertionError(f"unexpected session exception: {error}")
+
+    def flush_trace(self) -> None:
+        return None
+
+    def close_trace(self) -> None:
+        return None
+
+
 def test_runner_finalizes_lifecycle_and_sanitizes_session_exception() -> None:
     ledger = _Ledger()
     session = _RaisingSession(ledger)
@@ -208,3 +234,30 @@ def test_runner_finalizes_lifecycle_and_sanitizes_session_exception() -> None:
     assert result.run_status is RunStatus.FAILED
     assert result.primary_error_class == "runtime_error"
     assert session.lifecycle == ["flush", "close"]
+
+
+def test_runner_classifies_trace_only_failure_with_stable_code() -> None:
+    ledger = _Ledger()
+    session = _TraceOnlySession(ledger)
+    schedule = build_schedule(
+        registration_digest=_RUN_DIGEST,
+        master_seed="0123456789abcdef" * 4,
+        matchup_keys=[BaseMatchupKey("hero", "opponent", "balance", "policy", "block")],
+        repetitions=2,
+    )
+    context = SimpleNamespace(
+        run_context_digest=_RUN_DIGEST,
+        run_scope=SimpleNamespace(schedule_row_id=schedule.rows[0].row_id),
+    )
+    result = asyncio.run(
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=context,
+            schedule_row=schedule.rows[0],
+        ).run()
+    )
+
+    assert result.run_status is RunStatus.TRACE_FAILED
+    assert result.primary_error_class == "trace_sink_failure"
+    assert result.trace_status is TraceStatus.SINK_FAILED

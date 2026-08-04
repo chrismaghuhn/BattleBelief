@@ -423,6 +423,8 @@ class MeasurementRunner:
         primary_error_class = (
             _stable_error_code(primary_error) if primary_error is not None else None
         )
+        if trace_error and session_result.primary_error is None:
+            primary_error_class = "trace_sink_failure"
         run_status = (
             RunStatus.TRACE_FAILED
             if trace_error and primary_error is None
