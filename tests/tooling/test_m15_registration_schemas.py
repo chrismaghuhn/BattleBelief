@@ -23,6 +23,8 @@ EXAMPLE_SCHEMA_MAP = {
     "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
     "decision-record.example.json": "decision-record.schema.json",
     "decision-record-payload.example.json": "decision-record-payload.schema.json",
+    "decision-record-v2.example.json": "decision-record-v2.schema.json",
+    "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
 }
 
@@ -30,6 +32,8 @@ RECORD_SCHEMAS = frozenset(
     {
         "decision-record.schema.json",
         "decision-record-payload.schema.json",
+        "decision-record-v2.schema.json",
+        "decision-record-payload-v2.schema.json",
         "measurement-run.schema.json",
     }
 )

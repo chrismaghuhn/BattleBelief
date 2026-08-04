@@ -254,7 +254,7 @@ def read_request(room_id: str, payload: str) -> DecisionRequest:
     data = cast(dict[str, Any], data)
 
     rqid = _require_rqid(data)
-    digest = _canonical_digest(data)
+    digest = "sha256:" + _canonical_digest(data)
     identity = RequestIdentity(room_id=room_id, rqid=rqid, request_digest=digest)
 
     wait = _optional_bool(data, "wait")

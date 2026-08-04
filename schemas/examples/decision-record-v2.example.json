@@ -1,0 +1,27 @@
+{
+  "record_id": "sha256:5ebf9e29f2e5bcfcd9d054a45dbb12e6d4f151d90fc1d35103e7851a390f53fb",
+  "record_digest": "sha256:708c99ac41ca043b93e47acd14c61cd9222a2dfcb54916199e53d3fa965bb360",
+  "payload": {
+    "record_schema_version": 2,
+    "record_status": "freshness_invalidated",
+    "run_context_digest": "sha256:4e28b9504cceb58ab82bad1332ee2322b92e7aa3c101eef21a14b32f7474a8c7",
+    "battle_id_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "decision_index": 0,
+    "request_identity": {
+      "rqid": 7,
+      "request_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "observed_state_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "safe_submission_set_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "selected_submission": null,
+    "submission_provenance": null,
+    "fallback_or_error_class": null,
+    "policy_or_arm_id": "heuristic_v0",
+    "runtime_and_contract_digests": {
+      "runtime_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "contract_set_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "policy_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "fallback_and_safety_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}

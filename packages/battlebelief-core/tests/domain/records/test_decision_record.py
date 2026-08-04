@@ -262,6 +262,12 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
             ActionProvenance.EXPLICIT_REQUEST,
             "rejected",
         ),
+        (
+            DecisionRecordStatus.FRESHNESS_INVALIDATED,
+            _move(),
+            ActionProvenance.EXPLICIT_REQUEST,
+            None,
+        ),
     ],
 )
 def test_terminal_status_matrix_rejects_impossible_records(
@@ -303,6 +309,11 @@ def test_domain_rejects_schema_type_and_arm_id_mismatches(field: str, value: obj
         _record().with_updates(**{field: value})
 
 
+def test_domain_accepts_decision_record_schema_v2() -> None:
+    record = _record().with_updates(record_schema_version=2)
+    assert record.to_payload()["record_schema_version"] == 2
+
+
 def test_error_codes_are_status_bound_and_disposition_only_statuses_are_null() -> None:
     with pytest.raises(ValueError):
         _record().with_updates(
@@ -332,6 +343,15 @@ def test_error_codes_are_status_bound_and_disposition_only_statuses_are_null() -
                 fallback_or_error_class="disconnect",
             )
 
+    with pytest.raises(ValueError, match="must not contain an error class"):
+        _record().with_updates(
+            record_schema_version=2,
+            record_status=DecisionRecordStatus.FRESHNESS_INVALIDATED,
+            selected_submission=None,
+            submission_provenance=None,
+            fallback_or_error_class="disconnect",
+        )
+
     discarded = _record().with_updates(
         record_status=DecisionRecordStatus.TERMINALLY_DISCARDED,
         selected_submission=None,
@@ -339,6 +359,23 @@ def test_error_codes_are_status_bound_and_disposition_only_statuses_are_null() -
         fallback_or_error_class=None,
     )
     assert discarded.to_payload()["fallback_or_error_class"] is None
+
+    invalidated = _record().with_updates(
+        record_schema_version=2,
+        record_status=DecisionRecordStatus.FRESHNESS_INVALIDATED,
+        selected_submission=None,
+        submission_provenance=None,
+        fallback_or_error_class=None,
+    )
+    assert invalidated.to_payload()["record_status"] == "freshness_invalidated"
+
+    with pytest.raises(ValueError, match="schema v2"):
+        _record().with_updates(
+            record_status=DecisionRecordStatus.FRESHNESS_INVALIDATED,
+            selected_submission=None,
+            submission_provenance=None,
+            fallback_or_error_class=None,
+        )
 
 
 @pytest.mark.parametrize("arm_id", [True, "/tmp/private", "internal.example.com", "a" * 129])

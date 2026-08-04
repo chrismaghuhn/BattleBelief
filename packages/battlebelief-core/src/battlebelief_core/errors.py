@@ -15,3 +15,15 @@ class LocalActionGateRejection(RuntimeError):
 
 class NoLegalActionError(RuntimeError):
     code = "no_legal_action_available"
+
+
+class TraceSinkFailure(RuntimeError):
+    """A trace sink failed without exposing its implementation details."""
+
+    code = "trace_sink_failure"
+
+
+class DecisionRecordConstructionFailure(RuntimeError):
+    """A decision record could not be constructed without exposing details."""
+
+    code = "decision_record_construction_failure"
