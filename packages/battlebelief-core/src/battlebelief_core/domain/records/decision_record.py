@@ -510,8 +510,13 @@ class DecisionRecord:
         )
 
     def __post_init__(self) -> None:
-        if type(self.record_schema_version) is not int or self.record_schema_version != 1:
+        if type(self.record_schema_version) is not int or self.record_schema_version not in (1, 2):
             raise ValueError("unsupported Decision-Record schema version")
+        if (
+            self.record_status == DecisionRecordStatus.FRESHNESS_INVALIDATED
+            and self.record_schema_version != 2
+        ):
+            raise ValueError("freshness_invalidated requires Decision-Record schema v2")
         _require_safe_integer("decision_index", self.decision_index)
         if isinstance(self.request_identity, RequestIdentity):
             object.__setattr__(

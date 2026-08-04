@@ -46,6 +46,8 @@ EXAMPLE_SCHEMA_MAP = {
     "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
     "decision-record.example.json": "decision-record.schema.json",
     "decision-record-payload.example.json": "decision-record-payload.schema.json",
+    "decision-record-v2.example.json": "decision-record-v2.schema.json",
+    "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
 }
 
@@ -112,6 +114,8 @@ RECORD_SCHEMA_NAMES = frozenset(
     {
         "decision-record.schema.json",
         "decision-record-payload.schema.json",
+        "decision-record-v2.schema.json",
+        "decision-record-payload-v2.schema.json",
         "measurement-run.schema.json",
     }
 )
@@ -204,8 +208,9 @@ def collect_schema_errors(root: Path) -> list[str]:
     decision_vectors = load_json_strict(
         schema_root / "canonicalization/decision-record-test-vectors.json"
     )
-    payload_schema = load_json_strict(schema_root / "records/decision-record-payload.schema.json")
     for vector in decision_vectors:
+        payload_schema_name = vector.get("schema_filename", "decision-record-payload.schema.json")
+        payload_schema = load_json_strict(schema_root / "records" / payload_schema_name)
         errors.extend(validate_decision_record_vector(vector, payload_schema))
     errors.extend(validate_repository_artifacts(root))
     return sorted(errors)

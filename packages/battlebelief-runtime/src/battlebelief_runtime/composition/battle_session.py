@@ -42,6 +42,7 @@ from battlebelief_core.domain.records.public_projection import (
 )
 from battlebelief_core.domain.state.observed_state import ObservedState
 from battlebelief_core.errors import (
+    DecisionRecordConstructionFailure,
     LocalActionGateRejection,
     NoLegalActionError,
     ReducerInvariantError,
@@ -83,6 +84,7 @@ class BattleSessionResult:
     explicit_request_submissions: int
     default_submissions: int
     trace_error: TraceSinkFailure | None = None
+    record_error: DecisionRecordConstructionFailure | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +138,7 @@ class BattleSession:
         self._submitted_request: RequestIdentity | None = None
         self._primary_error: BaseException | None = None
         self._trace_error: TraceSinkFailure | None = None
+        self._record_error: DecisionRecordConstructionFailure | None = None
         self._done = False
         self._room_control_or_chat_count = 0
         self._explicit_request_submissions = 0
@@ -169,6 +172,7 @@ class BattleSession:
             state=self._state,
             primary_error=self._primary_error,
             trace_error=self._trace_error,
+            record_error=self._record_error,
             room_control_or_chat_count=self._room_control_or_chat_count,
             explicit_request_submissions=self._explicit_request_submissions,
             default_submissions=self._default_submissions,
@@ -461,7 +465,7 @@ class BattleSession:
         provenance = None if selected_submission is None else selected_submission.provenance
         try:
             record = DecisionRecord.create(
-                record_schema_version=1,
+                record_schema_version=2,
                 record_status=status,
                 run_context=context,
                 resolved_binding=context.resolved_binding,
@@ -473,13 +477,21 @@ class BattleSession:
                 submission_provenance=provenance,
                 fallback_or_error_class=error_code,
             )
-        except Exception as exc:
-            self._handle_trace_failure(exc)
+        except Exception:
+            self._handle_record_construction_failure()
             return
         try:
             self._trace_sink.emit(record)
         except Exception as exc:
             self._handle_trace_failure(exc)
+
+    def _handle_record_construction_failure(self) -> None:
+        self._trace_failed = True
+        record_error = DecisionRecordConstructionFailure()
+        self._record_error = record_error
+        if self._primary_error is None:
+            self._primary_error = record_error
+        self._done = True
 
     def _handle_trace_failure(self, _cause: Exception) -> None:
         self._trace_failed = True

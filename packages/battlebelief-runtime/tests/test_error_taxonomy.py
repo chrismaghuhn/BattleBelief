@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from battlebelief_core.errors import TraceSinkFailure
+from battlebelief_core.errors import DecisionRecordConstructionFailure, TraceSinkFailure
 from battlebelief_runtime.errors.actions import ServerInvalidChoice, ServerUnavailableChoice
 from battlebelief_runtime.errors.protocol import (
     Disconnect,
@@ -94,3 +94,7 @@ class TestErrorCodesAreImmutable:
     def test_trace_sink_failure_code(self) -> None:
         assert TraceSinkFailure.code == "trace_sink_failure"
         assert issubclass(TraceSinkFailure, RuntimeError)
+
+    def test_decision_record_construction_failure_code(self) -> None:
+        assert DecisionRecordConstructionFailure.code == "decision_record_construction_failure"
+        assert issubclass(DecisionRecordConstructionFailure, RuntimeError)

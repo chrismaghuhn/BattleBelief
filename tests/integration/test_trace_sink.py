@@ -20,7 +20,11 @@ from battlebelief_core.domain.records.decision_record import (
     RuntimeAndContractDigests,
 )
 from battlebelief_core.domain.records.public_projection import observed_state_digest
-from battlebelief_core.errors import NoLegalActionError, TraceSinkFailure
+from battlebelief_core.errors import (
+    DecisionRecordConstructionFailure,
+    NoLegalActionError,
+    TraceSinkFailure,
+)
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
 from battlebelief_runtime.adapters.telemetry.jsonl_decision_trace import (
     JsonlDecisionTrace,
@@ -132,6 +136,7 @@ def test_fresh_request_emits_once_and_duplicate_is_suppressed() -> None:
     assert connection.sent_room == [(_ROOM, "/choose move 1|5")]
     assert len(sink.records) == 1
     record = sink.records[0]
+    assert record.record_schema_version == 2
     assert record.record_status.value == "submitted"
     assert record.request_identity.rqid == 5
     assert "battle-gen9ou-1" not in repr(record)
@@ -682,3 +687,34 @@ def test_trace_failure_does_not_replace_a_primary_send_error() -> None:
 
     assert isinstance(result.primary_error, Disconnect)
     assert getattr(result.primary_error, "code", None) == "disconnect"
+
+
+def test_record_construction_failure_is_not_classified_as_sink_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sink = InMemoryTraceSink()
+
+    def fail_record_construction(**_kwargs: object) -> object:
+        raise ValueError("private record construction detail")
+
+    monkeypatch.setattr(
+        battle_session_module.DecisionRecord,
+        "create",
+        fail_record_construction,
+    )
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection([*_metadata(), _line(_request())]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+
+    assert isinstance(result.primary_error, DecisionRecordConstructionFailure)
+    assert result.trace_error is None
+    assert isinstance(result.record_error, DecisionRecordConstructionFailure)
+    assert result.primary_error.code == "decision_record_construction_failure"
+    assert "private record construction detail" not in str(result.primary_error)
+    assert sink.records == ()

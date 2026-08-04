@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 4
+version: 5
 applies_to:
   - evaluation
   - measurement
@@ -122,7 +122,10 @@ Fehlertexte werden nie serialisiert; `fallback_or_error_class` enthält nur
 stabile Klassifikationscodes oder `null`.
 
 Die Record-Fehlercode-Taxonomie ist in Version 1 geschlossen und wird in den
-beiden Record-Schemas als Enum gespiegelt:
+beiden Versionen der Record-Payload-/Envelope-Schemas als Enum gespiegelt.
+Die ursprünglichen `v1`-Schemas bleiben für bestehende Consumer und alte
+Vektoren unverändert. Task-19-Records verwenden `v2`, weil diese Version den
+neuen Status `freshness_invalidated` einführt:
 
 ```text
 no_legal_action_available

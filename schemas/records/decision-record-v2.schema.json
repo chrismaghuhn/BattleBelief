@@ -1,0 +1,710 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:record:decision-record:v2",
+  "title": "BattleBelief Decision Record envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id",
+    "record_digest",
+    "payload"
+  ],
+  "properties": {
+    "record_id": {
+      "$ref": "#/$defs/digest"
+    },
+    "record_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "payload": {
+      "$ref": "#/$defs/payload"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_schema_version",
+        "record_status",
+        "run_context_digest",
+        "battle_id_digest",
+        "decision_index",
+        "request_identity",
+        "observed_state_digest",
+        "safe_submission_set_digest",
+        "selected_submission",
+        "submission_provenance",
+        "fallback_or_error_class",
+        "policy_or_arm_id",
+        "runtime_and_contract_digests"
+      ],
+      "properties": {
+        "record_schema_version": {
+          "const": 2
+        },
+        "record_status": {
+          "enum": [
+            "submitted",
+            "wait_noop",
+            "policy_rejected",
+            "action_gate_rejected",
+            "command_encoding_failed",
+            "send_failed",
+            "session_aborted",
+            "superseded_before_selection",
+            "terminally_discarded",
+            "reconciliation_rejected",
+            "freshness_invalidated"
+          ]
+        },
+        "run_context_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "battle_id_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "decision_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "request_identity": {
+          "$ref": "#/$defs/requestIdentity"
+        },
+        "observed_state_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "safe_submission_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "selected_submission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/submission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "submission_provenance": {
+          "anyOf": [
+            {
+              "enum": [
+                "explicit_request",
+                "server_default"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_or_error_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/errorCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_or_arm_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
+        },
+        "runtime_and_contract_digests": {
+          "$ref": "#/$defs/runtimeAndContractDigests"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "submitted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "submission_provenance": {
+                "enum": [
+                  "explicit_request",
+                  "server_default"
+                ]
+              },
+              "fallback_or_error_class": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "wait_noop"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "type": "null"
+              },
+              "submission_provenance": {
+                "type": "null"
+              },
+              "fallback_or_error_class": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "enum": [
+                  "superseded_before_selection",
+                  "terminally_discarded",
+                  "freshness_invalidated"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "type": "null"
+              },
+              "submission_provenance": {
+                "type": "null"
+              },
+              "fallback_or_error_class": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "policy_rejected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "type": "null"
+              },
+              "submission_provenance": {
+                "type": "null"
+              },
+              "fallback_or_error_class": {
+                "const": "no_legal_action_available"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "reconciliation_rejected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "type": "null"
+              },
+              "submission_provenance": {
+                "type": "null"
+              },
+              "fallback_or_error_class": {
+                "enum": [
+                  "request_state_reconciliation_mismatch",
+                  "stale_rqid"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "action_gate_rejected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "submission_provenance": {
+                "enum": [
+                  "explicit_request",
+                  "server_default"
+                ]
+              },
+              "fallback_or_error_class": {
+                "const": "local_action_gate_rejection"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "command_encoding_failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "submission_provenance": {
+                "enum": [
+                  "explicit_request",
+                  "server_default"
+                ]
+              },
+              "fallback_or_error_class": {
+                "const": "command_encoding_failed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "send_failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "submission_provenance": {
+                "enum": [
+                  "explicit_request",
+                  "server_default"
+                ]
+              },
+              "fallback_or_error_class": {
+                "enum": [
+                  "send_failed",
+                  "server_invalid_choice",
+                  "server_unavailable_choice"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_status": {
+                "const": "session_aborted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "fallback_or_error_class": {
+                "enum": [
+                  "disconnect",
+                  "transport_timeout",
+                  "timer_or_forfeit",
+                  "unknown_protocol_event",
+                  "malformed_protocol_message",
+                  "reducer_invariant_failure"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "submission_provenance": {
+                "const": "explicit_request"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/moveSubmission"
+                  },
+                  {
+                    "$ref": "#/$defs/switchSubmission"
+                  },
+                  {
+                    "$ref": "#/$defs/reviveSubmission"
+                  },
+                  {
+                    "$ref": "#/$defs/teamSubmission"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "submission_provenance": {
+                "const": "server_default"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_submission": {
+                "$ref": "#/$defs/defaultSubmission"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "selected_submission": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "submission_provenance": {
+                "enum": [
+                  "explicit_request",
+                  "server_default"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "selected_submission": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "submission_provenance": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "no_legal_action_available",
+        "local_action_gate_rejection",
+        "command_encoding_failed",
+        "send_failed",
+        "server_invalid_choice",
+        "server_unavailable_choice",
+        "request_state_reconciliation_mismatch",
+        "stale_rqid",
+        "disconnect",
+        "transport_timeout",
+        "timer_or_forfeit",
+        "unknown_protocol_event",
+        "malformed_protocol_message",
+        "reducer_invariant_failure"
+      ]
+    },
+    "requestIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rqid",
+        "request_digest"
+      ],
+      "properties": {
+        "rqid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "request_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "submission": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/moveSubmission"
+        },
+        {
+          "$ref": "#/$defs/switchSubmission"
+        },
+        {
+          "$ref": "#/$defs/reviveSubmission"
+        },
+        {
+          "$ref": "#/$defs/teamSubmission"
+        },
+        {
+          "$ref": "#/$defs/defaultSubmission"
+        }
+      ]
+    },
+    "moveSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance",
+        "slot",
+        "move_id",
+        "terastallize",
+        "team_order"
+      ],
+      "properties": {
+        "kind": {
+          "const": "move"
+        },
+        "provenance": {
+          "const": "explicit_request"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "move_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+$"
+        },
+        "terastallize": {
+          "type": "boolean"
+        },
+        "team_order": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "switchSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance",
+        "slot",
+        "move_id",
+        "terastallize",
+        "team_order"
+      ],
+      "properties": {
+        "kind": {
+          "const": "switch"
+        },
+        "provenance": {
+          "const": "explicit_request"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "move_id": {
+          "type": "null"
+        },
+        "terastallize": {
+          "const": false
+        },
+        "team_order": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "reviveSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance",
+        "slot",
+        "move_id",
+        "terastallize",
+        "team_order"
+      ],
+      "properties": {
+        "kind": {
+          "const": "revive"
+        },
+        "provenance": {
+          "const": "explicit_request"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "move_id": {
+          "type": "null"
+        },
+        "terastallize": {
+          "const": false
+        },
+        "team_order": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 0
+        }
+      }
+    },
+    "teamSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance",
+        "slot",
+        "move_id",
+        "terastallize",
+        "team_order"
+      ],
+      "properties": {
+        "kind": {
+          "const": "team"
+        },
+        "provenance": {
+          "const": "explicit_request"
+        },
+        "slot": {
+          "type": "null"
+        },
+        "move_id": {
+          "type": "null"
+        },
+        "terastallize": {
+          "const": false
+        },
+        "team_order": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          }
+        }
+      }
+    },
+    "defaultSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance",
+        "slot",
+        "move_id",
+        "terastallize",
+        "team_order"
+      ],
+      "properties": {
+        "kind": {
+          "const": "default"
+        },
+        "provenance": {
+          "const": "server_default"
+        },
+        "slot": {
+          "type": "null"
+        },
+        "move_id": {
+          "type": "null"
+        },
+        "terastallize": {
+          "const": false
+        },
+        "team_order": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "digestList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_digest",
+        "contract_set_digest",
+        "policy_digest",
+        "fallback_and_safety_digest"
+      ],
+      "properties": {
+        "runtime_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "contract_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "fallback_and_safety_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "runtimeAndContractDigests": {
+      "$ref": "#/$defs/digestList"
+    }
+  }
+}
+

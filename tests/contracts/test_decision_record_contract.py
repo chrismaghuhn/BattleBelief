@@ -40,6 +40,11 @@ def test_record_schemas_and_examples_are_explicitly_registered() -> None:
         EXAMPLE_SCHEMA_MAP["decision-record-payload.example.json"]
         == "decision-record-payload.schema.json"
     )
+    assert EXAMPLE_SCHEMA_MAP["decision-record-v2.example.json"] == "decision-record-v2.schema.json"
+    assert (
+        EXAMPLE_SCHEMA_MAP["decision-record-payload-v2.example.json"]
+        == "decision-record-payload-v2.schema.json"
+    )
     assert EXAMPLE_SCHEMA_MAP["measurement-run.example.json"] == "measurement-run.schema.json"
 
 
@@ -47,6 +52,8 @@ def test_record_examples_validate_against_their_schema() -> None:
     for example_name in (
         "decision-record.example.json",
         "decision-record-payload.example.json",
+        "decision-record-v2.example.json",
+        "decision-record-payload-v2.example.json",
         "measurement-run.example.json",
     ):
         schema_name = EXAMPLE_SCHEMA_MAP[example_name]
@@ -62,10 +69,12 @@ def test_record_examples_validate_against_their_schema() -> None:
 
 def test_record_examples_have_semantically_valid_identity_digests() -> None:
     record = json.loads((ROOT / "schemas/examples/decision-record.example.json").read_text())
+    record_v2 = json.loads((ROOT / "schemas/examples/decision-record-v2.example.json").read_text())
     run = json.loads((ROOT / "schemas/examples/measurement-run.example.json").read_text())
 
     assert validate_measurement_run_context(run) == []
     assert validate_decision_record_envelope(record) == []
+    assert validate_decision_record_envelope(record_v2) == []
 
     tampered_run = json.loads(json.dumps(run))
     tampered_run["schema_version"] = 2
@@ -170,7 +179,16 @@ def test_record_schema_closes_error_taxonomy_and_status_pairings() -> None:
     freshness_disposition["selected_submission"] = None
     freshness_disposition["submission_provenance"] = None
     freshness_disposition["fallback_or_error_class"] = None
-    assert list(validator.iter_errors(freshness_disposition)) == []
+    assert list(validator.iter_errors(freshness_disposition))
+
+    v2_schema = json.loads(
+        (ROOT / "schemas/records/decision-record-payload-v2.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert list(Draft202012Validator(v2_schema).iter_errors(freshness_disposition))
+    freshness_disposition["record_schema_version"] = 2
+    assert list(Draft202012Validator(v2_schema).iter_errors(freshness_disposition)) == []
 
 
 def test_decision_record_cross_version_vector_is_stable() -> None:
@@ -200,6 +218,13 @@ def test_decision_record_cross_version_vector_is_stable() -> None:
             )
             == vector["battle_id_digest"]
         )
+
+    v2_schema = json.loads(
+        (ROOT / "schemas/records/decision-record-payload-v2.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert validate_decision_record_vector(vectors[1], v2_schema) == []
 
 
 def test_domain_record_serialization_is_envelope_schema_valid() -> None:
@@ -256,6 +281,13 @@ def test_domain_record_serialization_is_envelope_schema_valid() -> None:
     )
     errors = list(Draft202012Validator(schema).iter_errors(record.to_envelope()))
     assert errors == [], [error.message for error in errors]
+
+    v2_record = record.with_updates(record_schema_version=2)
+    v2_schema = json.loads(
+        (ROOT / "schemas/records/decision-record-v2.schema.json").read_text(encoding="utf-8")
+    )
+    v2_errors = list(Draft202012Validator(v2_schema).iter_errors(v2_record.to_envelope()))
+    assert v2_errors == [], [error.message for error in v2_errors]
 
 
 def run_context_digest_from_document(document: dict[str, object]) -> str:
