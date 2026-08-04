@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "run_context_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "run_status": "completed",
+  "battle_outcome": "incomplete",
+  "primary_error_class": null,
+  "decision_record_digests": [],
+  "explicit_submission_count": 0,
+  "default_submission_count": 0,
+  "room_control_or_chat_count": 0,
+  "ignored_display_count": 0,
+  "final_observed_state_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "trace_status": "no_records"
+}

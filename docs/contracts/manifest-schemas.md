@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 9
+version: 10
 applies_to:
   - manifests
   - release
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-29
+last_reviewed: 2026-08-04
 ---
 
 # Manifest-Schemas, Canonicalization und Evolution
@@ -45,6 +45,7 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
 | Decision-Record-Envelope v2 | [`decision-record-v2.schema.json`](../../schemas/records/decision-record-v2.schema.json) |
 | Measurement-Run-Kontext | [`measurement-run.schema.json`](../../schemas/records/measurement-run.schema.json) |
+| Measurement-Run-Ergebnis | [`measurement-run-result.schema.json`](../../schemas/records/measurement-run-result.schema.json) |
 
 Beispieldateien unter `/schemas/examples` sind Test-Fixtures und müssen im
 `pr-gate` gegen das zugehörige Schema validieren.

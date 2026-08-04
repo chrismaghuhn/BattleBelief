@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:record:measurement-run-result:v1",
+  "title": "BattleBelief measurement run result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_context_digest", "run_status", "battle_outcome", "primary_error_class", "decision_record_digests", "explicit_submission_count", "default_submission_count", "room_control_or_chat_count", "ignored_display_count", "final_observed_state_digest", "trace_status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_context_digest": {"$ref": "#/$defs/digest"},
+    "run_status": {"enum": ["completed", "failed", "aborted", "trace_failed", "no_request", "incomplete"]},
+    "battle_outcome": {"enum": ["our_win", "opponent_win", "tie", "void", "incomplete"]},
+    "primary_error_class": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}]},
+    "decision_record_digests": {"type": "array", "items": {"$ref": "#/$defs/digest"}, "uniqueItems": true},
+    "explicit_submission_count": {"$ref": "#/$defs/count"},
+    "default_submission_count": {"$ref": "#/$defs/count"},
+    "room_control_or_chat_count": {"$ref": "#/$defs/count"},
+    "ignored_display_count": {"$ref": "#/$defs/count"},
+    "final_observed_state_digest": {"$ref": "#/$defs/digest"},
+    "trace_status": {"enum": ["emitted", "no_records", "sink_failed", "not_attempted"]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+  }
+}

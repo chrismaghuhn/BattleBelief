@@ -18,6 +18,9 @@ from battlebelief_core.domain.records.decision_record import (  # noqa: E402
     validate_decision_record_envelope,
     validate_measurement_run_context,
 )
+from battlebelief_lab.evaluation.measurement_runner import (  # noqa: E402
+    validate_measurement_run_result_document,
+)
 from battlebelief_lab.registration_validation import (  # noqa: E402
     RegistrationValidationError,
     _schema_for_artifact,
@@ -49,6 +52,7 @@ EXAMPLE_SCHEMA_MAP = {
     "decision-record-v2.example.json": "decision-record-v2.schema.json",
     "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
+    "measurement-run-result.example.json": "measurement-run-result.schema.json",
 }
 
 
@@ -117,6 +121,7 @@ RECORD_SCHEMA_NAMES = frozenset(
         "decision-record-v2.schema.json",
         "decision-record-payload-v2.schema.json",
         "measurement-run.schema.json",
+        "measurement-run-result.schema.json",
     }
 )
 
@@ -176,6 +181,11 @@ def collect_schema_errors(root: Path) -> list[str]:
             for error in errors
         ):
             classified = _schema_for_artifact(example_path, instance, root)
+            if example_path.name == "measurement-run-result.example.json":
+                errors.extend(
+                    f"{example_path.relative_to(root)}: {error}"
+                    for error in validate_measurement_run_result_document(instance)
+                )
             if classified is not None:
                 kind = classified[1]
                 try:

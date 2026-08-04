@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 6
 applies_to:
   - evaluation
   - measurement
@@ -120,6 +120,18 @@ ist Bestandteil des Payloads und wird damit sowohl von `record_id` als auch von
 
 Fehlertexte werden nie serialisiert; `fallback_or_error_class` enthält nur
 stabile Klassifikationscodes oder `null`.
+
+## Measurement-Run-Ergebnis
+
+Ein `measurement-run-result` ist das unveränderliche Ergebnisartefakt eines
+synthetischen oder späteren Evaluationslaufs. Es referenziert den Run-Kontext,
+ordnet die finalen Decision-Record-Digests in `decision_index`-Reihenfolge und
+bewahrt auch Läufe ohne Request, technische Abbrüche und Trace-Fehler. Die
+Submission-, Room-Control- und Ignored-Display-Zähler stammen jeweils aus
+ihren autoritativen Quellen: finalisierte Records, `BattleSessionResult` und
+der finale öffentliche State. Ein Measurement-Runner besitzt Flush und Close
+eines injizierten Trace-Sinks; ein Sinkfehler wird als eigenes Trace-Ergebnis
+sichtbar und überschreibt keinen früheren Battlefehler.
 
 Die Record-Fehlercode-Taxonomie ist in Version 1 geschlossen und wird in den
 beiden Versionen der Record-Payload-/Envelope-Schemas als Enum gespiegelt.

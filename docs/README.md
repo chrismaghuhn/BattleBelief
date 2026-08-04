@@ -78,6 +78,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [`evaluation-metrics`](evaluation/metrics.md)
 - [`evaluation-target-population`](evaluation/target-population.md)
 - [`evaluation-pool-separation`](evaluation/pool-separation.md)
+- [`evaluation-team-clustering`](evaluation/team-clustering.md)
 - [`evaluation-statistical-analysis`](evaluation/statistical-analysis.md)
 - [`evaluation-m5-strength-qualification`](evaluation/m5-strength-qualification.md)
 - [`evaluation-m6-human-validation`](evaluation/m6-human-validation.md)

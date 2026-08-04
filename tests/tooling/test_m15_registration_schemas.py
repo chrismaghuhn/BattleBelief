@@ -26,6 +26,7 @@ EXAMPLE_SCHEMA_MAP = {
     "decision-record-v2.example.json": "decision-record-v2.schema.json",
     "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
+    "measurement-run-result.example.json": "measurement-run-result.schema.json",
 }
 
 RECORD_SCHEMAS = frozenset(
@@ -35,6 +36,7 @@ RECORD_SCHEMAS = frozenset(
         "decision-record-v2.schema.json",
         "decision-record-payload-v2.schema.json",
         "measurement-run.schema.json",
+        "measurement-run-result.schema.json",
     }
 )
 
