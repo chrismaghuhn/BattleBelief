@@ -30,6 +30,7 @@ from battlebelief_core.domain.events.progress import (
     TurnStarted,
 )
 from battlebelief_core.domain.records.decision_record import (
+    STATUS_ERROR_CODES,
     DecisionRecord,
     DecisionRecordErrorCode,
     DecisionRecordStatus,
@@ -100,6 +101,15 @@ _RETRY_EVENTS = (
     TierDeclared,
     PokemonDragged,
     PokemonSwitched,
+)
+
+_ABORT_RECORD_ERROR_CODES = frozenset(
+    code
+    for status in (
+        DecisionRecordStatus.SESSION_ABORTED,
+        DecisionRecordStatus.RECONCILIATION_REJECTED,
+    )
+    for code in STATUS_ERROR_CODES[status]
 )
 
 
@@ -432,17 +442,7 @@ class BattleSession:
             value = DecisionRecordErrorCode(getattr(error, "code", ""))
         except ValueError:
             return None
-        allowed = {
-            DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
-            DecisionRecordErrorCode.STALE_RQID,
-            DecisionRecordErrorCode.DISCONNECT,
-            DecisionRecordErrorCode.TRANSPORT_TIMEOUT,
-            DecisionRecordErrorCode.TIMER_OR_FORFEIT,
-            DecisionRecordErrorCode.UNKNOWN_PROTOCOL_EVENT,
-            DecisionRecordErrorCode.MALFORMED_PROTOCOL_MESSAGE,
-            DecisionRecordErrorCode.REDUCER_INVARIANT_FAILURE,
-        }
-        return value if value in allowed else None
+        return value if value in _ABORT_RECORD_ERROR_CODES else None
 
     def _finalize_pending(
         self,
