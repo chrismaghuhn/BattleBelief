@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
+
+_MOVE_ID_RE = re.compile(r"^[a-z0-9]{1,100}$")
 
 
 class ActionKind(StrEnum):
@@ -34,6 +37,22 @@ class BattleSubmission:
     team_order: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
+        if not isinstance(self.kind, ActionKind):
+            raise ValueError("kind must be an ActionKind")
+        if not isinstance(self.provenance, ActionProvenance):
+            raise ValueError("provenance must be an ActionProvenance")
+        if self.slot is not None and type(self.slot) is not int:
+            raise ValueError("slot must be an integer or null")
+        if self.move_id is not None and (
+            type(self.move_id) is not str or not _MOVE_ID_RE.fullmatch(self.move_id)
+        ):
+            raise ValueError("move_id must be a Showdown identifier or null")
+        if type(self.terastallize) is not bool:
+            raise ValueError("terastallize must be a boolean")
+        if type(self.team_order) is not tuple or any(
+            type(slot) is not int for slot in self.team_order
+        ):
+            raise ValueError("team_order must be a tuple of integers")
         k = self.kind
         if k == ActionKind.MOVE:
             if self.slot is None or not (1 <= self.slot <= 4):

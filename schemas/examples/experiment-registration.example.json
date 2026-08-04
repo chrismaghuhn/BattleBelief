@@ -50,7 +50,7 @@
     {"document_id": "evaluation-statistical-analysis", "document_version": 4, "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531", "analysis_procedure_id": "technical_outcomes_full_v1"}
   ],
   "contract_references": [
-    {"document_id": "contract-manifest-schemas", "document_version": 7, "document_digest": "sha256:83c7f971fa96dec09980356fc6f2101f69df27d445f8578f8783d466604517bf"},
+    {"document_id": "contract-manifest-schemas", "document_version": 8, "document_digest": "sha256:7fd0e2ba86e6fb83e517fafe391afc7a40e0f1ec834322d34bb321df48ec30bf"},
     {"document_id": "contract-determinism", "document_version": 1, "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"},
     {"document_id": "contract-provenance", "document_version": 6, "document_digest": "sha256:150ae89c0d4d28f7c44da480f46e1d738a6ba3418477dcab7277233ff05e8603"},
     {"document_id": "experiment-registration", "document_version": 5, "document_digest": "sha256:00837426b533ed495ab3ae51ebd214e2ab13d8e81aa24ca1913099c540c8eeba"},

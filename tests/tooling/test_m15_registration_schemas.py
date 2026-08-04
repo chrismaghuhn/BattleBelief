@@ -21,7 +21,18 @@ EXAMPLE_SCHEMA_MAP = {
     "budget-calibration-evidence.example.json": "budget-calibration-evidence.schema.json",
     "search-execution-spec.example.json": "search-execution-spec.schema.json",
     "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
+    "decision-record.example.json": "decision-record.schema.json",
+    "decision-record-payload.example.json": "decision-record-payload.schema.json",
+    "measurement-run.example.json": "measurement-run.schema.json",
 }
+
+RECORD_SCHEMAS = frozenset(
+    {
+        "decision-record.schema.json",
+        "decision-record-payload.schema.json",
+        "measurement-run.schema.json",
+    }
+)
 
 
 def test_m15_examples_use_explicit_schema_mappings() -> None:
@@ -31,15 +42,16 @@ def test_m15_examples_use_explicit_schema_mappings() -> None:
     }
     for example_name, schema_name in EXAMPLE_SCHEMA_MAP.items():
         example = json.loads((schema_root / "examples" / example_name).read_text())
-        schema = json.loads((schema_root / "manifests" / schema_name).read_text())
+        directory = "records" if schema_name in RECORD_SCHEMAS else "manifests"
+        schema = json.loads((schema_root / directory / schema_name).read_text())
         errors = list(
             Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(example)
         )
         assert errors == [], f"{example_name}: {errors}"
 
 
-def test_m15_record_and_registration_directories_are_preconditioned() -> None:
-    assert not (ROOT / "schemas/records").exists()
+def test_m15_record_directory_is_activated_but_registrations_remain_closed() -> None:
+    assert (ROOT / "schemas/records").exists()
     assert not (ROOT / "registrations").exists()
 
 

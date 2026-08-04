@@ -4,7 +4,7 @@ title: Code- und Paketgrenzen
 document_type: architecture
 status: accepted
 normative: true
-version: 3
+version: 4
 applies_to:
   - repository
 effective_from: 2026-07-29
@@ -29,6 +29,7 @@ packages/
 │     │  ├─ actions/
 │     │  ├─ belief/
 │     │  ├─ teams/
+│     │  ├─ records/
 │     │  └─ schemas/
 │     ├─ ports/
 │     │  ├─ battle_transport
@@ -100,6 +101,11 @@ battlebelief_runtime.public_api
 Nicht freigegeben sind private CLI-, Composition- und Implementierungsmodule.
 
 ## Core-Reinheit
+
+`battlebelief_core.domain.records` enthält unveränderliche Decision-Record-
+Typen und ausdrückliche öffentliche Projektionen. Dieser Bereich bleibt reiner
+Core-Code und darf Runtime, Lab, Dateisystem, Umgebung, Uhr, Zufall,
+Logging oder Telemetrie-Adapter nicht importieren.
 
 Core darf kennen:
 

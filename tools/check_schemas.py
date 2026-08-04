@@ -11,6 +11,13 @@ if str(_ROOT) not in sys.path:
 
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
+from battlebelief_core.domain.records.decision_record import (  # noqa: E402
+    RunScopePayload,
+    derive_battle_id_digest,
+    derive_run_scope_digest,
+    validate_decision_record_envelope,
+    validate_measurement_run_context,
+)
 from battlebelief_lab.registration_validation import (  # noqa: E402
     RegistrationValidationError,
     _schema_for_artifact,
@@ -37,7 +44,82 @@ EXAMPLE_SCHEMA_MAP = {
     "budget-calibration-evidence.example.json": "budget-calibration-evidence.schema.json",
     "search-execution-spec.example.json": "search-execution-spec.schema.json",
     "synthetic-fixture-manifest.example.json": "synthetic-fixture-manifest.schema.json",
+    "decision-record.example.json": "decision-record.schema.json",
+    "decision-record-payload.example.json": "decision-record-payload.schema.json",
+    "measurement-run.example.json": "measurement-run.schema.json",
 }
+
+
+def validate_decision_record_vector(
+    vector: dict[str, Any], payload_schema: dict[str, Any]
+) -> list[str]:
+    """Validate one decision-record vector and its complete identity chain."""
+
+    name = vector.get("name", "decision-record-vector")
+    errors: list[str] = []
+    payload = vector.get("value")
+    if not isinstance(payload, dict):
+        return [f"{name}: decision-record payload is not an object"]
+    errors.extend(
+        f"{name}: {schema_issue_summary(issue)}"
+        for issue in Draft202012Validator(payload_schema).iter_errors(payload)
+    )
+    run_context = vector.get("run_context")
+    if not isinstance(run_context, dict):
+        return [*errors, f"{name}: measurement-run context is not an object"]
+    errors.extend(f"{name}: {error}" for error in validate_measurement_run_context(run_context))
+    if run_context.get("run_context_digest") != vector.get("run_context_digest"):
+        errors.append(f"{name}: run_context digest is not bound to vector")
+    if run_context.get("run_scope_digest") != vector.get("run_scope_digest"):
+        errors.append(f"{name}: run_scope digest is not bound to run context")
+    if run_context.get("battle_id_digest") != vector.get("battle_id_digest"):
+        errors.append(f"{name}: battle ID digest is not bound to run context")
+    if run_context.get("battle_ordinal") != vector.get("battle_ordinal"):
+        errors.append(f"{name}: battle ordinal is not bound to run context")
+    if payload.get("run_context_digest") != vector.get("run_context_digest"):
+        errors.append(f"{name}: payload run_context digest is not bound to vector")
+    if payload.get("battle_id_digest") != vector.get("battle_id_digest"):
+        errors.append(f"{name}: payload battle ID digest is not bound to vector")
+    envelope = {
+        "record_id": vector.get("record_id"),
+        "record_digest": vector.get("record_digest"),
+        "payload": payload,
+    }
+    errors.extend(f"{name}: {error}" for error in validate_decision_record_envelope(envelope))
+    try:
+        scope = RunScopePayload(**vector["run_scope"])
+        if derive_run_scope_digest(scope) != vector.get("run_scope_digest"):
+            errors.append(f"{name}: run_scope_digest differs")
+        if derive_battle_id_digest(
+            vector["run_scope_digest"],
+            scope.schedule_row_id,
+            vector["battle_ordinal"],
+        ) != vector.get("battle_id_digest"):
+            errors.append(f"{name}: battle_id_digest differs")
+    except (KeyError, TypeError, ValueError) as error:
+        errors.append(f"{name}: run-scope identity is invalid: {error}")
+    try:
+        if canonicalize(payload) != vector["canonical_utf8"].encode("utf-8"):
+            errors.append(f"{name}: canonical bytes differ")
+        if manifest_digest(payload) != "sha256:" + vector["sha256"]:
+            errors.append(f"{name}: payload digest differs")
+    except (KeyError, TypeError, ValueError) as error:
+        errors.append(f"{name}: canonical vector is invalid: {error}")
+    return errors
+
+
+RECORD_SCHEMA_NAMES = frozenset(
+    {
+        "decision-record.schema.json",
+        "decision-record-payload.schema.json",
+        "measurement-run.schema.json",
+    }
+)
+
+
+def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
+    directory = "records" if schema_name in RECORD_SCHEMA_NAMES else "manifests"
+    return schema_root / directory / schema_name
 
 
 def collect_schema_errors(root: Path) -> list[str]:
@@ -74,7 +156,7 @@ def collect_schema_errors(root: Path) -> list[str]:
         schema_name = EXAMPLE_SCHEMA_MAP.get(example_path.name)
         if schema_name is None:
             continue
-        schema_path = schema_root / "manifests" / schema_name
+        schema_path = _schema_path_for_example(schema_root, schema_name)
         if not schema_path.exists():
             errors.append(f"{example_path.relative_to(root)}: schema missing")
             continue
@@ -118,6 +200,13 @@ def collect_schema_errors(root: Path) -> list[str]:
         actual_digest = manifest_digest(vector["value"])
         if actual_digest != "sha256:" + vector["sha256"]:
             errors.append(f"{vector['name']}: digest differs")
+
+    decision_vectors = load_json_strict(
+        schema_root / "canonicalization/decision-record-test-vectors.json"
+    )
+    payload_schema = load_json_strict(schema_root / "records/decision-record-payload.schema.json")
+    for vector in decision_vectors:
+        errors.extend(validate_decision_record_vector(vector, payload_schema))
     errors.extend(validate_repository_artifacts(root))
     return sorted(errors)
 

@@ -64,6 +64,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [`contract-provenance`](contracts/provenance.md)
 - [`contract-manifest-schemas`](contracts/manifest-schemas.md)
 - [`experiment-registration`](contracts/experiment-registration.md)
+- [`contract-decision-records`](contracts/decision-records.md)
 
 ### Daten, Training und Teams
 
@@ -103,6 +104,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 ## Evidenz und Audits
 
 - [M1 Protocol-safe Prototype Evidence](operations/m1-protocol-safe-evidence.md)
+- [Decision-Record-Contract](contracts/decision-records.md)
 
 ## Archiv
 

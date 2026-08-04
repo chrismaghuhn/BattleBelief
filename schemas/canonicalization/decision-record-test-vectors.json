@@ -1,0 +1,61 @@
+[
+  {
+    "name": "command-encoding-failure-payload",
+    "value": {
+      "decision_index": 1,
+      "fallback_or_error_class": "command_encoding_failed",
+      "observed_state_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "policy_or_arm_id": "heuristic_v0",
+      "record_schema_version": 1,
+      "record_status": "command_encoding_failed",
+      "request_identity": {
+        "request_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "rqid": 8
+      },
+      "run_context_digest": "sha256:b5a1bed35f5fa26ea9d73aa7ffd545bd307908e707dfbada13f1158bf6d257a8",
+      "battle_id_digest": "sha256:93f48ca8ad941969bb95714f5e0d331c28e52ab992ca72956758532a3fecc51b",
+      "runtime_and_contract_digests": {
+        "contract_set_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "fallback_and_safety_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "policy_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "runtime_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "safe_submission_set_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "selected_submission": {
+        "kind": "move",
+        "move_id": "tackle",
+        "provenance": "explicit_request",
+        "slot": 1,
+        "team_order": [],
+        "terastallize": false
+      },
+      "submission_provenance": "explicit_request"
+    },
+    "canonical_utf8": "{\"battle_id_digest\":\"sha256:93f48ca8ad941969bb95714f5e0d331c28e52ab992ca72956758532a3fecc51b\",\"decision_index\":1,\"fallback_or_error_class\":\"command_encoding_failed\",\"observed_state_digest\":\"sha256:5555555555555555555555555555555555555555555555555555555555555555\",\"policy_or_arm_id\":\"heuristic_v0\",\"record_schema_version\":1,\"record_status\":\"command_encoding_failed\",\"request_identity\":{\"request_digest\":\"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\"rqid\":8},\"run_context_digest\":\"sha256:b5a1bed35f5fa26ea9d73aa7ffd545bd307908e707dfbada13f1158bf6d257a8\",\"runtime_and_contract_digests\":{\"contract_set_digest\":\"sha256:8888888888888888888888888888888888888888888888888888888888888888\",\"fallback_and_safety_digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"policy_digest\":\"sha256:9999999999999999999999999999999999999999999999999999999999999999\",\"runtime_digest\":\"sha256:7777777777777777777777777777777777777777777777777777777777777777\"},\"safe_submission_set_digest\":\"sha256:6666666666666666666666666666666666666666666666666666666666666666\",\"selected_submission\":{\"kind\":\"move\",\"move_id\":\"tackle\",\"provenance\":\"explicit_request\",\"slot\":1,\"team_order\":[],\"terastallize\":false},\"submission_provenance\":\"explicit_request\"}",
+    "sha256": "e0b2a284e2345e61bd049581a095b7cac250b5ffe2bdd9f0eef7903c471dfd5b",
+    "run_context": {
+      "schema_version": 1,
+      "evaluation_run_binding_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "run_scope_digest": "sha256:3420f8caa674d6a35dd915dda67ffed1fe119b2315338cc42b0989ae8e118800",
+      "battle_id_digest": "sha256:93f48ca8ad941969bb95714f5e0d331c28e52ab992ca72956758532a3fecc51b",
+      "battle_ordinal": 0,
+      "run_context_digest": "sha256:b5a1bed35f5fa26ea9d73aa7ffd545bd307908e707dfbada13f1158bf6d257a8"
+    },
+    "run_context_digest": "sha256:b5a1bed35f5fa26ea9d73aa7ffd545bd307908e707dfbada13f1158bf6d257a8",
+    "battle_id_digest": "sha256:93f48ca8ad941969bb95714f5e0d331c28e52ab992ca72956758532a3fecc51b",
+    "record_id": "sha256:f37ed52d0fb2d16b5b32615730c8d355e4ae556cc127d16c5bb25b8906e25c66",
+    "record_digest": "sha256:fa646ef05eaa374692f46a9d78ea07aa6695fd4fcf59094a3ee04b2b1751335c",
+    "run_scope": {
+      "registration_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "arm_binding_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "schedule_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "schedule_row_id": "row-0",
+      "budget_profile_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "seed_family_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "runtime_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "contract_set_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "run_scope_digest": "sha256:3420f8caa674d6a35dd915dda67ffed1fe119b2315338cc42b0989ae8e118800",
+    "battle_ordinal": 0
+  }
+]

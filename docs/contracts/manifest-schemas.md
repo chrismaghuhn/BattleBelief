@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 7
+version: 8
 applies_to:
   - manifests
   - release
@@ -40,6 +40,9 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Budget-Kalibrierungsevidenz | [`budget-calibration-evidence.schema.json`](../../schemas/manifests/budget-calibration-evidence.schema.json) |
 | Deklarative Search-Ausführungsspezifikation | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json) |
 | Synthetisches Fixture-Manifest | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json) |
+| Decision-Record-Payload | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
+| Decision-Record-Envelope | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
+| Measurement-Run-Kontext | [`measurement-run.schema.json`](../../schemas/records/measurement-run.schema.json) |
 
 Beispieldateien unter `/schemas/examples` sind Test-Fixtures und müssen im
 `pr-gate` gegen das zugehörige Schema validieren.
@@ -96,6 +99,7 @@ bytes are not revalidated as current documents.
 Beispieldateien unter `/schemas/examples` werden im `pr-gate` über eine
 explizite Beispiel-zu-Schema-Zuordnung geprüft; die Zuordnung wird nicht aus
 Dateinamenheuristik abgeleitet. Die Verzeichnisse `schemas/records/` und
-`registrations/` werden von späteren M1.5-Tasks aktiviert. Solange sie fehlen,
+`registrations/` werden von späteren M1.5-Tasks aktiviert. `schemas/records/`
+ist ab Task 18 aktiviert. Solange `registrations/` fehlt,
 ist die Artefaktprüfung ein gültiger No-op; vorhandene Artefakte werden
 vollständig und semantisch fail-closed geprüft.

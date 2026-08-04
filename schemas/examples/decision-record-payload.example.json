@@ -1,0 +1,30 @@
+{
+  "record_schema_version": 1,
+  "record_status": "command_encoding_failed",
+  "run_context_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "battle_id_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "decision_index": 1,
+  "request_identity": {
+    "rqid": 8,
+    "request_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "observed_state_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "safe_submission_set_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+  "selected_submission": {
+    "kind": "move",
+    "provenance": "explicit_request",
+    "slot": 1,
+    "move_id": "tackle",
+    "terastallize": false,
+    "team_order": []
+  },
+  "submission_provenance": "explicit_request",
+  "fallback_or_error_class": "command_encoding_failed",
+  "policy_or_arm_id": "heuristic_v0",
+  "runtime_and_contract_digests": {
+    "runtime_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "contract_set_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "policy_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "fallback_and_safety_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}
