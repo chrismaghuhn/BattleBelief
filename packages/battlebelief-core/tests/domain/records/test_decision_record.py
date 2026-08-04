@@ -113,6 +113,8 @@ def test_record_is_immutable_and_does_not_expose_room_or_account_data() -> None:
         record.decision_index = 1  # type: ignore[misc]
 
     encoded = record.canonical_envelope_bytes()
+    assert not hasattr(record.request_identity, "room_id")
+    assert "battle-private-room" not in repr(record)
     assert b"battle-private-room" not in encoded
     assert b"secret" not in encoded
 
@@ -150,6 +152,13 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
 
     assert context.payload.to_dict()["schema_version"] == 1
     assert context.to_dict()["run_context_digest"] == context.run_context_digest
+
+    with pytest.raises(ValueError):
+        MeasurementRunContext.create(
+            evaluation_run_binding_digest="sha256:" + "8" * 64,
+            run_scope=scope,
+            battle_ordinal=True,  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.parametrize(
@@ -203,10 +212,31 @@ def test_terminal_status_matrix_rejects_impossible_records(
 
 
 def test_fallback_or_error_class_rejects_raw_error_text_and_negative_rqid() -> None:
-    with pytest.raises(ValueError):
-        replace(_record(), fallback_or_error_class="Timeout: /var/run/showdown.sock")
+    with pytest.raises(ValueError, match="stable code"):
+        replace(
+            _record(),
+            record_status=DecisionRecordStatus.SEND_FAILED,
+            fallback_or_error_class="Timeout: /var/run/showdown.sock",
+        )
     with pytest.raises(ValueError):
         replace(_record(), request_identity=_identity_with_rqid(-1))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("record_schema_version", True),
+        ("decision_index", True),
+        ("record_status", "submitted"),
+        ("submission_provenance", "explicit_request"),
+        ("policy_or_arm_id", True),
+        ("policy_or_arm_id", "/tmp/private"),
+        ("policy_or_arm_id", "internal.example.com"),
+    ],
+)
+def test_domain_rejects_schema_type_and_arm_id_mismatches(field: str, value: object) -> None:
+    with pytest.raises(ValueError):
+        replace(_record(), **{field: value})
 
 
 def _identity_with_rqid(rqid: int) -> RequestIdentity:

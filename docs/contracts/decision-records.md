@@ -93,8 +93,9 @@ keine Provenance und einen stabilen Fehlercode. `action_gate_rejected`,
 `command_encoding_failed` und `send_failed` haben eine ausgewählte Submission,
 passende Provenance und einen stabilen Fehlercode. `session_aborted` erfordert
 einen stabilen Fehlercode; eine bereits erfolgte Auswahl darf erhalten bleiben.
-Fehlercodes entsprechen ausschließlich
-`^[a-z][a-z0-9_.:-]*$`. Die Submission-Felder entsprechen außerdem den
+Fehlercodes entsprechen ausschließlich der versionierten Record-Allowlist und
+dem Muster `^[a-z][a-z0-9_]{0,63}$`; Punkte, Doppelpunkte, freie Texte und
+Hostnamen sind ausgeschlossen. Die Submission-Felder entsprechen außerdem den
 Invarianten von `BattleSubmission`: Move-Slots sind 1--4, Switch-/Revive-Slots
 1--6, Team-Slots sind nichtleer und eindeutig, und Default-Aktionen tragen
 ausschließlich `server_default`.

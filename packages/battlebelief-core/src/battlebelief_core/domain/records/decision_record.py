@@ -15,12 +15,41 @@ from battlebelief_core.domain.actions.submission import (
     RequestIdentity,
 )
 from battlebelief_core.domain.records.public_projection import (
+    PublicRequestIdentity,
     _thaw,
     project_battle_submission,
     project_request_identity,
 )
 
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_ARM_ID_RE = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
+_ERROR_CODE_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_MAX_SAFE_INTEGER = 9_007_199_254_740_991
+_ALLOWED_ERROR_CODES = frozenset(
+    {
+        "challenge_setup_error",
+        "command_encoding_failed",
+        "disconnect",
+        "local_action_gate_rejection",
+        "malformed_protocol_message",
+        "no_legal_action_available",
+        "reducer_invariant_failure",
+        "request_state_reconciliation_mismatch",
+        "server_invalid_choice",
+        "server_unavailable_choice",
+        "send_failed",
+        "stale_rqid",
+        "team_validation_error",
+        "timer_or_forfeit",
+        "transport_timeout",
+        "unknown_protocol_event",
+    }
+)
+
+
+def _require_safe_integer(name: str, value: object) -> None:
+    if type(value) is not int or not (0 <= value <= _MAX_SAFE_INTEGER):
+        raise ValueError(f"{name} must be a JCS-safe non-negative integer")
 
 
 class DecisionRecordStatus(StrEnum):
@@ -75,7 +104,7 @@ class RunContextPayload:
     battle_ordinal: int
 
     def __post_init__(self) -> None:
-        if self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported measurement-run schema version")
         for name, value in (
             ("evaluation_run_binding_digest", self.evaluation_run_binding_digest),
@@ -83,8 +112,7 @@ class RunContextPayload:
             ("battle_id_digest", self.battle_id_digest),
         ):
             _require_digest(name, value)
-        if self.battle_ordinal < 0:
-            raise ValueError("battle_ordinal must be non-negative")
+        _require_safe_integer("battle_ordinal", self.battle_ordinal)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -181,6 +209,7 @@ def derive_run_scope_digest(run_scope: RunScopePayload) -> str:
 def derive_battle_id_digest(
     run_scope_digest: str, schedule_row_id: str, battle_ordinal: int
 ) -> str:
+    _require_safe_integer("battle_ordinal", battle_ordinal)
     return manifest_digest(
         {
             "run_scope_digest": run_scope_digest,
@@ -196,6 +225,7 @@ def derive_record_id(
     decision_index: int,
     request_identity: Mapping[str, Any],
 ) -> str:
+    _require_safe_integer("decision_index", decision_index)
     return manifest_digest(
         {
             "run_context_digest": run_context_digest,
@@ -284,7 +314,7 @@ class DecisionRecord:
     run_context_digest: str
     battle_id_digest: str
     decision_index: int
-    request_identity: RequestIdentity
+    request_identity: PublicRequestIdentity
     observed_state_digest: str
     safe_submission_set_digest: str
     selected_submission: BattleSubmission | None
@@ -294,27 +324,39 @@ class DecisionRecord:
     runtime_and_contract_digests: RuntimeAndContractDigests
 
     def __post_init__(self) -> None:
-        if self.record_schema_version != 1:
+        if type(self.record_schema_version) is not int or self.record_schema_version != 1:
             raise ValueError("unsupported Decision-Record schema version")
-        if self.decision_index < 0:
-            raise ValueError("decision_index must be non-negative")
+        _require_safe_integer("decision_index", self.decision_index)
+        if isinstance(self.request_identity, RequestIdentity):
+            object.__setattr__(
+                self,
+                "request_identity",
+                PublicRequestIdentity.from_internal(self.request_identity),
+            )
+        elif not isinstance(self.request_identity, PublicRequestIdentity):
+            raise ValueError("request_identity must be a public request identity")
+        if not isinstance(self.record_status, DecisionRecordStatus):
+            raise ValueError("record_status must be a DecisionRecordStatus")
+        if self.submission_provenance is not None and not isinstance(
+            self.submission_provenance, ActionProvenance
+        ):
+            raise ValueError("submission_provenance must be an ActionProvenance")
         _require_digest("run_context_digest", self.run_context_digest)
         _require_digest("battle_id_digest", self.battle_id_digest)
         _require_digest("request_digest", self.request_identity.request_digest)
-        if (
-            isinstance(self.request_identity.rqid, bool)
-            or not isinstance(self.request_identity.rqid, int)
-            or self.request_identity.rqid < 0
-        ):
-            raise ValueError("rqid must be a non-negative integer")
         _require_digest("observed_state_digest", self.observed_state_digest)
         _require_digest("safe_submission_set_digest", self.safe_submission_set_digest)
-        if not self.policy_or_arm_id:
-            raise ValueError("policy_or_arm_id must not be empty")
-        if self.fallback_or_error_class is not None and not re.fullmatch(
-            r"[a-z][a-z0-9_.:-]*", self.fallback_or_error_class
+        if type(self.policy_or_arm_id) is not str or not _ARM_ID_RE.fullmatch(
+            self.policy_or_arm_id
         ):
-            raise ValueError("fallback_or_error_class must be a stable code")
+            raise ValueError("policy_or_arm_id must be a valid arm ID")
+        if self.fallback_or_error_class is not None:
+            if not isinstance(self.fallback_or_error_class, str) or not _ERROR_CODE_RE.fullmatch(
+                self.fallback_or_error_class
+            ):
+                raise ValueError("fallback_or_error_class must be a stable code")
+            if self.fallback_or_error_class not in _ALLOWED_ERROR_CODES:
+                raise ValueError("fallback_or_error_class is not an allowed code")
         if self.selected_submission is None and self.submission_provenance is not None:
             raise ValueError("submission provenance requires a selected submission")
         if (

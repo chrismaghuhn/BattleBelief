@@ -37,7 +37,7 @@
     },
     "run_context_digest": {"$ref": "#/$defs/digest"},
     "battle_id_digest": {"$ref": "#/$defs/digest"},
-    "decision_index": {"type": "integer", "minimum": 0},
+    "decision_index": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "request_identity": {"$ref": "#/$defs/requestIdentity"},
     "observed_state_digest": {"$ref": "#/$defs/digest"},
     "safe_submission_set_digest": {"$ref": "#/$defs/digest"},
@@ -50,11 +50,11 @@
     },
     "fallback_or_error_class": {
       "anyOf": [
-        {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"},
+        {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
         {"type": "null"}
       ]
     },
-    "policy_or_arm_id": {"type": "string", "minLength": 1},
+    "policy_or_arm_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
     "runtime_and_contract_digests": {"$ref": "#/$defs/runtimeAndContractDigests"}
   },
   "allOf": [
@@ -71,15 +71,15 @@
     },
     {
       "if": {"properties": {"record_status": {"enum": ["policy_rejected", "superseded_before_selection", "terminally_discarded", "reconciliation_rejected"]}}},
-      "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+      "then": {"properties": {"selected_submission": {"type": "null"}, "submission_provenance": {"type": "null"}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
     },
     {
       "if": {"properties": {"record_status": {"enum": ["action_gate_rejected", "command_encoding_failed", "send_failed"]}}},
-      "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+      "then": {"properties": {"selected_submission": {"not": {"type": "null"}}, "submission_provenance": {"enum": ["explicit_request", "server_default"]}, "fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
     },
     {
       "if": {"properties": {"record_status": {"const": "session_aborted"}}},
-      "then": {"properties": {"fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]*$"}}}
+      "then": {"properties": {"fallback_or_error_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}}}
     },
     {
       "if": {"properties": {"submission_provenance": {"const": "explicit_request"}}},
@@ -105,7 +105,7 @@
       "additionalProperties": false,
       "required": ["rqid", "request_digest"],
       "properties": {
-        "rqid": {"type": "integer", "minimum": 0},
+        "rqid": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "request_digest": {"$ref": "#/$defs/digest"}
       }
     },

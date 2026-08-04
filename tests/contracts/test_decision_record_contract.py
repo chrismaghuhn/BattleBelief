@@ -16,7 +16,10 @@ from battlebelief_core.domain.actions.submission import (
 from battlebelief_core.domain.records.decision_record import (
     DecisionRecord,
     DecisionRecordStatus,
+    RunScopePayload,
     RuntimeAndContractDigests,
+    derive_battle_id_digest,
+    derive_run_scope_digest,
     digest_record_envelope,
     validate_decision_record_envelope,
     validate_measurement_run_context,
@@ -130,6 +133,16 @@ def test_decision_record_cross_version_vector_is_stable() -> None:
         assert vector["record_id"] == record_id_from_payload(vector["value"])
         assert vector["record_digest"] == digest_record_envelope(
             vector["record_id"], vector["value"]
+        )
+        scope = RunScopePayload(**vector["run_scope"])
+        assert derive_run_scope_digest(scope) == vector["run_scope_digest"]
+        assert (
+            derive_battle_id_digest(
+                vector["run_scope_digest"],
+                scope.schedule_row_id,
+                vector["battle_ordinal"],
+            )
+            == vector["battle_id_digest"]
         )
 
 

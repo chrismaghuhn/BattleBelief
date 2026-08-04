@@ -13,6 +13,7 @@ from battlebelief_core.domain.events.evidence import VisibleEvidence
 from battlebelief_core.domain.records.public_projection import (
     battle_submission_digest,
     canonical_public_bytes,
+    observed_state_digest,
     project_observed_state,
     project_request_identity,
     project_safe_submission_set,
@@ -121,8 +122,23 @@ def test_state_projection_redacts_transform_targets_and_raw_annotations() -> Non
 
     assert "SecretNickname" not in encoded
     assert "transform_target" not in encoded
-    assert "annotations" not in encoded
+    assert '"annotations":[{"side_id":"p2","slot":1,"type":"of"}]' in encoded
     assert '"transformed":true' in encoded
+
+
+def test_public_evidence_preserves_safe_hit_count_values() -> None:
+    initial = ObservedState.initial("ash")
+    two_hits = replace(
+        initial,
+        visible_evidence=(VisibleEvidence(1, "hitcount", "p2", 1, None, "2", ()),),
+    )
+    five_hits = replace(
+        initial,
+        visible_evidence=(VisibleEvidence(1, "hitcount", "p2", 1, None, "5", ()),),
+    )
+
+    assert observed_state_digest(two_hits) != observed_state_digest(five_hits)
+    assert project_observed_state(two_hits)["visible_evidence"][0]["hit_count"] == 2
 
 
 def test_submission_order_is_semantic_but_mapping_order_is_not() -> None:

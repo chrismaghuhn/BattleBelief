@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, cast
 
@@ -18,6 +20,26 @@ from battlebelief_core.domain.state.side_view import SideView
 from battlebelief_core.domain.state.values import EvidenceInterval, HpObservation, PreviewPokemon
 
 PublicValue = Any
+_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_MAX_SAFE_INTEGER = 9_007_199_254_740_991
+
+
+@dataclass(frozen=True, slots=True)
+class PublicRequestIdentity:
+    """Request identity safe to retain in a Decision Record."""
+
+    rqid: int
+    request_digest: str
+
+    def __post_init__(self) -> None:
+        if type(self.rqid) is not int or not (0 <= self.rqid <= _MAX_SAFE_INTEGER):
+            raise ValueError("rqid must be a JCS-safe non-negative integer")
+        if not _DIGEST_RE.fullmatch(self.request_digest):
+            raise ValueError("request_digest must be a sha256 digest")
+
+    @classmethod
+    def from_internal(cls, identity: RequestIdentity) -> PublicRequestIdentity:
+        return cls(rqid=identity.rqid, request_digest=identity.request_digest)
 
 
 def _freeze(value: PublicValue) -> PublicValue:
@@ -46,7 +68,9 @@ def _digest(value: Mapping[str, PublicValue]) -> str:
     return manifest_digest(_thaw(value))
 
 
-def project_request_identity(identity: RequestIdentity) -> Mapping[str, PublicValue]:
+def project_request_identity(
+    identity: RequestIdentity | PublicRequestIdentity,
+) -> Mapping[str, PublicValue]:
     """Project an identity without serializing its room identifier."""
 
     return cast(
@@ -186,14 +210,46 @@ def _showdown_id(value: str) -> str:
 
 
 def _project_visible_evidence(evidence: Any) -> dict[str, PublicValue]:
-    """Keep event identity while excluding raw nickname-bearing payloads."""
+    """Retain structured public effects while excluding raw identifiers."""
 
-    return {
+    projection: dict[str, PublicValue] = {
         "event_index": evidence.event_index,
         "kind": evidence.kind,
         "side_id": evidence.side_id,
         "slot": evidence.slot,
     }
+    if evidence.kind == "hitcount":
+        try:
+            hit_count = int(evidence.effect or "")
+        except ValueError:
+            hit_count = None
+        if hit_count is not None and 0 <= hit_count <= _MAX_SAFE_INTEGER:
+            projection["hit_count"] = hit_count
+    elif evidence.kind in {"activate", "block", "prepare", "fieldactivate"}:
+        effect = evidence.effect or ""
+        effect_id = effect.split(":", 1)[1].strip() if effect.startswith("move:") else effect
+        normalized = _showdown_id(effect_id)
+        if normalized:
+            projection["effect_id"] = normalized
+    if evidence.annotations:
+        projection["annotations"] = [_project_annotation(value) for value in evidence.annotations]
+    return projection
+
+
+def _project_annotation(annotation: str) -> dict[str, PublicValue]:
+    """Project an annotation label and optional side/slot without its nickname."""
+
+    if not annotation.startswith("[") or "]" not in annotation:
+        return {"type": "unknown"}
+    label, remainder = annotation[1:].split("]", 1)
+    projection: dict[str, PublicValue] = {"type": _showdown_id(label)}
+    target = remainder.strip()
+    if ": " in target:
+        position = target.split(": ", 1)[0]
+        if len(position) == 3 and position[:2] in {"p1", "p2"} and position[2] == "a":
+            projection["side_id"] = position[:2]
+            projection["slot"] = 1
+    return projection
 
 
 def project_observed_state(state: ObservedState) -> Mapping[str, PublicValue]:

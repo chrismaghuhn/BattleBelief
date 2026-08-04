@@ -15,6 +15,7 @@ from battlebelief_core.domain.records.decision_record import (
     validate_measurement_run_context,
 )
 from battlebelief_core.domain.records.public_projection import (
+    PublicRequestIdentity,
     battle_submission_digest,
     canonical_public_bytes,
     observed_state_digest,
@@ -30,6 +31,7 @@ __all__ = [
     "DecisionRecord",
     "DecisionRecordStatus",
     "MeasurementRunContext",
+    "PublicRequestIdentity",
     "RunContextPayload",
     "RunScopePayload",
     "RuntimeAndContractDigests",

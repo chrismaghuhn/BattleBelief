@@ -17,7 +17,7 @@
     "evaluation_run_binding_digest": {"$ref": "#/$defs/digest"},
     "run_scope_digest": {"$ref": "#/$defs/digest"},
     "battle_id_digest": {"$ref": "#/$defs/digest"},
-    "battle_ordinal": {"type": "integer", "minimum": 0},
+    "battle_ordinal": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "run_context_digest": {"$ref": "#/$defs/digest"}
   },
   "$defs": {
