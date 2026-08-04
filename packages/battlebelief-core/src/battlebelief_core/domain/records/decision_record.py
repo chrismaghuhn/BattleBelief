@@ -166,11 +166,24 @@ class ResolvedDecisionRecordBinding:
     """Resolved provenance identities from one immutable evaluation binding."""
 
     evaluation_run_binding_digest: str
+    registration_digest: str
+    arm_binding_digest: str
+    schedule_digest: str
+    budget_profile_digest: str
+    seed_family_digest: str
     arm_id: str
     runtime_and_contract_digests: RuntimeAndContractDigests
 
     def __post_init__(self) -> None:
-        _require_digest("evaluation_run_binding_digest", self.evaluation_run_binding_digest)
+        for name, value in (
+            ("evaluation_run_binding_digest", self.evaluation_run_binding_digest),
+            ("registration_digest", self.registration_digest),
+            ("arm_binding_digest", self.arm_binding_digest),
+            ("schedule_digest", self.schedule_digest),
+            ("budget_profile_digest", self.budget_profile_digest),
+            ("seed_family_digest", self.seed_family_digest),
+        ):
+            _require_digest(name, value)
         if (
             type(self.arm_id) is not str
             or len(self.arm_id) > 128
@@ -183,21 +196,41 @@ class ResolvedDecisionRecordBinding:
 class MeasurementRunContext:
     payload: RunContextPayload
     run_context_digest: str
-    resolved_binding: ResolvedDecisionRecordBinding | None = field(
-        default=None, repr=False, compare=False
-    )
+    run_scope: RunScopePayload = field(repr=False, compare=False)
+    resolved_binding: ResolvedDecisionRecordBinding | None = field(repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _require_digest("run_context_digest", self.run_context_digest)
         expected = manifest_digest(self.payload.to_dict())
         if self.run_context_digest != expected:
             raise ValueError("run_context_digest does not match payload")
-        if (
-            self.resolved_binding is not None
-            and self.payload.evaluation_run_binding_digest
-            != self.resolved_binding.evaluation_run_binding_digest
+        if self.resolved_binding is None:
+            raise ValueError("run context has no resolved binding")
+        if self.payload.evaluation_run_binding_digest != (
+            self.resolved_binding.evaluation_run_binding_digest
         ):
             raise ValueError("run context does not match resolved evaluation binding")
+        if derive_run_scope_digest(self.run_scope) != self.payload.run_scope_digest:
+            raise ValueError("run context scope does not match its digest")
+        expected_battle_id = derive_battle_id_digest(
+            self.payload.run_scope_digest,
+            self.run_scope.schedule_row_id,
+            self.payload.battle_ordinal,
+        )
+        if self.payload.battle_id_digest != expected_battle_id:
+            raise ValueError("run context battle ID does not match its scope")
+        expected_scope = {
+            "registration_digest": self.resolved_binding.registration_digest,
+            "arm_binding_digest": self.resolved_binding.arm_binding_digest,
+            "schedule_digest": self.resolved_binding.schedule_digest,
+            "budget_profile_digest": self.resolved_binding.budget_profile_digest,
+            "seed_family_digest": self.resolved_binding.seed_family_digest,
+            "runtime_digest": self.resolved_binding.runtime_and_contract_digests.runtime_digest,
+            "contract_set_digest": self.resolved_binding.runtime_and_contract_digests.contract_set_digest,
+        }
+        for field_name, expected_value in expected_scope.items():
+            if getattr(self.run_scope, field_name) != expected_value:
+                raise ValueError(f"run context {field_name} does not match binding")
 
     def to_dict(self) -> dict[str, object]:
         value = self.payload.to_dict()
@@ -213,13 +246,18 @@ class MeasurementRunContext:
         battle_ordinal: int,
     ) -> MeasurementRunContext:
         run_scope_digest = derive_run_scope_digest(run_scope)
-        if run_scope.runtime_digest != resolved_binding.runtime_and_contract_digests.runtime_digest:
-            raise ValueError("run scope runtime digest does not match resolved binding")
-        if (
-            run_scope.contract_set_digest
-            != resolved_binding.runtime_and_contract_digests.contract_set_digest
-        ):
-            raise ValueError("run scope contract digest does not match resolved binding")
+        expected_scope = {
+            "registration_digest": resolved_binding.registration_digest,
+            "arm_binding_digest": resolved_binding.arm_binding_digest,
+            "schedule_digest": resolved_binding.schedule_digest,
+            "budget_profile_digest": resolved_binding.budget_profile_digest,
+            "seed_family_digest": resolved_binding.seed_family_digest,
+            "runtime_digest": resolved_binding.runtime_and_contract_digests.runtime_digest,
+            "contract_set_digest": resolved_binding.runtime_and_contract_digests.contract_set_digest,
+        }
+        for field_name, expected_value in expected_scope.items():
+            if getattr(run_scope, field_name) != expected_value:
+                raise ValueError(f"run scope {field_name} does not match resolved binding")
         battle_id_digest = derive_battle_id_digest(
             run_scope_digest, run_scope.schedule_row_id, battle_ordinal
         )
@@ -233,6 +271,7 @@ class MeasurementRunContext:
         return cls(
             payload=payload,
             run_context_digest=manifest_digest(payload.to_dict()),
+            run_scope=run_scope,
             resolved_binding=resolved_binding,
         )
 
@@ -377,10 +416,11 @@ class DecisionRecord:
         submission_provenance: ActionProvenance | None,
         fallback_or_error_class: str | DecisionRecordErrorCode | None,
     ) -> None:
-        if run_context.payload.evaluation_run_binding_digest != (
-            resolved_binding.evaluation_run_binding_digest
-        ):
-            raise ValueError("record binding does not match run context")
+        context_binding = run_context.resolved_binding
+        if context_binding is None:
+            raise ValueError("run context has no resolved binding")
+        if context_binding != resolved_binding:
+            raise ValueError("record binding does not match resolved run context")
         object.__setattr__(self, "record_schema_version", record_schema_version)
         object.__setattr__(self, "record_status", record_status)
         object.__setattr__(self, "run_context_digest", run_context.run_context_digest)
@@ -523,6 +563,8 @@ class DecisionRecord:
         error_forbidden = {
             DecisionRecordStatus.SUBMITTED,
             DecisionRecordStatus.WAIT_NOOP,
+            DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
+            DecisionRecordStatus.TERMINALLY_DISCARDED,
         }
         error_required = set(status_error_codes)
         if self.record_status in selected_required and self.selected_submission is None:

@@ -243,7 +243,6 @@ def _project_visible_evidence(evidence: Any) -> dict[str, PublicValue]:
             normalized_value = _showdown_id(effect_value.strip())
             if normalized_type in _EFFECT_TYPES and normalized_value:
                 projection["effect_type"] = normalized_type
-                projection["effect_id"] = normalized_value
     if evidence.annotations:
         projection["annotations"] = [_project_annotation(value) for value in evidence.annotations]
     return projection

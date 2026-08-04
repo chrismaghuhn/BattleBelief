@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 2
+version: 3
 applies_to:
   - evaluation
   - measurement
@@ -87,9 +87,12 @@ reconciliation_rejected
 
 `submitted` erfordert eine ausgewählte Submission und passende Provenance,
 aber keinen Fehlercode. `wait_noop` hat keine Submission, keine Provenance und
-keinen Fehlercode. `policy_rejected`, `superseded_before_selection`,
-`terminally_discarded` und `reconciliation_rejected` haben keine Submission,
-keine Provenance und einen stabilen Fehlercode. `action_gate_rejected`,
+keinen Fehlercode. `policy_rejected` und `reconciliation_rejected` haben keine
+Submission, keine Provenance und einen statusgebundenen stabilen Fehlercode.
+`superseded_before_selection` und `terminally_discarded` haben keine
+Submission, keine Provenance und `fallback_or_error_class: null`; sie sind
+rein dispositionelle Zustände.
+`action_gate_rejected`,
 `command_encoding_failed` und `send_failed` haben eine ausgewählte Submission,
 passende Provenance und einen stabilen Fehlercode. `session_aborted` erfordert
 einen stabilen Fehlercode; eine bereits erfolgte Auswahl darf erhalten bleiben.

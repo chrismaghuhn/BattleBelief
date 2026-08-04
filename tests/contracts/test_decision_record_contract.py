@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
-from tools.check_schemas import EXAMPLE_SCHEMA_MAP, collect_schema_errors
+from tools.check_schemas import (
+    EXAMPLE_SCHEMA_MAP,
+    collect_schema_errors,
+    validate_decision_record_vector,
+)
 
 from battlebelief_core.canonicalization import canonicalize, manifest_digest
 from battlebelief_core.domain.actions.submission import (
@@ -75,6 +79,23 @@ def test_record_examples_have_semantically_valid_identity_digests() -> None:
 def test_schema_checker_accepts_the_task_18_artifacts() -> None:
     errors = collect_schema_errors(ROOT)
     assert errors == [], "\n".join(errors)
+
+
+def test_schema_gate_rejects_a_cross_linked_decision_vector() -> None:
+    vectors = json.loads(
+        (ROOT / "schemas/canonicalization/decision-record-test-vectors.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    schema = json.loads(
+        (ROOT / "schemas/records/decision-record-payload.schema.json").read_text(encoding="utf-8")
+    )
+    vector = json.loads(json.dumps(vectors[0]))
+    vector["run_context"]["run_scope_digest"] = "sha256:" + "0" * 64
+
+    errors = validate_decision_record_vector(vector, schema)
+
+    assert any("run_scope digest is not bound" in error for error in errors)
 
 
 def test_decision_record_rejects_unknown_fields() -> None:
@@ -178,6 +199,11 @@ def test_domain_record_serialization_is_envelope_schema_valid() -> None:
     digest = "sha256:" + "a" * 64
     binding = ResolvedDecisionRecordBinding(
         evaluation_run_binding_digest=digest,
+        registration_digest=digest,
+        arm_binding_digest=digest,
+        schedule_digest=digest,
+        budget_profile_digest=digest,
+        seed_family_digest=digest,
         arm_id="heuristic_v0",
         runtime_and_contract_digests=RuntimeAndContractDigests(
             runtime_digest=digest,

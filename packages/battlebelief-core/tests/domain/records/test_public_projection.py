@@ -173,13 +173,35 @@ def test_public_evidence_preserves_structured_known_effects() -> None:
     )
 
     projection = project_observed_state(state)
-    assert projection["visible_evidence"][0]["effect_id"] == "protect"
     assert projection["visible_evidence"][0]["effect_type"] == "move"
+    assert "effect_id" not in projection["visible_evidence"][0]
+
+
+@pytest.mark.parametrize(
+    "effect",
+    [
+        "move: SecretNickname",
+        "ability: SecretNickname",
+        "item: SecretNickname",
+        "condition: SecretNickname",
+    ],
+)
+def test_public_evidence_does_not_project_free_structured_effect_values(
+    effect: str,
+) -> None:
+    state = replace(
+        ObservedState.initial("ash"),
+        visible_evidence=(VisibleEvidence(1, "activate", "p1", 1, None, effect, ()),),
+    )
+
+    encoded = canonical_public_bytes(project_observed_state(state)).decode("utf-8")
+
+    assert "secretnickname" not in encoded.casefold()
 
 
 def test_request_identity_projection_validates_internal_identity() -> None:
     with pytest.raises(ValueError):
-        project_request_identity(RequestIdentity("room", True, "not-a-digest"))
+        project_request_identity(RequestIdentity("room", 1, "not-a-digest"))
 
 
 def test_submission_order_is_semantic_but_mapping_order_is_not() -> None:

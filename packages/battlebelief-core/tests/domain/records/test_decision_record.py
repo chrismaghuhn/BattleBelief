@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
@@ -42,6 +42,11 @@ def _move() -> BattleSubmission:
 def _record() -> DecisionRecord:
     binding = ResolvedDecisionRecordBinding(
         evaluation_run_binding_digest="sha256:" + "8" * 64,
+        registration_digest="sha256:" + "1" * 64,
+        arm_binding_digest="sha256:" + "2" * 64,
+        schedule_digest="sha256:" + "3" * 64,
+        budget_profile_digest="sha256:" + "4" * 64,
+        seed_family_digest="sha256:" + "5" * 64,
         arm_id="heuristic_v0",
         runtime_and_contract_digests=RuntimeAndContractDigests(
             runtime_digest="sha256:" + "f" * 64,
@@ -119,6 +124,11 @@ def test_run_scope_and_context_derivation_is_explicit_and_room_independent() -> 
     context = MeasurementRunContext.create(
         resolved_binding=ResolvedDecisionRecordBinding(
             evaluation_run_binding_digest="sha256:" + "8" * 64,
+            registration_digest="sha256:" + "1" * 64,
+            arm_binding_digest="sha256:" + "2" * 64,
+            schedule_digest="sha256:" + "3" * 64,
+            budget_profile_digest="sha256:" + "4" * 64,
+            seed_family_digest="sha256:" + "5" * 64,
             arm_id="heuristic_v0",
             runtime_and_contract_digests=RuntimeAndContractDigests(
                 runtime_digest="sha256:" + "6" * 64,
@@ -173,6 +183,11 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
     context = MeasurementRunContext.create(
         resolved_binding=ResolvedDecisionRecordBinding(
             evaluation_run_binding_digest="sha256:" + "8" * 64,
+            registration_digest="sha256:" + "1" * 64,
+            arm_binding_digest="sha256:" + "2" * 64,
+            schedule_digest="sha256:" + "3" * 64,
+            budget_profile_digest="sha256:" + "4" * 64,
+            seed_family_digest="sha256:" + "5" * 64,
             arm_id="heuristic_v0",
             runtime_and_contract_digests=RuntimeAndContractDigests(
                 runtime_digest="sha256:" + "6" * 64,
@@ -192,6 +207,11 @@ def test_run_context_schema_version_is_part_of_its_digest() -> None:
         MeasurementRunContext.create(
             resolved_binding=ResolvedDecisionRecordBinding(
                 evaluation_run_binding_digest="sha256:" + "8" * 64,
+                registration_digest="sha256:" + "1" * 64,
+                arm_binding_digest="sha256:" + "2" * 64,
+                schedule_digest="sha256:" + "3" * 64,
+                budget_profile_digest="sha256:" + "4" * 64,
+                seed_family_digest="sha256:" + "5" * 64,
                 arm_id="heuristic_v0",
                 runtime_and_contract_digests=RuntimeAndContractDigests(
                     runtime_digest="sha256:" + "6" * 64,
@@ -300,6 +320,18 @@ def test_error_codes_are_status_bound_and_disposition_only_statuses_are_null() -
             fallback_or_error_class="disconnect",
         )
 
+    for status in (
+        DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
+        DecisionRecordStatus.TERMINALLY_DISCARDED,
+    ):
+        with pytest.raises(ValueError, match="must not contain an error class"):
+            _record().with_updates(
+                record_status=status,
+                selected_submission=None,
+                submission_provenance=None,
+                fallback_or_error_class="disconnect",
+            )
+
     discarded = _record().with_updates(
         record_status=DecisionRecordStatus.TERMINALLY_DISCARDED,
         selected_submission=None,
@@ -314,6 +346,11 @@ def test_resolved_binding_rejects_invalid_arm_ids(arm_id: object) -> None:
     with pytest.raises(ValueError):
         ResolvedDecisionRecordBinding(
             evaluation_run_binding_digest=_DIGEST,
+            registration_digest=_DIGEST,
+            arm_binding_digest=_DIGEST,
+            schedule_digest=_DIGEST,
+            budget_profile_digest=_DIGEST,
+            seed_family_digest=_DIGEST,
             arm_id=arm_id,  # type: ignore[arg-type]
             runtime_and_contract_digests=RuntimeAndContractDigests(
                 runtime_digest=_DIGEST,
@@ -321,6 +358,63 @@ def test_resolved_binding_rejects_invalid_arm_ids(arm_id: object) -> None:
                 policy_digest=_DIGEST,
                 fallback_and_safety_digest=_DIGEST,
             ),
+        )
+
+
+def test_record_rejects_a_different_resolved_binding_with_the_same_run_digest() -> None:
+    first = _record()
+    other = ResolvedDecisionRecordBinding(
+        evaluation_run_binding_digest=first._resolved_binding.evaluation_run_binding_digest,
+        registration_digest=first._resolved_binding.registration_digest,
+        arm_binding_digest=first._resolved_binding.arm_binding_digest,
+        schedule_digest=first._resolved_binding.schedule_digest,
+        budget_profile_digest=first._resolved_binding.budget_profile_digest,
+        seed_family_digest=first._resolved_binding.seed_family_digest,
+        arm_id="another_arm",
+        runtime_and_contract_digests=RuntimeAndContractDigests(
+            runtime_digest=_DIGEST,
+            contract_set_digest=_DIGEST,
+            policy_digest=_DIGEST,
+            fallback_and_safety_digest=_DIGEST,
+        ),
+    )
+    with pytest.raises(ValueError, match="does not match"):
+        DecisionRecord.create(
+            record_schema_version=1,
+            record_status=DecisionRecordStatus.SUBMITTED,
+            run_context=first._run_context,
+            resolved_binding=other,
+            decision_index=0,
+            request_identity=_identity(),
+            observed_state_digest=_DIGEST,
+            safe_submission_set_digest=_DIGEST,
+            selected_submission=_move(),
+            submission_provenance=ActionProvenance.EXPLICIT_REQUEST,
+            fallback_or_error_class=None,
+        )
+
+
+def test_run_context_rejects_scope_identities_not_from_the_binding() -> None:
+    first = _record()
+    with pytest.raises(ValueError, match="registration_digest"):
+        MeasurementRunContext.create(
+            resolved_binding=first._resolved_binding,
+            run_scope=replace(
+                first._run_context.run_scope,
+                registration_digest="sha256:" + "9" * 64,
+            ),
+            battle_ordinal=first._run_context.payload.battle_ordinal,
+        )
+
+
+def test_record_rejects_a_context_without_a_resolved_binding() -> None:
+    first = _record()
+    with pytest.raises(ValueError, match="resolved binding"):
+        MeasurementRunContext(
+            payload=first._run_context.payload,
+            run_context_digest=first._run_context.run_context_digest,
+            run_scope=first._run_context.run_scope,
+            resolved_binding=None,
         )
 
 
