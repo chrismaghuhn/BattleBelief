@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 6
+version: 7
 applies_to:
   - evaluation
   - measurement
@@ -168,3 +168,14 @@ dispositionellen Zustände `superseded_before_selection` und
 Fehlercode. `freshness_invalidated` trägt ebenfalls `null`. Setupfehler wie
 Teamvalidierung und Challenge-Setup werden nicht
 als Decision Record serialisiert.
+
+Ein `measurement-run-result` verwendet dieselbe geschlossene Fehlercode-
+Taxonomie sowie die beiden technischen Codes `trace_sink_failure` und
+`decision_record_construction_failure`; unbekannte Exceptiontexte werden
+vor der Serialisierung auf `runtime_error` reduziert. Ein Ergebnis mit
+`completed` muss mindestens einen erfolgreich emittierten Record besitzen.
+`no_request` besitzt keine Records und null Submission-Counter, während
+`trace_failed` einen fehlgeschlagenen Sink-Lifecycle und den Code
+`trace_sink_failure` verlangt. Submission-Counter werden ausschließlich aus
+`submitted`-Records abgeleitet; abgelehnte oder fehlgeschlagene Sendpfade
+erhöhen sie nicht.

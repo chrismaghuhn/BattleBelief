@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import math
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
 from battlebelief_core.canonicalization import manifest_digest
+
+_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 class BudgetMode(StrEnum):
@@ -23,11 +27,13 @@ class BudgetView:
     work_unit: str
 
     def __post_init__(self) -> None:
-        for name in ("wall_time_budget_ms", "cpu_time_budget_ms", "work_value"):
+        for name in ("wall_time_budget_ms", "cpu_time_budget_ms"):
             value = getattr(self, name)
             if value is not None and (type(value) is not int or value < 0):
                 raise ValueError(f"{name} must be a non-negative integer or null")
-        if self.work_value < 1 or type(self.work_unit) is not str or not self.work_unit:
+        if type(self.work_value) is not int or self.work_value < 1:
+            raise ValueError("work_value must be a positive integer")
+        if type(self.work_unit) is not str or not self.work_unit:
             raise ValueError("budget work must be positive and named")
 
     def to_dict(self) -> dict[str, object]:
@@ -58,7 +64,9 @@ class CalibrationSpecification:
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported calibration specification schema version")
-        if not self.spec_id or not self.reference_environment_specification:
+        if type(self.spec_id) is not str or not self.spec_id:
+            raise ValueError("spec_id must be a non-empty string")
+        if not self.reference_environment_specification:
             raise ValueError("calibration specification identities must be non-empty")
         if self.budget_mode is not BudgetMode.CALIBRATED_GRID:
             raise ValueError("M1.5 calibration specification supports calibrated_grid only")
@@ -70,7 +78,11 @@ class CalibrationSpecification:
         ):
             if type(getattr(self, name)) is not str or not getattr(self, name):
                 raise ValueError(f"{name} must be a non-empty string")
-        if type(self.runtime_limit_ms) not in (int, float) or self.runtime_limit_ms <= 0:
+        if (
+            type(self.runtime_limit_ms) not in (int, float)
+            or not math.isfinite(self.runtime_limit_ms)
+            or self.runtime_limit_ms <= 0
+        ):
             raise ValueError("runtime_limit_ms must be positive")
         if not self.required_measurement_ids:
             raise ValueError("required_measurement_ids must not be empty")
@@ -121,11 +133,22 @@ class BudgetProfile:
     calibration_spec_digest: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.profile_id:
+        if type(self.profile_id) is not str or not self.profile_id:
             raise ValueError("profile_id must not be empty")
+        if not isinstance(self.mode, BudgetMode):
+            raise ValueError("mode must be a BudgetMode")
+        if not isinstance(self.deployment, BudgetView) or not isinstance(
+            self.mechanism, BudgetView
+        ):
+            raise ValueError("budget views must be BudgetView values")
+        if self.calibration_spec_digest is not None and (
+            type(self.calibration_spec_digest) is not str
+            or not _DIGEST_RE.fullmatch(self.calibration_spec_digest)
+        ):
+            raise ValueError("calibration_spec_digest must be a sha256 digest or null")
         if self.mode is BudgetMode.CALIBRATED_GRID and self.calibration_spec_digest is None:
             raise ValueError("calibrated_grid requires a calibration specification")
-        if self.mode is BudgetMode.FIXED and self.calibration_spec_digest is not None:
+        if self.mode is not BudgetMode.CALIBRATED_GRID and self.calibration_spec_digest is not None:
             raise ValueError("fixed budgets do not carry calibration evidence")
 
     def to_dict(self) -> dict[str, object]:

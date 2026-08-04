@@ -168,9 +168,14 @@ class BattleSession:
         except Exception as exc:
             self._abort(exc)
 
+        return self.result_snapshot()
+
+    def result_snapshot(self, *, primary_error: BaseException | None = None) -> BattleSessionResult:
+        """Return the current public result without consuming the session."""
+
         return BattleSessionResult(
             state=self._state,
-            primary_error=self._primary_error,
+            primary_error=self._primary_error if primary_error is None else primary_error,
             trace_error=self._trace_error,
             record_error=self._record_error,
             room_control_or_chat_count=self._room_control_or_chat_count,

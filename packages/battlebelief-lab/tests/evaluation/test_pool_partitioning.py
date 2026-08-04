@@ -45,3 +45,19 @@ def test_pool_partition_digest_is_independent_of_input_order() -> None:
     )
     assert first == second
     assert first.digest == second.digest
+
+
+def test_direct_pool_construction_copies_and_freezes_access_state() -> None:
+    access = {
+        PoolName.DEVELOPMENT: "available",
+        PoolName.SELECTION: "unopened",
+        PoolName.POWER_PILOT: "unopened",
+        PoolName.RELEASE_HOLDOUT: "unopened",
+    }
+    partition = type(create_pool_partition((("cluster-a", PoolName.DEVELOPMENT),)))(
+        assignments=(("cluster-a", PoolName.DEVELOPMENT),),
+        access=access,
+    )
+    access[PoolName.SELECTION] = "available"
+    with pytest.raises(ProtectedPoolError):
+        partition.open(PoolName.SELECTION)

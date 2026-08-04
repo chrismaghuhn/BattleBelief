@@ -11,6 +11,7 @@ from battlebelief_core.canonicalization import canonicalize, manifest_digest
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_MAX_SAFE_INTEGER = 9_007_199_254_740_991
 SEED_DERIVATION_ID = "sha256-canonical-fields-v1"
 
 
@@ -35,7 +36,7 @@ def _validate_inputs(
         raise ValueError("base_matchup_id must be a sha256 digest")
     if side_assignment not in {"p1", "p2"}:
         raise ValueError("side_assignment must be p1 or p2")
-    if type(repetition_index) is not int or repetition_index < 0:
+    if type(repetition_index) is not int or not 0 <= repetition_index <= _MAX_SAFE_INTEGER:
         raise ValueError("repetition_index must be a non-negative integer")
 
 

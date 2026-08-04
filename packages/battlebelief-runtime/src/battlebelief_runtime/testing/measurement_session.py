@@ -42,6 +42,13 @@ class MeasurementSession:
     async def run(self) -> BattleSessionResult:
         return await self._session.run()
 
+    @property
+    def trace_sink(self) -> ClosableTraceSink:
+        return self._trace_sink
+
+    def failure_result(self, error: BaseException) -> BattleSessionResult:
+        return self._session.result_snapshot(primary_error=error)
+
     def flush_trace(self) -> None:
         flush = getattr(self._trace_sink, "flush", None)
         if flush is not None:

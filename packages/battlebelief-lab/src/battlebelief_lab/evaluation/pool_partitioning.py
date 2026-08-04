@@ -27,16 +27,29 @@ class PoolPartition:
     access: Mapping[PoolName, str]
 
     def __post_init__(self) -> None:
-        if len({cluster_id for cluster_id, _ in self.assignments}) != len(self.assignments):
+        assignments = tuple(self.assignments)
+        if any(
+            not isinstance(item, tuple)
+            or len(item) != 2
+            or type(item[0]) is not str
+            or not item[0]
+            or not isinstance(item[1], PoolName)
+            for item in assignments
+        ):
+            raise ValueError("assignments must contain non-empty cluster IDs and PoolNames")
+        assignments = tuple(sorted(assignments, key=lambda item: (item[0], item[1].value)))
+        if len({cluster_id for cluster_id, _ in assignments}) != len(assignments):
             raise ValueError("cluster has more than one pool owner")
+        object.__setattr__(self, "assignments", assignments)
         expected = {
             PoolName.DEVELOPMENT: "available",
             PoolName.SELECTION: "unopened",
             PoolName.POWER_PILOT: "unopened",
             PoolName.RELEASE_HOLDOUT: "unopened",
         }
-        if dict(self.access) != expected:
+        if not isinstance(self.access, Mapping) or dict(self.access) != expected:
             raise ValueError("M1.5 pool access state is not fail-closed")
+        object.__setattr__(self, "access", MappingProxyType(dict(expected)))
 
     @property
     def digest(self) -> str:

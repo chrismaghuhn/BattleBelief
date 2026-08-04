@@ -78,3 +78,13 @@ def test_calibration_spec_rejects_quality_measurement_overlap() -> None:
             allowed_runtime_measurements=("wall_time_ms", "wins"),
             forbidden_quality_measurements=("wins",),
         )
+
+
+def test_budget_view_rejects_missing_work_value_without_type_error() -> None:
+    with pytest.raises(ValueError, match="work_value"):
+        BudgetView(
+            wall_time_budget_ms=1,
+            cpu_time_budget_ms=1,
+            work_value=None,  # type: ignore[arg-type]
+            work_unit="transitions",
+        )

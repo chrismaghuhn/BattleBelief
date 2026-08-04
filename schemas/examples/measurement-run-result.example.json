@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "run_context_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "run_status": "completed",
+  "run_status": "no_request",
   "battle_outcome": "incomplete",
   "primary_error_class": null,
   "decision_record_digests": [],

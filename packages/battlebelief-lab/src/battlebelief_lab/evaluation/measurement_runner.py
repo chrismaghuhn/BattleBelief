@@ -9,15 +9,27 @@ from typing import Any
 
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_core.domain.actions.submission import ActionProvenance
-from battlebelief_core.domain.records.decision_record import DecisionRecord
+from battlebelief_core.domain.records.decision_record import (
+    DecisionRecord,
+    DecisionRecordErrorCode,
+    DecisionRecordStatus,
+    MeasurementRunContext,
+)
 from battlebelief_core.domain.records.public_projection import (
     observed_state_digest,
     project_observed_state,
 )
+from battlebelief_core.errors import TraceSinkFailure
 from battlebelief_lab.evaluation.schedule import ScheduleRow
+from battlebelief_runtime.testing import MeasurementSession, RecordingTraceSink
 
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_MAX_SAFE_INTEGER = 9_007_199_254_740_991
+_ALLOWED_ERROR_CODES = frozenset(
+    {code.value for code in DecisionRecordErrorCode}
+    | {"trace_sink_failure", "decision_record_construction_failure", "runtime_error"}
+)
 
 
 class RunStatus(StrEnum):
@@ -102,13 +114,19 @@ class MeasurementRunResult:
             "battle_outcome",
             "trace_status",
         ):
-            if not isinstance(getattr(self, name), (RunStatus, BattleOutcome, TraceStatus)):
+            expected_type = {
+                "run_status": RunStatus,
+                "battle_outcome": BattleOutcome,
+                "trace_status": TraceStatus,
+            }[name]
+            if type(getattr(self, name)) is not expected_type:
                 raise ValueError(f"{name} must use its public enum")
         if self.primary_error_class is not None and (
             type(self.primary_error_class) is not str
             or not _CODE_RE.fullmatch(self.primary_error_class)
+            or self.primary_error_class not in _ALLOWED_ERROR_CODES
         ):
-            raise ValueError("primary_error_class must be a stable code or null")
+            raise ValueError("primary_error_class must be an allowed stable code or null")
         if type(self.decision_record_digests) is not tuple or any(
             type(digest) is not str or not _DIGEST_RE.fullmatch(digest)
             for digest in self.decision_record_digests
@@ -123,8 +141,8 @@ class MeasurementRunResult:
             "ignored_display_count",
         ):
             value = getattr(self, name)
-            if type(value) is not int or value < 0:
-                raise ValueError(f"{name} must be a non-negative integer")
+            if type(value) is not int or not 0 <= value <= _MAX_SAFE_INTEGER:
+                raise ValueError(f"{name} must be a JCS-safe non-negative integer")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -172,13 +190,23 @@ def validate_measurement_run_result(
             record.run_context_digest != result.run_context_digest for record in decision_records
         ):
             errors.append("decision records do not share the run context")
+        submitted_records = (
+            record
+            for record in decision_records
+            if record.record_status is DecisionRecordStatus.SUBMITTED
+        )
         explicit = sum(
             record.submission_provenance is ActionProvenance.EXPLICIT_REQUEST
+            for record in submitted_records
+        )
+        submitted_records = (
+            record
             for record in decision_records
+            if record.record_status is DecisionRecordStatus.SUBMITTED
         )
         default = sum(
             record.submission_provenance is ActionProvenance.SERVER_DEFAULT
-            for record in decision_records
+            for record in submitted_records
         )
         if result.explicit_submission_count != explicit:
             errors.append("explicit submission count does not match records")
@@ -194,6 +222,7 @@ def validate_measurement_run_result(
         errors.append("record digests require an emitted trace or sink failure")
     if not result.decision_record_digests and result.trace_status is TraceStatus.EMITTED:
         errors.append("an emitted trace requires at least one record")
+    errors.extend(_validate_status_matrix(result))
     if session_result is not None:
         if result.room_control_or_chat_count != session_result.room_control_or_chat_count:
             errors.append("room-control count does not match session result")
@@ -201,15 +230,91 @@ def validate_measurement_run_result(
             errors.append("explicit count does not match session result")
         if result.default_submission_count != session_result.default_submissions:
             errors.append("default count does not match session result")
+        expected_primary = _stable_error_code(session_result.primary_error)
+        if (
+            expected_primary is None
+            and result.primary_error_class == "trace_sink_failure"
+            and result.trace_status is TraceStatus.SINK_FAILED
+        ):
+            expected_primary = "trace_sink_failure"
+        if result.primary_error_class != expected_primary:
+            errors.append("primary error class does not match session result")
+        if (
+            session_result.trace_error is not None
+            and result.trace_status is not TraceStatus.SINK_FAILED
+        ):
+            errors.append("trace status does not match session trace error")
+        if session_result.record_error is not None and result.trace_status is TraceStatus.EMITTED:
+            errors.append("record construction failure cannot emit a complete trace")
     if final_state is not None:
         if result.final_observed_state_digest != observed_state_digest(final_state):
             errors.append("final observed-state digest does not match state")
         if result.ignored_display_count != final_state.ignored_display_count:
             errors.append("ignored-display count does not match state")
+        winner = project_observed_state(final_state).get("winner")
+        expected_outcome = (
+            {
+                "our_side": BattleOutcome.OUR_WIN,
+                "opponent_side": BattleOutcome.OPPONENT_WIN,
+                "tie": BattleOutcome.TIE,
+            }.get(winner)
+            if isinstance(winner, str)
+            else None
+        )
+        if expected_outcome is not None and result.battle_outcome is not expected_outcome:
+            errors.append("battle outcome does not match final state")
+        if expected_outcome is None and result.battle_outcome in {
+            BattleOutcome.OUR_WIN,
+            BattleOutcome.OPPONENT_WIN,
+            BattleOutcome.TIE,
+        }:
+            errors.append("winner outcome cannot be proven from final state")
     return errors
 
 
-def validate_measurement_run_result_document(document: dict[str, Any]) -> list[str]:
+def _validate_status_matrix(result: MeasurementRunResult) -> list[str]:
+    errors: list[str] = []
+    has_records = bool(result.decision_record_digests)
+    if result.run_status is RunStatus.COMPLETED:
+        if result.primary_error_class is not None:
+            errors.append("completed result must not have a primary error")
+        if not has_records or result.trace_status is not TraceStatus.EMITTED:
+            errors.append("completed result requires an emitted decision record")
+    elif result.run_status is RunStatus.NO_REQUEST:
+        if result.primary_error_class is not None:
+            errors.append("no_request result must not have a primary error")
+        if has_records or result.trace_status not in {
+            TraceStatus.NO_RECORDS,
+            TraceStatus.NOT_ATTEMPTED,
+        }:
+            errors.append("no_request result must not contain decision records")
+        if result.explicit_submission_count or result.default_submission_count:
+            errors.append("no_request result must have zero submission counters")
+    elif result.run_status is RunStatus.TRACE_FAILED:
+        if result.primary_error_class != "trace_sink_failure":
+            errors.append("trace_failed result requires trace_sink_failure")
+        if result.trace_status is not TraceStatus.SINK_FAILED:
+            errors.append("trace_failed result requires sink_failed trace status")
+    elif result.run_status in {RunStatus.FAILED, RunStatus.ABORTED}:
+        if result.primary_error_class is None:
+            errors.append("failed result requires a primary error")
+    elif result.run_status is RunStatus.INCOMPLETE:
+        if result.primary_error_class is not None:
+            errors.append("incomplete result must not have a primary error")
+        if result.battle_outcome is not BattleOutcome.INCOMPLETE:
+            errors.append("incomplete result requires incomplete battle outcome")
+    if result.trace_status in {TraceStatus.NO_RECORDS, TraceStatus.NOT_ATTEMPTED} and has_records:
+        errors.append("record digests contradict an empty trace status")
+    if result.trace_status is TraceStatus.EMITTED and not has_records:
+        errors.append("emitted trace status requires record digests")
+    return errors
+
+
+def validate_measurement_run_result_document(
+    document: dict[str, Any],
+    *,
+    decision_records: tuple[DecisionRecord, ...] = (),
+) -> list[str]:
     """Validate the semantic shape of a schema-valid result document."""
 
     try:
@@ -229,7 +334,7 @@ def validate_measurement_run_result_document(document: dict[str, Any]) -> list[s
         )
     except (KeyError, TypeError, ValueError):
         return ["measurement-run-result semantic validation failed"]
-    return validate_measurement_run_result(result)
+    return validate_measurement_run_result(result, decision_records=decision_records)
 
 
 class MeasurementRunner:
@@ -238,37 +343,64 @@ class MeasurementRunner:
     def __init__(
         self,
         *,
-        session: Any,
-        trace_sink: Any,
-        run_context: Any,
-        schedule_row: ScheduleRow | None = None,
+        session: MeasurementSession,
+        trace_sink: RecordingTraceSink,
+        run_context: MeasurementRunContext,
+        schedule_row: ScheduleRow,
     ) -> None:
+        if getattr(session, "trace_sink", None) is not trace_sink:
+            raise ValueError("measurement runner and session must share one trace sink")
+        if not all(
+            hasattr(trace_sink, name)
+            for name in ("records", "accepted_record_count", "accepted_record_digests")
+        ):
+            raise ValueError("measurement runner requires an accepted-record ledger")
+        if not callable(getattr(session, "failure_result", None)):
+            raise ValueError("measurement session must provide a sanitized failure result")
         self._session = session
         self._trace_sink = trace_sink
         self._run_context = run_context
-        if schedule_row is not None and (
-            run_context.run_scope.schedule_row_id != schedule_row.row_id
-        ):
+        if run_context.run_scope.schedule_row_id != schedule_row.row_id:
             raise ValueError("measurement session row does not match run context")
 
     async def run(self) -> MeasurementRunResult:
         """Run, flush, and close one session without exposing raw exceptions."""
 
-        session_result = await self._session.run()
+        session_result: Any | None = None
         lifecycle_failed = False
-        for method_name in ("flush_trace", "close_trace"):
+        try:
             try:
-                getattr(self._session, method_name)()
-            except Exception:
-                lifecycle_failed = True
-        records = getattr(self._trace_sink, "records", ())
-        if not isinstance(records, tuple):
-            records = tuple(records)
+                session_result = await self._session.run()
+            except Exception as exc:
+                try:
+                    session_result = self._session.failure_result(exc)
+                except Exception as failure_error:
+                    raise ValueError(
+                        "measurement session failure result unavailable"
+                    ) from failure_error
+        finally:
+            for method_name in ("flush_trace", "close_trace"):
+                try:
+                    getattr(self._session, method_name)()
+                except Exception:
+                    lifecycle_failed = True
+        records = tuple(self._trace_sink.records)
+        accepted_digests = tuple(self._trace_sink.accepted_record_digests)
+        if self._trace_sink.accepted_record_count != len(accepted_digests):
+            raise ValueError("accepted record ledger count is inconsistent")
+        if accepted_digests != tuple(record.record_digest for record in records):
+            raise ValueError("accepted record ledger does not match retained records")
         trace_error = session_result.trace_error is not None or lifecycle_failed
         trace_status = (
             TraceStatus.SINK_FAILED
             if trace_error
-            else (TraceStatus.EMITTED if records else TraceStatus.NO_RECORDS)
+            else (
+                TraceStatus.EMITTED
+                if records
+                else TraceStatus.NOT_ATTEMPTED
+                if session_result.record_error is not None
+                else TraceStatus.NO_RECORDS
+            )
         )
         state_projection = project_observed_state(session_result.state)
         winner = state_projection.get("winner")
@@ -284,6 +416,8 @@ class MeasurementRunner:
             else BattleOutcome.INCOMPLETE
         )
         primary_error = session_result.primary_error
+        if lifecycle_failed and primary_error is None:
+            primary_error = TraceSinkFailure()
         primary_error_class = _stable_error_code(primary_error) if primary_error else None
         run_status = (
             RunStatus.TRACE_FAILED
@@ -318,13 +452,16 @@ class MeasurementRunner:
         return result
 
 
-def _stable_error_code(error: BaseException) -> str:
+def _stable_error_code(error: BaseException | None) -> str | None:
+    if error is None:
+        return None
     value = getattr(error, "code", None)
-    if isinstance(value, str) and _CODE_RE.fullmatch(value):
+    if isinstance(value, str) and value in _ALLOWED_ERROR_CODES:
         return value
-    name = type(error).__name__.casefold()
-    code = re.sub(r"[^a-z0-9_]+", "_", name).strip("_")
-    return code[:64] or "runtime_error"
+    name = type(error).__name__
+    snake_name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+    code = re.sub(r"[^a-z0-9_]+", "_", snake_name).strip("_")
+    return code[:64] if code in _ALLOWED_ERROR_CODES else "runtime_error"
 
 
 __all__ = [

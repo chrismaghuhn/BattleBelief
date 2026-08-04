@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import unicodedata
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from battlebelief_core.canonicalization import canonicalize, manifest_digest
+from battlebelief_core.domain.records.public_projection import to_showdown_id
 
 _STATS = ("hp", "atk", "def", "spa", "spd", "spe")
 _FIELDS = frozenset(
@@ -33,10 +33,7 @@ _FIELDS = frozenset(
 def _showdown_id(value: object, *, field: str) -> str:
     if type(value) is not str:
         raise ValueError(f"{field} must be a string")
-    normalized = unicodedata.normalize("NFC", value).casefold()
-    result = "".join(
-        character for character in normalized if character.isascii() and character.isalnum()
-    )
+    result = to_showdown_id(value)
     if not result:
         raise ValueError(f"{field} has no Showdown identifier")
     return result
@@ -113,9 +110,18 @@ def _canonical_member(member: Mapping[str, Any]) -> dict[str, Any]:
 def canonical_team_projection(team: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Return the versioned, member-order-independent exact-team projection."""
 
+    if not isinstance(team, Sequence) or isinstance(team, (str, bytes, bytearray)):
+        raise ValueError("team must be a sequence of member mappings")
     if len(team) != 6:
         raise ValueError("an exact team must contain exactly six members")
+    if any(not isinstance(member, Mapping) for member in team):
+        raise ValueError("team must contain only member mappings")
     members = [_canonical_member(member) for member in team]
+    if any(sum(member["evs"].values()) > 510 for member in members):
+        raise ValueError("EV total must not exceed 510")
+    canonical_keys = [canonicalize(member) for member in members]
+    if len(set(canonical_keys)) != len(canonical_keys):
+        raise ValueError("team contains duplicate canonical members")
     members.sort(key=lambda member: canonicalize(member))
     return {"schema_version": 1, "member_count": 6, "members": members}
 
