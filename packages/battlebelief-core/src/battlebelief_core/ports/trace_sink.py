@@ -14,6 +14,16 @@ class TraceSink(Protocol):
         """Persist or retain one record without changing it."""
 
 
+class ClosableTraceSink(TraceSink, Protocol):
+    """Trace sink whose lifecycle is owned by a measurement runner."""
+
+    def flush(self) -> None:
+        """Flush all accepted records."""
+
+    def close(self) -> None:
+        """Close the underlying trace destination."""
+
+
 class NullTraceSink:
     """Default no-op sink used by the public runtime path."""
 
@@ -21,4 +31,4 @@ class NullTraceSink:
         del record
 
 
-__all__ = ["NullTraceSink", "TraceSink"]
+__all__ = ["ClosableTraceSink", "NullTraceSink", "TraceSink"]

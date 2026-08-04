@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any
 
 from battlebelief_core.canonicalization import canonicalize, manifest_digest
@@ -43,6 +44,7 @@ class DecisionRecordStatus(StrEnum):
     SUPERSEDED_BEFORE_SELECTION = "superseded_before_selection"
     TERMINALLY_DISCARDED = "terminally_discarded"
     RECONCILIATION_REJECTED = "reconciliation_rejected"
+    FRESHNESS_INVALIDATED = "freshness_invalidated"
 
 
 class DecisionRecordErrorCode(StrEnum):
@@ -62,6 +64,44 @@ class DecisionRecordErrorCode(StrEnum):
     UNKNOWN_PROTOCOL_EVENT = "unknown_protocol_event"
     MALFORMED_PROTOCOL_MESSAGE = "malformed_protocol_message"
     REDUCER_INVARIANT_FAILURE = "reducer_invariant_failure"
+
+
+STATUS_ERROR_CODES = MappingProxyType(
+    {
+        DecisionRecordStatus.POLICY_REJECTED: frozenset(
+            {DecisionRecordErrorCode.NO_LEGAL_ACTION_AVAILABLE}
+        ),
+        DecisionRecordStatus.ACTION_GATE_REJECTED: frozenset(
+            {DecisionRecordErrorCode.LOCAL_ACTION_GATE_REJECTION}
+        ),
+        DecisionRecordStatus.COMMAND_ENCODING_FAILED: frozenset(
+            {DecisionRecordErrorCode.COMMAND_ENCODING_FAILED}
+        ),
+        DecisionRecordStatus.SEND_FAILED: frozenset(
+            {
+                DecisionRecordErrorCode.SEND_FAILED,
+                DecisionRecordErrorCode.SERVER_INVALID_CHOICE,
+                DecisionRecordErrorCode.SERVER_UNAVAILABLE_CHOICE,
+            }
+        ),
+        DecisionRecordStatus.SESSION_ABORTED: frozenset(
+            {
+                DecisionRecordErrorCode.DISCONNECT,
+                DecisionRecordErrorCode.TRANSPORT_TIMEOUT,
+                DecisionRecordErrorCode.TIMER_OR_FORFEIT,
+                DecisionRecordErrorCode.UNKNOWN_PROTOCOL_EVENT,
+                DecisionRecordErrorCode.MALFORMED_PROTOCOL_MESSAGE,
+                DecisionRecordErrorCode.REDUCER_INVARIANT_FAILURE,
+            }
+        ),
+        DecisionRecordStatus.RECONCILIATION_REJECTED: frozenset(
+            {
+                DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
+                DecisionRecordErrorCode.STALE_RQID,
+            }
+        ),
+    }
+)
 
 
 def _require_digest(name: str, value: str) -> None:
@@ -513,40 +553,6 @@ class DecisionRecord:
             and self.submission_provenance != self.selected_submission.provenance
         ):
             raise ValueError("submission provenance must match selected submission")
-        status_error_codes: dict[DecisionRecordStatus, frozenset[DecisionRecordErrorCode]] = {
-            DecisionRecordStatus.POLICY_REJECTED: frozenset(
-                {DecisionRecordErrorCode.NO_LEGAL_ACTION_AVAILABLE}
-            ),
-            DecisionRecordStatus.ACTION_GATE_REJECTED: frozenset(
-                {DecisionRecordErrorCode.LOCAL_ACTION_GATE_REJECTION}
-            ),
-            DecisionRecordStatus.COMMAND_ENCODING_FAILED: frozenset(
-                {DecisionRecordErrorCode.COMMAND_ENCODING_FAILED}
-            ),
-            DecisionRecordStatus.SEND_FAILED: frozenset(
-                {
-                    DecisionRecordErrorCode.SEND_FAILED,
-                    DecisionRecordErrorCode.SERVER_INVALID_CHOICE,
-                    DecisionRecordErrorCode.SERVER_UNAVAILABLE_CHOICE,
-                }
-            ),
-            DecisionRecordStatus.SESSION_ABORTED: frozenset(
-                {
-                    DecisionRecordErrorCode.DISCONNECT,
-                    DecisionRecordErrorCode.TRANSPORT_TIMEOUT,
-                    DecisionRecordErrorCode.TIMER_OR_FORFEIT,
-                    DecisionRecordErrorCode.UNKNOWN_PROTOCOL_EVENT,
-                    DecisionRecordErrorCode.MALFORMED_PROTOCOL_MESSAGE,
-                    DecisionRecordErrorCode.REDUCER_INVARIANT_FAILURE,
-                }
-            ),
-            DecisionRecordStatus.RECONCILIATION_REJECTED: frozenset(
-                {
-                    DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
-                    DecisionRecordErrorCode.STALE_RQID,
-                }
-            ),
-        }
         selected_required = {
             DecisionRecordStatus.SUBMITTED,
             DecisionRecordStatus.ACTION_GATE_REJECTED,
@@ -559,14 +565,16 @@ class DecisionRecord:
             DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
             DecisionRecordStatus.TERMINALLY_DISCARDED,
             DecisionRecordStatus.RECONCILIATION_REJECTED,
+            DecisionRecordStatus.FRESHNESS_INVALIDATED,
         }
         error_forbidden = {
             DecisionRecordStatus.SUBMITTED,
             DecisionRecordStatus.WAIT_NOOP,
             DecisionRecordStatus.SUPERSEDED_BEFORE_SELECTION,
             DecisionRecordStatus.TERMINALLY_DISCARDED,
+            DecisionRecordStatus.FRESHNESS_INVALIDATED,
         }
-        error_required = set(status_error_codes)
+        error_required = set(STATUS_ERROR_CODES)
         if self.record_status in selected_required and self.selected_submission is None:
             raise ValueError("record status requires selected_submission")
         if self.record_status in selection_forbidden and self.selected_submission is not None:
@@ -575,8 +583,8 @@ class DecisionRecord:
             raise ValueError("record status must not contain an error class")
         if self.record_status in error_required and self.fallback_or_error_class is None:
             raise ValueError("record status requires an error class")
-        if self.record_status in status_error_codes and (
-            self.fallback_or_error_class not in status_error_codes[self.record_status]
+        if self.record_status in STATUS_ERROR_CODES and (
+            self.fallback_or_error_class not in STATUS_ERROR_CODES[self.record_status]
         ):
             raise ValueError("error class is not valid for record status")
 

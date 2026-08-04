@@ -165,6 +165,13 @@ def test_record_schema_closes_error_taxonomy_and_status_pairings() -> None:
     terminal_disposition["fallback_or_error_class"] = None
     assert list(validator.iter_errors(terminal_disposition)) == []
 
+    freshness_disposition = json.loads(json.dumps(payload))
+    freshness_disposition["record_status"] = "freshness_invalidated"
+    freshness_disposition["selected_submission"] = None
+    freshness_disposition["submission_provenance"] = None
+    freshness_disposition["fallback_or_error_class"] = None
+    assert list(validator.iter_errors(freshness_disposition)) == []
+
 
 def test_decision_record_cross_version_vector_is_stable() -> None:
     vectors = json.loads(

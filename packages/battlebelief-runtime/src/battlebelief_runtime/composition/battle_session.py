@@ -81,6 +81,7 @@ class BattleSessionResult:
     room_control_or_chat_count: int
     explicit_request_submissions: int
     default_submissions: int
+    trace_error: TraceSinkFailure | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +125,7 @@ class BattleSession:
         self._latest_request: RequestIdentity | None = None
         self._submitted_request: RequestIdentity | None = None
         self._primary_error: BaseException | None = None
+        self._trace_error: TraceSinkFailure | None = None
         self._done = False
         self._room_control_or_chat_count = 0
         self._explicit_request_submissions = 0
@@ -156,6 +158,7 @@ class BattleSession:
         return BattleSessionResult(
             state=self._state,
             primary_error=self._primary_error,
+            trace_error=self._trace_error,
             room_control_or_chat_count=self._room_control_or_chat_count,
             explicit_request_submissions=self._explicit_request_submissions,
             default_submissions=self._default_submissions,
@@ -263,30 +266,40 @@ class BattleSession:
             latest_rqid=self._submitted_request.rqid if self._submitted_request else None,
         )
         if reconciliation.status == ReconciliationStatus.REJECT:
-            error = RequestStateReconciliationMismatch(f"{reason}: {reconciliation.reason}")
-            if self._primary_error is None:
-                self._primary_error = error
-            self._finalize_pending(
-                status=DecisionRecordStatus.RECONCILIATION_REJECTED,
-                error_code=DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
-            )
+            error = self._reject_reconciliation(f"{reason}: {reconciliation.reason}")
             raise error
         if reconciliation.status == ReconciliationStatus.PENDING_PUBLIC_STATE:
             active_identity_pending = reconciliation.reason == (
                 "active pokemon not yet known from public state"
             )
             if strict or (self._state.battle_started and not active_identity_pending):
-                error = RequestStateReconciliationMismatch(f"{reason}: {reconciliation.reason}")
-                if self._primary_error is None:
-                    self._primary_error = error
-                self._finalize_pending(
-                    status=DecisionRecordStatus.RECONCILIATION_REJECTED,
-                    error_code=DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
-                )
+                error = self._reject_reconciliation(f"{reason}: {reconciliation.reason}")
                 raise error
             return
 
+        self._refresh_pending_trace_state()
         await self._submit(request)
+
+    def _reject_reconciliation(self, message: str) -> RequestStateReconciliationMismatch:
+        error = RequestStateReconciliationMismatch(message)
+        if self._primary_error is None:
+            self._primary_error = error
+        self._finalize_pending(
+            status=DecisionRecordStatus.RECONCILIATION_REJECTED,
+            error_code=DecisionRecordErrorCode.REQUEST_STATE_RECONCILIATION_MISMATCH,
+        )
+        return error
+
+    def _refresh_pending_trace_state(self) -> None:
+        pending = self._pending_trace
+        if pending is None:
+            return
+        self._pending_trace = _PendingTrace(
+            request=pending.request,
+            observed_state_digest=observed_state_digest(self._state),
+            safe_submission_set_digest=pending.safe_submission_set_digest,
+            decision_index=pending.decision_index,
+        )
 
     async def _submit(self, request: DecisionRequest) -> None:
         if request.identity == self._submitted_request:
@@ -392,8 +405,8 @@ class BattleSession:
             DecisionRecordErrorCode.STALE_RQID,
         }:
             self._finalize_pending(
-                status=DecisionRecordStatus.RECONCILIATION_REJECTED,
-                error_code=error_code,
+                status=DecisionRecordStatus.FRESHNESS_INVALIDATED,
+                error_code=None,
             )
         elif error_code is not None:
             self._finalize_pending(
@@ -460,10 +473,18 @@ class BattleSession:
                 submission_provenance=provenance,
                 fallback_or_error_class=error_code,
             )
+        except Exception as exc:
+            self._handle_trace_failure(exc)
+            return
+        try:
             self._trace_sink.emit(record)
-        except Exception:
-            self._trace_failed = True
-            trace_error = TraceSinkFailure()
-            if self._primary_error is None:
-                self._primary_error = trace_error
-            self._done = True
+        except Exception as exc:
+            self._handle_trace_failure(exc)
+
+    def _handle_trace_failure(self, _cause: Exception) -> None:
+        self._trace_failed = True
+        trace_error = TraceSinkFailure()
+        self._trace_error = trace_error
+        if self._primary_error is None:
+            self._primary_error = trace_error
+        self._done = True

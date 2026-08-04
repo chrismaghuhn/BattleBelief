@@ -270,8 +270,10 @@ class TestRqidValidation:
 class TestDigestStability:
     def test_digest_uses_the_public_sha256_profile(self) -> None:
         decision = read_request(_ROOM, _load("move.json"))
-        assert decision.identity.request_digest.startswith("sha256:")
-        assert len(decision.identity.request_digest) == len("sha256:" + "0" * 64)
+        assert (
+            decision.identity.request_digest
+            == "sha256:3d4b716219f74ed465ac07808c74f8fc4df94d122d778f0b2b2dbd19c41342c8"
+        )
 
     def test_same_payload_yields_same_digest(self) -> None:
         dr1 = read_request(_ROOM, _load("move.json"))

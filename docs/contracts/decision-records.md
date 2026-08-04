@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 3
+version: 4
 applies_to:
   - evaluation
   - measurement
@@ -83,6 +83,7 @@ session_aborted
 superseded_before_selection
 terminally_discarded
 reconciliation_rejected
+freshness_invalidated
 ```
 
 `submitted` erfordert eine ausgewählte Submission und passende Provenance,
@@ -92,6 +93,11 @@ Submission, keine Provenance und einen statusgebundenen stabilen Fehlercode.
 `superseded_before_selection` und `terminally_discarded` haben keine
 Submission, keine Provenance und `fallback_or_error_class: null`; sie sind
 rein dispositionelle Zustände.
+`freshness_invalidated` hat ebenfalls keine Submission, keine Provenance und
+`fallback_or_error_class: null`; es markiert einen bereits eröffneten
+wartenden Request, der durch einen später eingetroffenen, aber die Freshness-
+Prüfung nicht bestehenden Request ungültig wurde. Der Fehlercode des späteren
+Requests wird niemals dem älteren Record zugeschrieben.
 `action_gate_rejected`,
 `command_encoding_failed` und `send_failed` haben eine ausgewählte Submission,
 passende Provenance und einen stabilen Fehlercode. `session_aborted` erfordert
@@ -144,5 +150,6 @@ oder `stale_rqid`, und `session_aborted` verwendet nur
 klassifizierte Transport-, Timer- oder Protokollabbruchcodes. Die rein
 dispositionellen Zustände `superseded_before_selection` und
 `terminally_discarded` tragen `null`; sie benötigen keinen erfundenen
-Fehlercode. Setupfehler wie Teamvalidierung und Challenge-Setup werden nicht
+Fehlercode. `freshness_invalidated` trägt ebenfalls `null`. Setupfehler wie
+Teamvalidierung und Challenge-Setup werden nicht
 als Decision Record serialisiert.

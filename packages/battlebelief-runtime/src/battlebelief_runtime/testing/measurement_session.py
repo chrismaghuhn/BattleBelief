@@ -5,7 +5,7 @@ from __future__ import annotations
 from battlebelief_core.domain.records.decision_record import MeasurementRunContext
 from battlebelief_core.domain.state.observed_state import ObservedState
 from battlebelief_core.errors import TraceSinkFailure
-from battlebelief_core.ports import TraceSink
+from battlebelief_core.ports import ClosableTraceSink
 from battlebelief_runtime.adapters.showdown_client.types import BattleConnection
 from battlebelief_runtime.composition.battle_session import (
     BattleSession,
@@ -24,7 +24,7 @@ class MeasurementSession:
         room_id: str,
         our_user_id: str,
         decision_record_context: MeasurementRunContext,
-        trace_sink: TraceSink,
+        trace_sink: ClosableTraceSink,
         policy: DecisionPolicy | None = None,
         initial_state: ObservedState | None = None,
     ) -> None:

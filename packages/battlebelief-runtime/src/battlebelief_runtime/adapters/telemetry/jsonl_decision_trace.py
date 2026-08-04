@@ -10,8 +10,9 @@ from battlebelief_core.domain.records.decision_record import DecisionRecord
 class JsonlDecisionTrace:
     """Write exactly one canonical record line per successful emit."""
 
-    def __init__(self, stream: BinaryIO) -> None:
+    def __init__(self, stream: BinaryIO, *, retain_records: bool = False) -> None:
         self._stream = stream
+        self._retain_records = retain_records
         self._records: list[DecisionRecord] = []
 
     @property
@@ -20,9 +21,12 @@ class JsonlDecisionTrace:
 
     def emit(self, record: DecisionRecord) -> None:
         line = record.canonical_envelope_bytes() + b"\n"
-        self._stream.write(line)
+        written = self._stream.write(line)
+        if written != len(line):
+            raise OSError("incomplete decision-trace write")
         self._stream.flush()
-        self._records.append(record)
+        if self._retain_records:
+            self._records.append(record)
 
     def flush(self) -> None:
         self._stream.flush()

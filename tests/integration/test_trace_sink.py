@@ -19,6 +19,7 @@ from battlebelief_core.domain.records.decision_record import (
     RunScopePayload,
     RuntimeAndContractDigests,
 )
+from battlebelief_core.domain.records.public_projection import observed_state_digest
 from battlebelief_core.errors import NoLegalActionError, TraceSinkFailure
 from battlebelief_runtime.adapters.showdown_protocol.frame_decoder import RoomLine
 from battlebelief_runtime.adapters.telemetry.jsonl_decision_trace import (
@@ -136,6 +137,29 @@ def test_fresh_request_emits_once_and_duplicate_is_suppressed() -> None:
     assert "battle-gen9ou-1" not in repr(record)
 
 
+def test_trace_uses_state_digest_at_successful_reconciliation() -> None:
+    sink = InMemoryTraceSink()
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection(
+                [
+                    *_metadata(active=False),
+                    _line(_request()),
+                    _line("|switch|p1a: Garchomp|Garchomp, L50, M|183/183"),
+                ]
+            ),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+
+    assert result.primary_error is None
+    assert len(sink.records) == 1
+    assert sink.records[0].observed_state_digest == observed_state_digest(result.state)
+
+
 def test_measurement_session_exposes_the_narrow_testing_seam() -> None:
     sink = InMemoryTraceSink()
     result = asyncio.run(
@@ -152,10 +176,42 @@ def test_measurement_session_exposes_the_narrow_testing_seam() -> None:
     assert len(sink.records) == 1
 
 
+def test_trace_sink_requires_a_measurement_context() -> None:
+    with pytest.raises(ValueError, match="decision_record_context"):
+        BattleSession(
+            connection=FakeConnection([]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=InMemoryTraceSink(),
+        )
+
+
+def test_reconciliation_rejection_is_recorded_after_freshness_acceptance() -> None:
+    data = json.loads((_REQUESTS / "move.json").read_text(encoding="utf-8"))
+    data["side"]["pokemon"][0]["ident"] = "p1: WrongPokemon"
+    sink = InMemoryTraceSink()
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection(
+                [*_metadata(), _line("|request|" + json.dumps(data, separators=(",", ":")))]
+            ),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+
+    assert getattr(result.primary_error, "code", None) == ("request_state_reconciliation_mismatch")
+    assert len(sink.records) == 1
+    assert sink.records[0].record_status.value == "reconciliation_rejected"
+    assert sink.records[0].fallback_or_error_class == "request_state_reconciliation_mismatch"
+
+
 def test_identical_measurement_runs_produce_identical_trace_bytes() -> None:
     def run_once() -> tuple[list[tuple[str, str]], bytes, str]:
         stream = io.BytesIO()
-        sink = JsonlDecisionTrace(stream)
+        sink = JsonlDecisionTrace(stream, retain_records=True)
         connection = FakeConnection([*_metadata(), _line(_request())])
         result = asyncio.run(
             BattleSession(
@@ -199,7 +255,7 @@ def test_measurement_seam_classifies_flush_and_close_failures() -> None:
 
 def test_jsonl_trace_is_exact_utf8_record_bytes_plus_lf() -> None:
     stream = io.BytesIO()
-    sink = JsonlDecisionTrace(stream)
+    sink = JsonlDecisionTrace(stream, retain_records=True)
     connection = FakeConnection([*_metadata(), _line(_request())])
     result = asyncio.run(
         BattleSession(
@@ -356,6 +412,110 @@ def test_pending_request_replaced_by_newer_request_is_superseded() -> None:
         "superseded_before_selection",
         "session_aborted",
     ]
+
+
+@pytest.mark.parametrize("variant", ["stale", "changed_digest"])
+def test_failed_freshness_does_not_misattribute_error_to_pending_request(
+    variant: str,
+) -> None:
+    first = _request(5)
+    if variant == "stale":
+        second_data = json.loads((_REQUESTS / "move.json").read_text(encoding="utf-8"))
+        second_data["rqid"] = 4
+        second = "|request|" + json.dumps(second_data, separators=(",", ":"))
+    else:
+        second_data = json.loads((_REQUESTS / "move.json").read_text(encoding="utf-8"))
+        second_data["rqid"] = 5
+        second_data["update"] = True
+        second = "|request|" + json.dumps(second_data, separators=(",", ":"))
+
+    sink = InMemoryTraceSink()
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection([*_metadata(active=False), _line(first), _line(second)]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+
+    assert result.primary_error is not None
+    assert len(sink.records) == 1
+    assert sink.records[0].record_status.value == "freshness_invalidated"
+    assert sink.records[0].fallback_or_error_class is None
+
+
+def test_jsonl_sink_rejects_partial_writes() -> None:
+    class PartialWriter(io.BytesIO):
+        def write(self, data: bytes) -> int:
+            return super().write(data[:-1])
+
+    stream = PartialWriter()
+    sink = JsonlDecisionTrace(stream, retain_records=True)
+    session_sink = InMemoryTraceSink()
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection([*_metadata(), _line(_request())]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=session_sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+    assert result.primary_error is None
+
+    with pytest.raises(OSError, match="incomplete decision-trace write"):
+        sink.emit(session_sink.records[0])
+    assert sink.records == ()
+
+
+def test_jsonl_sink_rejects_a_none_write_result() -> None:
+    class NoWrite:
+        def write(self, data: bytes) -> None:
+            del data
+            return None
+
+        def flush(self) -> None:
+            pass
+
+    session_sink = InMemoryTraceSink()
+    result = asyncio.run(
+        BattleSession(
+            connection=FakeConnection([*_metadata(), _line(_request())]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=session_sink,
+            decision_record_context=_run_context(),
+        ).run()
+    )
+    assert result.primary_error is None
+
+    sink = JsonlDecisionTrace(NoWrite(), retain_records=True)
+    with pytest.raises(OSError, match="incomplete decision-trace write"):
+        sink.emit(session_sink.records[0])
+    assert sink.records == ()
+
+
+def test_trace_error_remains_visible_when_send_error_is_primary() -> None:
+    class FailingSink(InMemoryTraceSink):
+        def emit(self, record: object) -> None:
+            raise RuntimeError("private sink detail")
+
+    result = asyncio.run(
+        BattleSession(
+            connection=_DisconnectingConnection([*_metadata(), _line(_request())]),
+            room_id=_ROOM,
+            our_user_id="ash",
+            trace_sink=FailingSink(),
+            decision_record_context=_run_context(),
+        ).run()
+    )
+
+    assert isinstance(result.primary_error, Disconnect)
+    assert result.trace_error is not None
+    assert result.trace_error.code == "trace_sink_failure"
+    assert str(result.trace_error) == ""
 
 
 def test_wait_request_emits_wait_noop_without_submission() -> None:
