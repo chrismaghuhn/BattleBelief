@@ -192,17 +192,19 @@ class _TraceOnlySession:
         primary_error: BaseException | None = None,
         explicit_request_submissions: int = 0,
         default_submissions: int = 0,
+        trace_error: BaseException | None = None,
     ) -> None:
         self.trace_sink = trace_sink
         self._primary_error = primary_error
         self._explicit_request_submissions = explicit_request_submissions
         self._default_submissions = default_submissions
+        self._trace_error = trace_error
 
     async def run(self) -> object:
         return SimpleNamespace(
             state=ObservedState.initial("ash"),
             primary_error=self._primary_error,
-            trace_error=TraceSinkFailure(),
+            trace_error=self._trace_error,
             record_error=None,
             room_control_or_chat_count=0,
             explicit_request_submissions=self._explicit_request_submissions,
@@ -251,7 +253,7 @@ def test_runner_finalizes_lifecycle_and_sanitizes_session_exception() -> None:
 
 def test_runner_classifies_trace_only_failure_with_stable_code() -> None:
     ledger = _Ledger()
-    session = _TraceOnlySession(ledger)
+    session = _TraceOnlySession(ledger, trace_error=TraceSinkFailure())
     schedule = build_schedule(
         registration_digest=_RUN_DIGEST,
         master_seed="0123456789abcdef" * 4,
@@ -281,7 +283,11 @@ def test_runner_classifies_trace_only_failure_with_stable_code() -> None:
 
 def test_runner_classifies_runtime_trace_only_failure_with_primary_trace_error() -> None:
     ledger = _Ledger()
-    session = _TraceOnlySession(ledger, primary_error=TraceSinkFailure())
+    session = _TraceOnlySession(
+        ledger,
+        primary_error=TraceSinkFailure(),
+        trace_error=TraceSinkFailure(),
+    )
     schedule = build_schedule(
         registration_digest=_RUN_DIGEST,
         master_seed="0123456789abcdef" * 4,
@@ -360,6 +366,7 @@ def test_runner_returns_trace_failed_for_a_partial_second_emit() -> None:
         ledger,
         primary_error=TraceSinkFailure(),
         explicit_request_submissions=2,
+        trace_error=TraceSinkFailure(),
     )
     schedule = build_schedule(
         registration_digest=_RUN_DIGEST,
