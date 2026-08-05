@@ -211,12 +211,15 @@ def _winner_projection(state: ObservedState) -> str | None:
     return None
 
 
-def _showdown_id(value: str) -> str:
+def to_showdown_id(value: str) -> str:
     """Apply the same ASCII ``toID`` normalization as Showdown's parser."""
 
     return "".join(
         character for character in value.lower() if character.isascii() and character.isalnum()
     )
+
+
+_showdown_id = to_showdown_id
 
 
 def _project_visible_evidence(evidence: Any) -> dict[str, PublicValue]:

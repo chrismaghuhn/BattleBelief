@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:record:measurement-run-result:v1",
+  "title": "BattleBelief measurement run result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_context_digest", "run_status", "battle_outcome", "primary_error_class", "decision_record_digests", "explicit_submission_count", "default_submission_count", "room_control_or_chat_count", "ignored_display_count", "final_observed_state_digest", "trace_status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_context_digest": {"$ref": "#/$defs/digest"},
+    "run_status": {"enum": ["completed", "failed", "aborted", "trace_failed", "no_request", "incomplete"]},
+    "battle_outcome": {"enum": ["our_win", "opponent_win", "tie", "void", "incomplete"]},
+    "primary_error_class": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/error_code"}]},
+    "decision_record_digests": {"type": "array", "items": {"$ref": "#/$defs/digest"}, "uniqueItems": true},
+    "explicit_submission_count": {"$ref": "#/$defs/count"},
+    "default_submission_count": {"$ref": "#/$defs/count"},
+    "room_control_or_chat_count": {"$ref": "#/$defs/count"},
+    "ignored_display_count": {"$ref": "#/$defs/count"},
+    "final_observed_state_digest": {"$ref": "#/$defs/digest"},
+    "trace_status": {"enum": ["emitted", "no_records", "sink_failed", "not_attempted"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"run_status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "primary_error_class": {"type": "null"},
+          "decision_record_digests": {"minItems": 1},
+          "trace_status": {"const": "emitted"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"run_status": {"const": "no_request"}}},
+      "then": {
+        "properties": {
+          "primary_error_class": {"type": "null"},
+          "decision_record_digests": {"maxItems": 0},
+          "explicit_submission_count": {"const": 0},
+          "default_submission_count": {"const": 0},
+          "trace_status": {"enum": ["no_records", "not_attempted"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"run_status": {"const": "trace_failed"}}},
+      "then": {
+        "properties": {
+          "primary_error_class": {"const": "trace_sink_failure"},
+          "trace_status": {"const": "sink_failed"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"run_status": {"enum": ["failed", "aborted"]}}},
+      "then": {"required": ["primary_error_class"], "properties": {"primary_error_class": {"type": "string"}}}
+    },
+    {
+      "if": {"properties": {"trace_status": {"const": "emitted"}}},
+      "then": {"properties": {"decision_record_digests": {"minItems": 1}}}
+    },
+    {
+      "if": {"properties": {"trace_status": {"enum": ["no_records", "not_attempted"]}}},
+      "then": {"properties": {"decision_record_digests": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "error_code": {"enum": ["no_legal_action_available", "local_action_gate_rejection", "command_encoding_failed", "send_failed", "server_invalid_choice", "server_unavailable_choice", "request_state_reconciliation_mismatch", "stale_rqid", "disconnect", "transport_timeout", "timer_or_forfeit", "unknown_protocol_event", "malformed_protocol_message", "reducer_invariant_failure", "trace_sink_failure", "decision_record_construction_failure", "runtime_error"]}
+  }
+}

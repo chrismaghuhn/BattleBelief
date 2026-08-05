@@ -15,6 +15,9 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from battlebelief_core.canonicalization import manifest_digest
+from battlebelief_lab.evaluation.measurement_runner import (
+    validate_measurement_run_result_document,
+)
 
 
 class RegistrationValidationError(ValueError):
@@ -483,6 +486,15 @@ _SCHEMA_BY_KIND = {
 def _schema_for_artifact(
     path: Path, value: Mapping[str, Any], repository_root: Path
 ) -> tuple[Path, str] | None:
+    if path.name == "measurement-run-result.example.json" or {
+        "run_status",
+        "battle_outcome",
+        "trace_status",
+    }.issubset(value):
+        return (
+            repository_root / "schemas/records/measurement-run-result.schema.json",
+            "measurement_run_result",
+        )
     if path.name == "registration.json" or "registration_status" in value:
         return (
             repository_root / "schemas/manifests/experiment-registration.schema.json",
@@ -1154,6 +1166,11 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 )
             elif kind == "synthetic_acceptance":
                 validate_synthetic_fixture_manifest(value, repository_root)
+            elif kind == "measurement_run_result":
+                errors.extend(
+                    f"{relative}: {error}"
+                    for error in validate_measurement_run_result_document(value)
+                )
             artifacts.append((path, value, kind))
             by_digest[manifest_digest(dict(value))] = (path, value, kind)
         except RegistrationValidationError as exc:

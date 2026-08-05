@@ -4,7 +4,7 @@ title: Decision-Record- und öffentliche Projektion-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 7
 applies_to:
   - evaluation
   - measurement
@@ -121,6 +121,18 @@ ist Bestandteil des Payloads und wird damit sowohl von `record_id` als auch von
 Fehlertexte werden nie serialisiert; `fallback_or_error_class` enthält nur
 stabile Klassifikationscodes oder `null`.
 
+## Measurement-Run-Ergebnis
+
+Ein `measurement-run-result` ist das unveränderliche Ergebnisartefakt eines
+synthetischen oder späteren Evaluationslaufs. Es referenziert den Run-Kontext,
+ordnet die finalen Decision-Record-Digests in `decision_index`-Reihenfolge und
+bewahrt auch Läufe ohne Request, technische Abbrüche und Trace-Fehler. Die
+Submission-, Room-Control- und Ignored-Display-Zähler stammen jeweils aus
+ihren autoritativen Quellen: finalisierte Records, `BattleSessionResult` und
+der finale öffentliche State. Ein Measurement-Runner besitzt Flush und Close
+eines injizierten Trace-Sinks; ein Sinkfehler wird als eigenes Trace-Ergebnis
+sichtbar und überschreibt keinen früheren Battlefehler.
+
 Die Record-Fehlercode-Taxonomie ist in Version 1 geschlossen und wird in den
 beiden Versionen der Record-Payload-/Envelope-Schemas als Enum gespiegelt.
 Die ursprünglichen `v1`-Schemas bleiben für bestehende Consumer und alte
@@ -156,3 +168,14 @@ dispositionellen Zustände `superseded_before_selection` und
 Fehlercode. `freshness_invalidated` trägt ebenfalls `null`. Setupfehler wie
 Teamvalidierung und Challenge-Setup werden nicht
 als Decision Record serialisiert.
+
+Ein `measurement-run-result` verwendet dieselbe geschlossene Fehlercode-
+Taxonomie sowie die beiden technischen Codes `trace_sink_failure` und
+`decision_record_construction_failure`; unbekannte Exceptiontexte werden
+vor der Serialisierung auf `runtime_error` reduziert. Ein Ergebnis mit
+`completed` muss mindestens einen erfolgreich emittierten Record besitzen.
+`no_request` besitzt keine Records und null Submission-Counter, während
+`trace_failed` einen fehlgeschlagenen Sink-Lifecycle und den Code
+`trace_sink_failure` verlangt. Submission-Counter werden ausschließlich aus
+`submitted`-Records abgeleitet; abgelehnte oder fehlgeschlagene Sendpfade
+erhöhen sie nicht.
