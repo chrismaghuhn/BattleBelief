@@ -105,6 +105,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 ## Evidenz und Audits
 
 - [M1 Protocol-safe Prototype Evidence](operations/m1-protocol-safe-evidence.md)
+- [M1.5 Measurement Harness and Baseline Registration Evidence](operations/m1-5-measurement-harness-evidence.md)
 - [Decision-Record-Contract](contracts/decision-records.md)
 
 ## Archiv

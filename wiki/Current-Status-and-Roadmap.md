@@ -4,9 +4,9 @@ BattleBelief is developed through explicit milestones. Each milestone separates 
 
 ## Current status
 
-**Completed milestone: M1 — Protocol-safe Prototype**
+**Completed milestone: M1.5 — Measurement Harness and Baseline Registration**
 
-**Next planned milestone: M1.5 — not started**
+**Next planned milestone: M2 — Engine-qualified Search Prototype**
 
 Implemented on `main`:
 
@@ -27,11 +27,16 @@ Implemented on `main`:
 - a secrets-safe outgoing challenge CLI;
 - dedicated protocol- and action-safety acceptance smokes;
 - lockstep package version `0.2.0` and the M1 runtime capability status; and
-- measured M1 evidence for the declared synthetic mapping.
+- measured M1 evidence for the declared synthetic mapping;
+- frozen M1.5 registration and heuristic implementation binding;
+- deterministic row-specific synthetic run bindings and Decision Records; and
+- measured M1.5 acceptance evidence with Selection, Power Pilot, and Release
+  Holdout access unopened.
 
-Not established by M1:
+Not established by M1.5:
 
 - observed live public-protocol coverage;
+- observed live measurement coverage;
 - public ladder readiness or validation;
 - engine parity; and
 - battle-strength evidence.
@@ -46,6 +51,10 @@ therefore does **not** claim:
 - training-system completion;
 - a stable release;
 - MVP status.
+
+Runtime remains version `0.2.0` and phase `M1`. The next milestone is M2;
+M1.5 does not implement Search, Belief, an Oracle, an engine, replay or dataset
+ingestion, training, or model evaluation.
 
 ## Milestone overview
 

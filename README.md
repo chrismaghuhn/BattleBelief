@@ -172,9 +172,11 @@ on `main` includes:
 - lockstep package version `0.2.0` with an M1 runtime capability status.
 
 The measured [M1 protocol-safe prototype evidence](docs/operations/m1-protocol-safe-evidence.md)
-records the synthetic coverage, checks, and explicit non-claims. No authorized
-public login or direct-challenge smoke was run, so observed live protocol
-coverage remains unestablished. M1.5 has not started.
+records the synthetic coverage, checks, and explicit non-claims. The measured
+[M1.5 harness and baseline-registration evidence](docs/operations/m1-5-measurement-harness-evidence.md)
+records the frozen registration, deterministic synthetic runs, and acceptance
+checks. Observed live measurement coverage remains unestablished. The next
+planned milestone is M2; no strength, parity, release, or MVP claim is made.
 
 ## Packages
 
