@@ -15,7 +15,6 @@ import os
 import re
 import signal
 import socket
-import subprocess
 from collections.abc import Awaitable, Callable, Mapping
 from ctypes import wintypes
 from dataclasses import dataclass, field
@@ -38,6 +37,7 @@ from battlebelief_lab.oracle.showdown.protocol import (
 DEFAULT_READ_CHUNK_BYTES = 64 * 1024
 _JOB_SETUP_REAP_TIMEOUT_SECONDS = 5.0
 _CREATE_SUSPENDED = 0x00000004
+_CREATE_NEW_PROCESS_GROUP = 0x00000200
 _TH32CS_SNAPTHREAD = 0x00000004
 _THREAD_SUSPEND_RESUME = 0x0002
 _INVALID_DWORD = 0xFFFFFFFF
@@ -483,7 +483,7 @@ async def _default_launcher(
 def _windows_creation_flags() -> int:
     """Contain the child before its first instruction can execute."""
 
-    return subprocess.CREATE_NEW_PROCESS_GROUP | _CREATE_SUSPENDED
+    return _CREATE_NEW_PROCESS_GROUP | _CREATE_SUSPENDED
 
 
 def _resume_suspended_windows_threads(pid: int) -> None:
@@ -547,7 +547,7 @@ async def _default_terminate(process: ManagedProcess, *, force: bool) -> None:
     """Terminate the owned POSIX group or Windows child-process tree."""
 
     job = _job_for(process)
-    if os.name == "nt" and job is not None and force:
+    if job is not None and force:
         job.terminate()
         return
     concrete = _native_process_for(process)

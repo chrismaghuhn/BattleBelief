@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -245,7 +244,7 @@ def test_windows_creator_links_are_resolved_as_a_recursive_descendant_closure() 
 def test_windows_oracle_creation_flags_suspend_before_execution() -> None:
     flags = _windows_creation_flags()
 
-    assert flags & subprocess.CREATE_NEW_PROCESS_GROUP
+    assert flags & 0x00000200
     assert flags & 0x00000004
 
 

@@ -113,7 +113,7 @@ def test_oracle_environment_has_a_minimal_allowlist_and_excludes_host_state() ->
         },
     )
 
-    assert environment["PATH"] == "C:\\exact-node"
+    assert environment["PATH"] == str(Path("C:/exact-node"))
     assert "HTTPS_PROXY" not in environment
     assert "HTTP_PROXY" not in environment
     assert not {"HOME", "USERPROFILE", "USERNAME", "COMPUTERNAME", "SECRET_TOKEN"} & set(
