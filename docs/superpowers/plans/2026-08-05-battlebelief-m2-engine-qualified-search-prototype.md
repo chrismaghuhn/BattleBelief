@@ -89,7 +89,7 @@ The inventory below records the tree at commit `cfc526ca1558869e674769daf19b9aa0
 | Core ports | `TraceSink` | Engine-neutral transition, random-source, and deadline/work-budget ports are absent and need deliberate public API design. |
 | Records | Decision-record schemas and Python models through v2 | v2 cannot represent a successful searched decision with a distinct fallback reason or deterministic search summary without abusing its error field. |
 | Runtime | Showdown protocol/client/team adapters; `BattleSession`, `BattleCoordinator`, `MeasurementSession`; telemetry sinks | Search composition must enter through runtime policy composition without moving engine or clock dependencies into Core. |
-| Lab | Frozen-registration validation, evaluation/statistical helpers, measurement runner, reports | The runner can retain trace lifecycle ownership, but no oracle, differential runner, closed-world evaluation artifact, or calibration pipeline exists. |
+| Lab | Frozen-registration validation, pool/schedule/seed helpers, measurement runner, reports | The runner can retain trace lifecycle ownership, but no oracle, differential runner, closed-world artifact, concrete Development inputs, registered analyzer, or calibration pipeline exists. `weighted_cluster_bootstrap_v1` is registered by ID but has no implementation or golden vectors. |
 | Schemas | Engine capability v1, search contract v1, implementation/run/calibration manifests and validation tooling | Existing schema versions must be preserved. Any incompatible M2 field set requires a new schema version and explicit migration tests. |
 | Registrations | Frozen `m1-5-core-comparisons-v1.json`; active determinization and DUCT comparisons; determinization execution spec v4 | Registered arm IDs, metrics, thresholds, pool rules, and determinization values are immutable inputs to M2. |
 | Tooling and CI | docs, architecture, schemas, versions, registration validation, package smoke, protocol/safety smoke, `pr-gate` | M2 adds isolated oracle, search-extra, sentinel, corpus, and deterministic-reproducibility gates without weakening existing gates. |
@@ -115,7 +115,7 @@ The inventory below records the tree at commit `cfc526ca1558869e674769daf19b9aa0
 2. **`MeasurementSession`:** it remains a wrapper around a runtime session. It records decision and search measurements but must not obtain sampled worlds or opponent-private oracle data.
 3. **Decision records:** existing v1/v2 readers and validation stay supported. A proposed v3 separates deterministic decision content from operational measurements and gives successful fallback its own field. The final shape requires Maintainer Decision MD-10 before a contract/schema task.
 4. **`MeasurementRunner`:** Lab retains trace ownership and run finalization. It should depend on a small measured-session protocol so both runtime battles and local oracle evaluation sessions can be driven without importing a Lab adapter into Runtime.
-5. **Bindings:** execution must resolve every digest before a run: runtime and contract sets, implementation, environment, Showdown source/build, engine source/build/wheel, capability manifest/evidence, differential corpus, ruleset, closed-world prior/distribution, and search configuration.
+5. **Bindings:** execution must resolve every digest before a run: runtime and contract sets, implementation, environment, Showdown source/build, engine source/build/wheel, capability manifest/evidence, differential corpus, ruleset, closed-world prior/distribution, search configuration/specifications, analyzer, and concrete Development inputs. Existing run-binding v4 fixes `run_purpose` to `synthetic_acceptance`; it cannot bind a real Development run and must remain unchanged.
 
 ## 3. Verified upstream facts and binding policy
 
@@ -125,7 +125,7 @@ The facts in this section are a dated research snapshot, not selected BattleBeli
 
 - The observed upstream `master` revision was `6a1836dd71c0718e923206f3d089e61074410868`; BattleBelief has not selected it as the M2 pin.
 - The package metadata reports version `0.11.11`, MIT licensing, `node >=16`, and a lockfile with `lockfileVersion: 2`.
-- At that same revision, the official launcher and server entry point reject Node versions below 22, while the official test workflow still names Node 18.x. This conflict prevents Task 23 from selecting a supported Node version.
+- At that same revision, `package.json` declares `node >=16`. The launcher and server entry point do not compare versions: they test only whether the global `fetch` symbol exists, then emit a Node-22 error message when that feature test fails. The launcher comment says `fetch` was introduced in Node 18, and the official test workflow validates Node 18.x. The message therefore does not establish that every version below 22 is rejected or unsupported. BattleBelief has not selected a Node version.
 - The official simulator documentation defines newline-delimited standard-input operation and says each simulated battle uses its own subprocess. The direct simulator request form has no live-server `rqid`.
 
 ### `poke-engine` snapshot observed on 2026-08-05
@@ -134,7 +134,8 @@ The facts in this section are a dated research snapshot, not selected BattleBeli
 - The repository is MIT-licensed. Cargo exposes `gen9` and `terastallization` features, but the Python binding crate defaults to the engine's `gen4` feature. A qualified Gen 9 artifact therefore needs explicit, recorded features.
 - The Python build metadata uses `maturin >=1,<2` and declares no Python version range. The repository requirements file pins `maturin==1.7.1` for its own helper flow.
 - The upstream publish workflow builds an sdist. PyPI release `0.0.48` exposed only `poke_engine-0.0.48.tar.gz` when inspected, not platform wheels, and declared no `Requires-Python`. Its observed PyPI SHA-256 was `070010686f2aedff11e25137e696e301ccd80fd57c805d255464067fc905ca12`; this is an upstream sdist fact, not an approved BattleBelief artifact digest.
-- The upstream project describes mechanics limitations; its Python API exposes state transition/reversal and Monte Carlo search with duration or exact iterations and thread controls. None of those interfaces is evidence of Gen 9 parity.
+- The Python binding is built as a native `cdylib`. Its inspected public search functions accept duration/iterations/thread controls but expose no cancellation token or kill interface. A Python-side monotonic clock therefore cannot by itself prove recovery from a blocking native call.
+- The upstream project describes mechanics limitations; its Python API exposes state transition/reversal and Monte Carlo search with duration or exact iterations and thread controls. None of those interfaces is evidence of Gen 9 parity or a hard outer deadline.
 
 ### Reproducible binding rule for future tasks
 
@@ -172,11 +173,11 @@ No decision below is resolved by this plan. The recommendation is a review propo
 
 ### MD-03 — Node version and Showdown lifecycle
 
-- **Options:** (A) select the lowest Node 22 patch validated against the chosen Showdown commit; (B) use the package metadata minimum Node 16; (C) follow the upstream CI Node 18 cell.
-- **Advantages:** A follows executable checks; B follows declared packaging metadata; C follows an official tested workflow.
-- **Disadvantages:** the three upstream signals conflict; B and C are rejected by current entry-point checks, while A exceeds package/CI declarations and still needs Windows/Ubuntu proof.
-- **Recommendation:** A only after a dedicated probe confirms build, simulator, server lifecycle, and both CI OS cells. Record the exact Node binary version and digest/source in the environment manifest.
-- **Consequences:** the conflict must be cited in the approval record. Task 24 may not claim support from metadata alone.
+- **Options:** (A) qualify an exact Node 22 LTS patch; (B) qualify an exact Node 20 LTS patch; (C) qualify an exact Node 18 patch matching upstream CI; (D) rely only on the declared package minimum Node 16.
+- **Advantages:** A follows the launcher's stated recommendation; B tests the intervening LTS family; C follows the official workflow and satisfies the actual global-`fetch` feature test; D follows package metadata.
+- **Disadvantages:** the upstream metadata, feature test/message, and CI do not define one coherent support floor. Node 18 is end-of-life according to the launcher's own comment; Node 16 does not normally supply the required global `fetch`; Node 20/22 still need exact Windows/Ubuntu proof for the selected commit.
+- **Recommendation:** probe exact maintained Node 18, 20, and 22 releases against the selected Showdown commit, including clean `npm ci`, build, stdio simulator, and loopback server lifecycle. Prefer a validated Node 22 LTS patch for BattleBelief after those results, but do not justify it as an upstream-enforced `<22` rejection.
+- **Consequences:** the approval record must distinguish declared metadata, the actual `fetch` feature test, emitted message, upstream CI coverage, and BattleBelief's independently supported version. Task 24 may not claim support from any one signal alone.
 
 ### MD-04 — Oracle process boundary
 
@@ -192,7 +193,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A preserves semantic honesty and lets the safety gate compare typed identities; B minimizes code changes; C avoids touching runtime identity types.
 - **Disadvantages:** A requires backward-compatible schema/model evolution; B falsely equates two upstream protocols; C duplicates decision/safety/measurement orchestration.
 - **Recommendation:** A: a per-battle monotonic oracle sequence plus canonical request digest, never a fabricated server `rqid`.
-- **Consequences:** approval is required before Task 33; live M1 records remain readable and unchanged.
+- **Consequences:** approval is required before the dedicated Task-35 record/identity evolution; live M1 records remain readable and unchanged.
 
 ### MD-06 — engine-neutral `TransitionModel` port
 
@@ -200,7 +201,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A keeps algorithms pure and testable; B is small; C closely mirrors the backend.
 - **Disadvantages:** A requires deliberate state/action/view contracts; B weakens invariants and typing; C violates package boundaries and couples Core to backend serialization.
 - **Recommendation:** A, with methods for root preparation, player information view/key, per-player legal actions, joint transition/chance resolution, terminal/value evaluation, health/identity, and deterministic transition-work accounting.
-- **Consequences:** Task 27 freezes the public protocol only after adapter-spike evidence from Task 25; backend-specific strings remain Runtime-private.
+- **Consequences:** Task 26 freezes the Core protocol from documented engine requirements and test fakes before any public Runtime mapper exists. Task 25 may contain only a private artifact/sentinel probe and must not publish state/action mapping APIs. Backend-specific strings remain Runtime-private.
 
 ### MD-07 — observed-state, world, and action mapping
 
@@ -216,7 +217,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A can express the accepted four-way semantics and evidence links; B avoids migration; C is flexible.
 - **Disadvantages:** A requires a normative contract/schema decision and v1 compatibility; B cannot faithfully encode unknown and build/platform evidence; C makes eligibility unstable.
 - **Recommendation:** A, using an immutable catalog such as `gen9.mechanic.terastallization.damage` and `gen9.transition.status.*`, with catalog version/digest and per-ID evidence. Preserve v1 readers; do not mutate v1.
-- **Consequences:** this plan identifies a real expressiveness gap but does not amend the contract. Tasks 26-28 are blocked on Maintainer approval.
+- **Consequences:** this plan identifies a real expressiveness gap but does not amend the contract. Tasks 26-29 are blocked on Maintainer approval.
 
 ### MD-09 — versioned differential corpus format
 
@@ -232,7 +233,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A permits byte-identical deterministic rows and full live telemetry; B is convenient for analysis; C avoids a new schema.
 - **Disadvantages:** A adds a linked record/schema; B makes rows clock-dependent; C violates v2 status invariants and conflates successful fallback with failure.
 - **Recommendation:** A. Search summary may include algorithm/mode/config digest, fixed work, worlds/simulations, chosen safe-set index, eligibility outcome, and stable fallback class. It excludes hidden worlds, opponent-private data, wall-clock timestamps, hostnames, and local paths.
-- **Consequences:** Tasks 32-34 need versioned schemas/readers and migration tests; v1/v2 canonical vectors remain unchanged.
+- **Consequences:** Task 35 owns versioned schemas/readers and migration tests before operating-mode or Runtime integration PRs; v1/v2 canonical vectors remain unchanged.
 
 ### MD-11 — evaluation-only closed-world prior artifact
 
@@ -240,15 +241,15 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A stays within M2 and is auditable; B is more representative; C is simple.
 - **Disadvantages:** A is limited and cannot support external strength claims; B pulls M3 ingestion/meta work forward; C lacks independent provenance/versioning.
 - **Recommendation:** A, with complete correlated opponent-team worlds, rational or exact decimal masses, source/license metadata, prior digest, distribution transform version, and no `OTHER`.
-- **Consequences:** the Maintainer must approve source/license and scope. Task 29 cannot use protected-pool or replay information.
+- **Consequences:** the Maintainer must approve source/license and scope. Task 30 cannot use protected-pool or replay information.
 
 ### MD-12 — composition of `deterministic_benchmark` and `live_anytime`
 
 - **Options:** (A) one pure Core search kernel with distinct Runtime budget controllers; (B) two algorithm implementations; (C) simulate live time using fixed work.
 - **Advantages:** A shares semantics but keeps clock out of Core; B isolates behavior; C simplifies testing.
 - **Disadvantages:** A needs a careful interrupt protocol; B can drift; C does not implement an anytime deadline.
-- **Recommendation:** A. Core advances explicit work units and exposes safe checkpoints. Runtime supplies fixed work or an injected monotonic deadline. The reference deterministic path is one thread.
-- **Consequences:** live output is not deterministic evidence or a teacher target. Timeout returns the last independently safety-checkable incumbent.
+- **Recommendation:** A for algorithm semantics, conditional on MD-18 for backend-call isolation. Core advances explicit work units and exposes safe checkpoints. Runtime supplies fixed work or an injected monotonic deadline. The reference deterministic path is one thread.
+- **Consequences:** live output is not deterministic evidence or a teacher target. A claim that timeout always returns the last independently safety-checked incumbent is permitted only for an execution boundary that can regain control by the deadline; otherwise the public contract must say soft deadline.
 
 ### MD-13 — calibration evidence and implementation/run binding
 
@@ -256,7 +257,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A is explicit and preserves history; B may avoid schemas; C minimizes filenames.
 - **Disadvantages:** A adds versions and migration work; B can hide missing bindings; C breaks frozen evidence.
 - **Recommendation:** A. First prove whether calibration-evidence v3 is sufficient; version it only if a required fact cannot be represented. Existing implementation/run versions remain valid and unchanged.
-- **Consequences:** Task 34 must demonstrate closure from run binding to source bytes and artifacts before any registered evaluation.
+- **Consequences:** Task 40 must demonstrate closure from run binding to source bytes and artifacts before any registered evaluation.
 
 ### MD-14 — failure and fallback classification
 
@@ -272,15 +273,15 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A avoids premature status claims; B aligns API availability; C signals intent early.
 - **Disadvantages:** A temporarily understates feature presence; B may imply qualification before evidence; C contradicts this task's boundary.
 - **Recommendation:** A. The evidence task proposes, but does not assume, the exact version/phase transition.
-- **Consequences:** Task 23 changes neither value. Task 36 is blocked on Maintainer acceptance and real evidence.
+- **Consequences:** Task 23 changes neither value. Task 42 is blocked on Maintainer acceptance and real evidence.
 
-### MD-16 — DUCT work budget and non-registered configuration values
+### MD-16 — outcome-blind algorithm specification and configuration ownership
 
-- **Options:** (A) define and precommit one transition-work-matched DUCT configuration through a new calibration specification/binding before evaluation; (B) reuse a backend/default configuration; (C) tune DUCT after observing the registered comparison.
-- **Advantages:** A makes mechanism budgets comparable and outcome-blind; B is quick; C may find a stronger configuration.
-- **Disadvantages:** A requires an explicit parameter owner and calibration evidence; B is unbound and backend-dependent; C contaminates the registered comparison.
-- **Recommendation:** A. Keep the accepted Search-v0 semantics fixed, calibrate only parameters the registration permits, bind the complete configuration and selection procedure before Task 35, and report both deployment and mechanism work.
-- **Consequences:** Task 34 must stop if the accepted registration/contracts do not identify who owns a required parameter. No value may be invented by this plan or selected from evaluation outcomes.
+- **Options:** (A) create separate versioned determinization and DUCT algorithm specifications before either implementation; (B) leave missing behavior to implementation defaults; (C) add fields to the frozen M1.5 execution artifact.
+- **Advantages:** A binds all unregistered semantics without changing the freeze; B is quick; C makes one artifact appear complete.
+- **Disadvantages:** A adds two specification schemas/artifacts and an explicit owner; B permits outcome-dependent or backend-dependent interpretation; C violates the frozen-artifact boundary.
+- **Recommendation:** A. Task 32 must bind root-work allocation and remainder handling, opponent policy, simultaneous-action selection, leaf value, chance treatment, backup rule, exact depth counting, terminal handling, numeric/tie rules, and every algorithm parameter. It must also precommit the DUCT exploration/configuration and transition-work matching procedure. Neither Task 33 nor Task 34 starts before these artifacts merge.
+- **Consequences:** the frozen M1.5 registration and execution manifest remain byte-identical. Task 40 later closes the new specification digests through implementation/run bindings and calibration evidence. No value may be invented in implementation or selected from evaluation outcomes.
 
 ### MD-17 — M2 evaluation result and evidence-index schemas
 
@@ -288,7 +289,31 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Advantages:** A makes both budget views and failure counts machine-checkable without changing old schemas; B may reduce schema count; C is easy to read.
 - **Disadvantages:** A adds schema governance; B risks coupling synthetic M1.5 records to M2 semantics; C cannot enforce closure or prevent omitted failures.
 - **Recommendation:** A, with no duplicated thresholds and with existing measurement records referenced by digest.
-- **Consequences:** Tasks 35-36 create the exact schemas named below only after approval; all earlier schemas stay valid and byte-identical.
+- **Consequences:** Task 38 creates result/report schemas using synthetic golden vectors; Task 42 creates the evidence-index schema. All earlier schemas stay valid and byte-identical.
+
+### MD-18 — engine execution and deadline isolation
+
+- **Options:** (A) execute native engine calls in a separate, killable worker process and treat its IPC protocol/artifact identity as part of Runtime; (B) keep the PyO3 extension in-process, promise only a soft deadline, and require qualified maximum call latency; (C) use an in-process path for deterministic fixed-work mode and a worker path for live hard-deadline mode.
+- **Advantages:** A can recover control after a hung native call; B minimizes IPC and serialization overhead; C keeps benchmark overhead low while protecting live operation.
+- **Disadvantages:** A adds worker startup, state transfer, crash cleanup, and cross-platform process semantics; B cannot guarantee a 2,000-ms return when native code blocks and needs a defensible latency bound; C adds two execution paths whose mapping and results need equivalence tests.
+- **Recommendation:** C, subject to measured state-transfer overhead and deterministic equivalence. If the Maintainer rejects a worker, the public `live_anytime` guarantee must be explicitly soft and eligibility must bind a maximum single-call latency qualification; it must not claim hard deadline recovery.
+- **Consequences:** Task 36 cannot implement or test hard-deadline return until this decision is approved. Worker source/protocol/version, process-tree termination, artifact digest, timeout class, and crash evidence become binding inputs. A Python monotonic clock alone is not cancellation.
+
+### MD-19 — concrete M2 development inputs
+
+- **Options:** (A) construct and seal a small M2-specific development set under the frozen pool/schedule rules; (B) reuse M1.5 synthetic fixtures as development evaluation; (C) defer all registered evaluation.
+- **Advantages:** A supplies real team/policy/cluster/pool/schedule/seed bindings while keeping protected pools closed; B reuses existing artifacts; C avoids premature input selection.
+- **Disadvantages:** A requires explicit team and opponent-policy source/license/selection approval; B is `synthetic_acceptance`, not a concrete registered development pool; C prevents Task 41.
+- **Recommendation:** A in a dedicated Task 39 before run binding. Seal hero teams, opponent teams, opponent policies, exact-team clusters, base matchups, balanced side assignments, schedule blocks, and seed families under the frozen M1.5 construction IDs.
+- **Consequences:** the Maintainer must approve the input sources and selection procedure before artifacts are viewed in registered outcomes. Selection, Power Pilot, and Release Holdout remain unopened and absent.
+
+### MD-20 — differential harness versus qualification evidence
+
+- **Options:** (A) merge a synthetic-only runner/corpus PR, then a separate data-only qualification PR; (B) implement the runner and produce exact claims in one PR; (C) keep all capabilities unknown in M2.
+- **Advantages:** A prevents runner/classifier/schema edits after real divergences are visible; B is fewer PRs; C is maximally conservative.
+- **Disadvantages:** A adds one serial boundary; B weakens preregistration of divergence handling; C prevents engine-qualified search.
+- **Recommendation:** A. Task 28 freezes code, schemas, classifier, and reviewed corpus using synthetic/golden cases; Task 29 runs already-merged tooling against exact bound artifacts and changes only data/evidence manifests.
+- **Consequences:** Task 29 may not change Python, schemas, classifier rules, corpus cases, or capability taxonomy. A discovered deficiency produces a failed/invalid qualification and a later separately reviewed successor, never an in-run edit.
 
 ## 5. Target architecture and import boundaries
 
@@ -324,20 +349,26 @@ Every implementation task starts only from the merged predecessor. Each PR has o
 |---|---|---|
 | 23 (A) | This plan only | Establishes decisions and file-level work without code or contract mutation. |
 | 24 (B) | Local Showdown oracle and Lab oracle smoke | Establishes the authoritative side before introducing the non-authoritative engine. |
-| 25 (C) | `poke-engine` artifact, Runtime `[search]`, real Gen-9 sentinel | Proves an installable backend artifact without claiming mechanics eligibility. |
-| 26 (D) | Capability catalog and manifest/schema evolution | Makes the qualification vocabulary reviewable before decision logic or favorable evidence exists. |
-| 27 (E) | Core eligibility, transition port, fail-closed heuristic fallback | Reviews the safety boundary against synthetic fakes before differential qualification. |
-| 28 (F) | Versioned differential corpus and runner | Produces evidence and qualified manifests without adding search algorithms. |
-| 29 (G) | Evaluation-only closed-world distribution | Reviews hidden-information semantics and provenance independently of search. |
-| 30 (H) | `determinization_search_v0` | Implements only the already registered deterministic baseline. |
-| 31 (I) | `information_set_duct_v0` | Reviews every information-set invariant against the same distribution. |
-| 32 (J) | Deterministic and live-anytime operating modes | Adds work/deadline control after algorithm semantics are stable. |
-| 33 (K) | Runtime composition, public Search API, session integration | Integrates qualified pieces while preserving the post-search safety gate. |
-| 34 (L) | Implementation/run bindings and calibration evidence | Closes provenance before evaluation produces decision evidence. |
-| 35 (M1) | Registered development evaluation | Runs the two frozen comparisons without changing their gates or opening pools. |
-| 36 (M2) | M2 acceptance/evidence report | Separates evidence review and any status proposal from experiment execution. |
+| 25 (C) | `poke-engine` source/build/wheel verification, Runtime `[search]`, real Gen-9 sentinel | Proves only artifact identity and native health; it publishes no mapping or transition API before Core owns that contract. |
+| 26 (D) | Core capability types, engine-neutral search foundations, `TransitionModel`, and `WorldDistributionIdentity` | Freezes the public Core vocabulary and port before a Runtime adapter implements it. |
+| 27 (E) | Runtime `poke-engine` state/action mapping and port conformance | Reviews backend mapping against an already merged Core contract, with no eligibility or search algorithm. |
+| 28 (F) | Differential corpus, classifier, and runner harness using synthetic/golden cases | Freezes comparison code and divergence semantics before real engine results are visible. |
+| 29 (G) | Data-only differential qualification | Runs merged tooling against exact artifacts; changes evidence/manifests only and cannot edit code, schema, corpus, or classifier. |
+| 30 (H) | Evaluation-only closed-world distribution | Reviews hidden-information semantics and provenance independently of eligibility and search. |
+| 31 (I) | Pure Core eligibility and fail-closed heuristic policy | Consumes generic distribution identity and exact capability evidence only after both are defined. |
+| 32 (J) | Outcome-blind determinization and DUCT algorithm specifications | Closes all unregistered selection, backup, value, chance, depth, allocation, and configuration semantics before implementation. |
+| 33 (K) | `determinization_search_v0` | Implements one merged specification and the frozen registered values without DUCT or clocks. |
+| 34 (L) | `information_set_duct_v0` | Implements the second merged specification and each Search-v0 invariant on the same distribution. |
+| 35 (M) | Request identity, Decision Record v3, Search Decision/Measurement schema and contract evolution | Makes record/canonical-byte semantics reviewable before modes or Runtime composition use them. |
+| 36 (N) | Deterministic/live operating modes and approved engine deadline isolation | Resolves fixed-work, checkpoints, worker/soft-deadline semantics, and canonical records before session integration. |
+| 37 (O) | Runtime composition, public Search API, session and telemetry integration | Integrates only already versioned records, modes, adapter, and eligibility while preserving the final safety gate. |
+| 38 (P) | Synthetic-only evaluation/statistical harness | Implements metrics, technical outcomes, `weighted_cluster_bootstrap_v1`, result/report schemas, and golden vectors without real registered outcomes. |
+| 39 (Q) | Construct and seal concrete M2 development inputs | Creates team, opponent-policy, cluster, pool, schedule, side, and seed manifests without opening protected pools. |
+| 40 (R) | Implementation/run bindings and calibration evidence | Closes real artifacts, algorithm specifications, development inputs, and outcome-blind calibration before a run. |
+| 41 (S) | Data-only registered development run | Uses merged analyzer and closed bindings; permits only inputs, raw results, measurements, and generated reports. |
+| 42 (T) | M2 acceptance/evidence report | Separates evidence and any status proposal from both analyzer implementation and outcome generation. |
 
-No PR combines oracle, engine artifact, eligibility, both search algorithms, and evaluation. Tasks 24-36 may be renumbered by the Maintainer if repository scheduling requires it, but their dependency order and scopes remain serial unless a revised accepted plan says otherwise.
+No PR combines oracle, engine artifact, eligibility, both search algorithms, analyzer implementation, and registered outcomes. Tasks 24-42 are strictly serial: each starts from the merged predecessor. There is no “independently in time” exception. Work may be explored locally only when it is discarded or rebased after the owning predecessor merges; no dependent PR is mergeable out of order.
 
 ## 7. Detailed implementation tasks
 
@@ -377,7 +408,7 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 
 **Non-goals:** all production code, dependencies, schemas, manifests, registrations, evidence, version changes, commits, pushes, and PR creation.
 
-**Prerequisite:** baseline commit `cfc526ca1558869e674769daf19b9aa09c00abf0` with M1.5 complete and frozen. **Blocks:** every later task until the Maintainer selects or defers its blocking MD items. **Safe review boundary:** documentation-only scope makes accidental milestone expansion visible in one diff.
+**Prerequisites:** baseline commit `cfc526ca1558869e674769daf19b9aa09c00abf0` with M1.5 complete and frozen. **Blocks:** every later task until the Maintainer selects or defers its blocking MD items. **Safe review boundary:** documentation-only scope makes accidental milestone expansion visible in one diff.
 
 ### Task 24 (B): Add the local Pokémon Showdown oracle and Lab oracle smoke
 
@@ -432,7 +463,7 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 
 **Non-goals:** `poke-engine`, differential comparison, search, eligibility, closed-world prior, Runtime integration, public battle networking, or any parity claim.
 
-**Prerequisites:** Task 23 approval plus MD-03, MD-04, and MD-05 disposition. **Blocks:** Tasks 28 and 35. **Safe review boundary:** it proves only the authoritative oracle and its hermetic lifecycle; no non-authoritative decision path is present.
+**Prerequisites:** Task 23 approval plus MD-03 and MD-04 disposition; MD-05 may remain pending until Task 35 because this task's oracle session uses its own typed Lab identity. **Blocks:** Tasks 28-29, 37, and 41. **Safe review boundary:** it proves only the authoritative oracle and its hermetic lifecycle; no non-authoritative decision path is present.
 
 ### Task 25 (C): Produce and verify the `poke-engine` artifact, Runtime `[search]`, and Gen-9 sentinel
 
@@ -440,9 +471,9 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 
 **Files:**
 
-- Create: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/{__init__.py,artifact.py,errors.py,state_mapper.py,action_mapper.py,backend.py,sentinel.py}`.
+- Create: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/{__init__.py,artifact.py,errors.py,native_probe.py,sentinel.py}`. `native_probe.py` is private and sentinel-only; it is not the future `TransitionModel` adapter.
 - Create: `packages/battlebelief-runtime/src/battlebelief_runtime/search_status.py` for extra availability and sanitized artifact identity.
-- Create: `packages/battlebelief-runtime/tests/adapters/poke_engine/{test_artifact.py,test_import_boundary.py,test_state_mapper.py,test_action_mapper.py,test_backend.py,test_sentinel.py}`.
+- Create: `packages/battlebelief-runtime/tests/adapters/poke_engine/{test_artifact.py,test_import_boundary.py,test_native_probe.py,test_sentinel.py}`.
 - Create: `packages/battlebelief-runtime/tests/fixtures/poke_engine/{gen9_transition.json,gen9_tera_transition.json,minimal_search.json}`.
 - Create: `schemas/manifests/engine-source.schema.json`, `engine-build.schema.json`, and `engine-artifact-index.schema.json` **[NEW SCHEMAS v1]**, plus valid examples.
 - Create: `tools/build_poke_engine_wheel.py`, `tools/verify_poke_engine_artifact.py`, and `tools/smoke_gen9_engine.py`.
@@ -453,9 +484,9 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 - Modify: `tools/check_schemas.py`, `tools/check_versions.py` if extra metadata is governed, `tools/smoke_packages.py`, their tests, and `.github/workflows/pr.yml` for isolated Runtime `[search]` cells and the sentinel.
 - Delete: none.
 
-**Public types and APIs:** `EngineArtifactIdentity`, `EngineAvailability`, `PokeEngineAdapter`, `PokeEngineMappingFailure`, and `run_gen9_sentinel()` are **[PUBLIC RUNTIME API]** only through curated exports. Backend module objects and raw state strings are private. Base `import battlebelief_runtime` and status inspection work without the extra.
+**Public types and APIs:** only `EngineArtifactIdentity`, `EngineAvailability`, and `run_gen9_sentinel()` are **[PUBLIC RUNTIME API]** through curated exports. There is no public `PokeEngineAdapter`, state mapper, action mapper, transition backend, prepared world, or mapping failure in this task. `native_probe.py`, extension objects, and raw state strings are private and may be replaced after Task 26 freezes the Core port. Base `import battlebelief_runtime` and status inspection work without the extra.
 
-**Allowed imports:** Runtime may import Core ports/types. Only `battlebelief_runtime.adapters.poke_engine` may import `poke_engine`; no Core or Lab module imports the extension directly. Runtime must not import Lab.
+**Allowed imports:** only `battlebelief_runtime.adapters.poke_engine` may import `poke_engine`; no Core or Lab module imports the extension directly. This task does not depend on a not-yet-defined Core transition port. Runtime must not import Lab.
 
 **Artifact/build requirements:**
 
@@ -464,38 +495,41 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 - Build into an isolated output directory and install the finished wheel into a fresh environment for each supported Python/OS cell. Public Runtime never shells out to Cargo/maturin and never silently accepts the upstream sdist.
 - Before backend creation, verify distribution name/version, import metadata, wheel/installed-files digest strategy, sidecar artifact manifest, selected features, target/environment compatibility, and adapter compatibility. Any disagreement fails closed.
 
-**Real sentinel:** create a Gen 9 state; prove a normal transition and reversible/state-consistent result; exercise an actual Terastallization transition; enumerate/map legal actions; run the minimal search entry point with exact iterations, one thread, and a fixed seed if supported; assert a legal returned action and stable backend health. If upstream does not expose seed control adequate for a deterministic sentinel, record that as an unqualified or health-only property rather than faking determinism.
+**Real sentinel:** through the private probe, create a Gen 9 state; prove a normal transition and reversible/state-consistent result; exercise an actual Terastallization transition; enumerate native legal choices without asserting BattleBelief mapping semantics; run the native minimal search entry point with exact iterations, one thread, and a fixed seed if supported; assert a native result and stable artifact health. If upstream does not expose seed control adequate for a deterministic sentinel, record that as an unqualified or health-only property rather than faking determinism.
 
-**Tests first:** absent extra; wrong distribution; source/build/wheel/feature/platform/adapter mismatch; corrupted sidecar; a fake import shadow; Gen-4 default artifact; mapper rejects unsupported fields/actions; Tera fixture; transition apply/reverse; minimal search; backend exception sanitization; no import on base package import; wheel installation into a clean environment.
+**Tests first:** absent extra; wrong distribution; source/build/wheel/feature/platform mismatch; corrupted sidecar; a fake import shadow; Gen-4 default artifact; Tera fixture; native transition apply/reverse; native minimal search; probe exception sanitization; no import on base package import; wheel installation into a clean environment; public-export test rejecting mapper/adapter symbols.
 
 **Implementation checklist:**
 
-- [ ] Add failing artifact-verification, no-extra import, mapping, transition, Tera, minimal-search, and isolated-install tests.
+- [ ] Add failing artifact-verification, no-extra import, private-probe, transition, Tera, minimal-search, public-export, and isolated-install tests.
 - [ ] Implement the controlled source/build/wheel manifests and explicit Gen-9/Terastallization build command.
-- [ ] Implement Runtime-only artifact verification, mapping, backend health, and sanitized failure types.
+- [ ] Implement Runtime-only artifact verification, private native probing, artifact health, and sanitized failure types without a public mapping API.
 - [ ] Implement the real sentinel and isolated base/`[search]` package smokes on approved cells.
 - [ ] Run focused suites and full gates; retain manifests/results but no unapproved binary publication.
 
-**Failure/fallback:** missing extra or artifact, wrong digest/features/platform, mapping mismatch, sentinel failure, import error, panic/exception, or backend health failure returns an unavailable/unhealthy adapter identity. No search call is allowed. Runtime composition later maps it to `heuristic_v0`; this task does not yet add composition.
+**Failure/fallback:** missing extra or artifact, wrong digest/features/platform, sentinel failure, import error, panic/exception, or native health failure returns an unavailable/unhealthy artifact identity. No BattleBelief search call is allowed. Runtime composition later maps it to `heuristic_v0`; this task does not yet add mapping or composition.
 
 **Provenance/digests:** source, build, wheel, installed verification, adapter, Python, OS/architecture, and sentinel fixture/result digests are resolvable from the artifact index. No local path, hostname, compiler cache path, or secret enters the canonical manifest.
 
 **CI/package smokes:** base Runtime without `[search]`; isolated `[search]` wheel install on every approved Python/OS cell; `tools/smoke_gen9_engine.py`; architecture import confinement; package build/sdist/wheel smoke. Unsupported matrix cells explicitly skip qualification and fail if marked supported.
 
-**Acceptance criteria:** a real approved wheel—not a mock—passes isolated installation and the Gen-9/Tera/transition/minimal-search sentinel; the base package has no engine dependency; artifact mismatch is fail-closed; no parity or capability-exact claim is made.
+**Acceptance criteria:** a real approved wheel—not a mock—passes isolated installation and the Gen-9/Tera/native-transition/minimal-search sentinel; the base package has no engine dependency; artifact mismatch is fail-closed; the public Runtime surface exposes no state/action mapper or transition adapter; no parity or capability-exact claim is made.
 
 **Non-goals:** capability qualification, Showdown differential evidence, Core port/eligibility, algorithms, evaluation, or publishing an artifact without separate authorization.
 
-**Prerequisites:** Task 23 and MD-01/02 approval. The adapter spike may inspect Task 24 interfaces but does not depend on oracle code. **Blocks:** Tasks 26-28 and 33. **Safe review boundary:** reviews binary provenance and backend health independently from mechanics claims.
+**Prerequisites:** Tasks 23-24 and MD-01/02 approval. **Blocks:** Tasks 26-29 and 36-37. **Safe review boundary:** reviews binary provenance and native artifact health independently from Core API, mapping, mechanics claims, or deadline guarantees.
 
-### Task 26 (D): Version the capability catalog and Engine Capability Manifest
+### Task 26 (D): Freeze Core capability and transition/search foundations
 
-**Purpose:** Establish a stable, evidence-addressable vocabulary for exact, bounded, unsupported, and unknown mechanics before eligibility can trust it.
+**Purpose:** Establish the capability vocabulary, engine-neutral search types, generic world-distribution identity, and `TransitionModel` port before Runtime publishes any mapping adapter.
 
 **Files:**
 
 - Create: `packages/battlebelief-core/src/battlebelief_core/domain/engine_capabilities.py`.
+- Create: `packages/battlebelief-core/src/battlebelief_core/domain/search.py`.
+- Create: `packages/battlebelief-core/src/battlebelief_core/ports/transition_model.py` and `random_source.py`.
 - Create: `packages/battlebelief-core/tests/domain/test_engine_capabilities.py`.
+- Create: `packages/battlebelief-core/tests/domain/test_search_types.py` and `tests/ports/{test_transition_model_contract.py,test_random_source_contract.py}`.
 - Create: `schemas/manifests/engine-capability-v2.schema.json` **[NEW SCHEMA v2]** and `engine-capability-evidence.schema.json` **[NEW SCHEMA v1]**.
 - Create: `schemas/catalogs/engine-capability-catalog-v1.schema.json` **[NEW SCHEMA v1]**.
 - Create: `artifacts/gen9ou/m2/engine-capability-catalog-v1.json` and schema examples after the Maintainer approves the exact taxonomy.
@@ -504,19 +538,21 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 - Modify: `docs/contracts/manifest-schemas.md`, `tools/check_schemas.py`, schema tests, canonicalization tests, and architecture exports.
 - Delete: none; preserve `schemas/manifests/engine-capability.schema.json` v1 and its examples.
 
-**Public types and APIs:** `CapabilityId`, `CapabilityCatalog`, `CapabilityStatus`, `CapabilityClaim`, `EngineCapabilityManifest`, and `CapabilityEvidenceRef` are **[PUBLIC CORE API]** immutable value types. They parse canonical manifests without filesystem access.
+**Public types and APIs:** `CapabilityId`, `CapabilityCatalog`, `CapabilityStatus`, `CapabilityClaim`, `EngineCapabilityManifest`, `CapabilityEvidenceRef`, `PreparedWorld`, `SearchAction`, `PlayerView`, `InformationStateKey`, `TransitionOutcome`, `TransitionWork`, `TransitionModel[WorldT, ActionT]`, `RandomStream`, and `WorldDistributionIdentity` are **[PUBLIC CORE API]** immutable values/protocols. `WorldDistributionIdentity` contains only algorithm-neutral identity/support fields—distribution ID/version/digest, generation/format/ruleset digest, public-evidence digest, support digest/count, and availability status—not a Task-30 concrete distribution class.
 
-**Allowed imports:** Core standard library and existing Core canonicalization/types only. Manifest bytes are supplied by callers; Core performs no file, environment, Runtime, Lab, or engine import.
+**Allowed imports:** Core standard library and existing Core canonicalization/types only. Manifest bytes, prepared worlds, and identities are supplied by callers; Core performs no file, environment, Runtime, Lab, engine, clock, process, or network import.
 
 **Semantics:** each catalog ID has one status: `exact`, `bounded_approximation`, `unsupported`, or `unknown`. `exact` requires evidence refs bound to the engine artifact, oracle, ruleset, and corpus. `bounded_approximation` includes an explicit bound/condition but remains search-ineligible wherever exact is required. Missing catalog IDs are interpreted as unknown, not exact. Duplicate/overlapping claims, unknown free-form IDs, or evidence bound to another artifact are invalid.
 
-**Tests first:** v1 remains valid under its existing schema; v2 round-trip/canonical digest; missing ID becomes unknown; all four statuses; duplicate and contradictory IDs; malformed namespaces; evidence/artifact mismatch; bounded approximation never parses as exact; catalog-digest mismatch; sorted canonical output; v1-to-v2 migration keeps original facts without elevating claims.
+The transition port defines root preparation, per-player information views/keys, per-player legal engine-neutral actions, joint transition/chance outcomes, terminal state/value access, backend health/identity, and explicit transition-work accounting. It exposes neither `poke-engine` strings nor a concrete closed-world type. Test fakes, not Task-25 probe internals, drive the public signature review.
+
+**Tests first:** v1 remains valid under its existing schema; v2 round-trip/canonical digest; missing ID becomes unknown; all four statuses; duplicate and contradictory IDs; malformed namespaces; evidence/artifact mismatch; bounded approximation never parses as exact; catalog-digest mismatch; sorted canonical output; v1-to-v2 migration; protocol conformance fake; immutable prepared world/action/view/outcome values; generic distribution identity without Task-30 imports; deterministic transition-work counting; architecture negatives for engine/file/clock/process/network dependencies.
 
 **Implementation checklist:**
 
 - [ ] Obtain MD-08 and normative-change approval before editing a contract or schema index.
 - [ ] Add failing v2/catalog/evidence examples, semantic tests, canonical vectors, and v1 compatibility tests.
-- [ ] Implement immutable Core value types and strict four-state/catalog/evidence validation.
+- [ ] Implement immutable Core capability/search/distribution-identity types, transition/random protocols, and strict four-state/catalog/evidence validation.
 - [ ] Add the approved catalog and an explicitly unqualified initial manifest; do not create exact claims.
 - [ ] Run schema, docs, canonicalization, Core, package, and full repository gates.
 
@@ -524,71 +560,58 @@ Paths below are repository-relative. “Delete: none” is intentional: existing
 
 **Provenance/digests:** manifest v2 binds catalog, engine source/build/artifact, adapter, oracle source/build, ruleset, corpus, evidence set, supported environment matrix, generation/format, and canonicalization contract digests.
 
-**CI/package smokes:** schema example validation, canonicalization vectors, v1 compatibility, manifest-closure tool smoke, Core-only import smoke.
+**CI/package smokes:** schema example validation, canonicalization vectors, v1 compatibility, manifest-closure tool smoke, Core-only import smoke, transition-port fake conformance, and forbidden-import fixtures.
 
-**Acceptance criteria:** the four accepted statuses are unambiguous; v1 artifacts remain readable and unchanged; no capability is marked exact in the initial catalog/manifest without Task 28 evidence; schema and Core types agree byte-for-byte on canonicalization.
+**Acceptance criteria:** the four accepted statuses are unambiguous; v1 artifacts remain readable and unchanged; no capability is marked exact before Task 29 evidence; the complete engine-neutral port and generic distribution identity are public and tested before Runtime mapping; no Task-25 private probe type leaks into Core.
 
-**Non-goals:** evidence generation, eligibility decisions, engine calls, search, or changing registered gates.
+**Non-goals:** Runtime mapping, concrete closed-world filtering/sampling, eligibility decisions, algorithm semantics/implementation, engine calls, evidence generation, or changing registered gates.
 
-**Prerequisites:** Tasks 23 and 25, MD-08 approval, and any approved normative amendment. **Blocks:** Tasks 27 and 28. **Safe review boundary:** vocabulary and validation are reviewed before any algorithm can benefit from an exact claim.
+**Prerequisites:** Tasks 23-25, MD-06/08 approval, and any approved normative amendment. **Blocks:** Tasks 27-42. **Safe review boundary:** all public Core foundations are reviewed before Runtime mapping, qualification, distribution, or eligibility can depend on them.
 
-### Task 27 (E): Add the pure Core eligibility gate and fail-closed heuristic fallback
+### Task 27 (E): Implement Runtime `poke-engine` mapping and Core-port conformance
 
-**Purpose:** Decide, without backend imports or I/O, whether an engine-backed search may start for the exact observed decision.
+**Purpose:** Map BattleBelief observations, complete hypothetical worlds, safe root submissions, deeper actions, and transition results to the already merged Core `TransitionModel` without adding eligibility or search.
 
 **Files:**
 
-- Create: `packages/battlebelief-core/src/battlebelief_core/ports/transition_model.py` and `random_source.py`.
-- Create: `packages/battlebelief-core/src/battlebelief_core/domain/search.py`.
-- Create: `packages/battlebelief-core/src/battlebelief_core/application/engine_eligibility.py` and `search_policy.py`.
-- Create: `packages/battlebelief-core/tests/ports/test_transition_model_contract.py`.
-- Create: `packages/battlebelief-core/tests/application/{test_engine_eligibility.py,test_search_policy_fallback.py}`.
-- Create: `packages/battlebelief-core/tests/fakes/{transition_model.py,random_source.py}` with deterministic test-only fakes.
-- Modify: Core `__init__.py` export surfaces for approved public types.
-- Modify: `tools/check_architecture.py` and tests to forbid engine, filesystem, environment, network, process, global clock, and global randomness in the new Core areas.
-- Modify: decision-record error/fallback enum only in a later version approved by MD-10/14; this task keeps its internal result taxonomy separate.
-- Delete: none.
+- Create: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/{state_mapper.py,action_mapper.py,transition_model.py,mapping_report.py}`.
+- Create: `packages/battlebelief-runtime/tests/adapters/poke_engine/{test_state_mapper.py,test_action_mapper.py,test_transition_model.py,test_mapping_report.py,test_port_conformance.py}`.
+- Create: `packages/battlebelief-runtime/tests/fixtures/poke_engine/{observed_root_mapping.json,complete_world_mapping.json,joint_transition_mapping.json,unsupported_mapping.json}`.
+- Modify: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/__init__.py` to expose only the approved adapter surface.
+- Modify: `tools/check_architecture.py`, `tests/tooling/test_architecture.py`, Runtime package smokes, and `.github/workflows/pr.yml` for import confinement and real port-conformance smoke.
+- Delete: none; Task-25 private probe remains available only to its sentinel and is not the public adapter implementation.
 
-**Public types and APIs:** `TransitionModel[WorldT, ActionT]`, `PreparedWorld`, `SearchAction`, `PlayerView`, `InformationStateKey`, `TransitionOutcome`, `TransitionWork`, `RandomStream`, `SearchEligibilityInput`, `SearchEligibilityDecision`, `EligibilityReason`, `SearchCandidate`, `SearchDecision`, and `EngineQualifiedSearchPolicy` are **[PUBLIC CORE API]**. Exact signatures are frozen by tests after Task-25 adapter evidence and MD-06/07 approval.
+**Public types and APIs:** `PokeEngineTransitionModel`, `PokeEngineMappingFailure`, `MappingReport`, and `RequiredCapabilities` are **[PUBLIC RUNTIME API]** and implement Task-26 types exactly. No Core signature changes are permitted in this task; a genuine port defect stops the task and becomes a Maintainer decision/successor Core PR.
 
-**Allowed imports:** the new modules import only Core domain/ports/application code and the standard library. Test fakes stay under Core tests. No adapter, filesystem, environment, global random, clock, process, or network import is allowed.
+**Allowed imports:** Runtime adapter code may import approved Core types and the verified optional extension. Only this adapter subtree imports `poke_engine`; Core and Lab never do. Runtime must not import Lab.
 
-**Pure decision:** the function consumes exactly the observed state, authoritative `SafeSubmissionSet`, required capability IDs produced by validated mapping, closed-world distribution identity/support summary, capability manifest, and backend/artifact health identity. It returns eligible only when:
+**Mapping contract:** root candidates originate only from the supplied `SafeSubmissionSet`; mapper output retains the stable safe-set index and request identity. Complete hypothetical worlds map through a separate type from `ObservedState`. Deeper native choices map to engine-neutral `SearchAction`. Every mapped mechanic produces catalog capability IDs. Player views are created separately for each side, joint actions are applied only after both choices exist, and raw engine strings never cross the Runtime public boundary.
 
-- the safe set is non-empty and every root candidate is an exact member;
-- observed state/request identity and prepared-root identity agree;
-- distribution generation/format/ruleset and public-evidence digest agree;
-- backend source/build/wheel/adapter/platform identities match the manifest;
-- every required capability exists in the approved catalog, is `exact`, and has applicable evidence;
-- no mapping or health failure is present.
-
-Unknown, unsupported, bounded approximation, missing evidence, any mismatch, or backend failure is ineligible. There is no precedence that can convert a bounded approximation into exact.
-
-**Tests first:** table-test every reason and precedence; empty/mutated/stale safe set; each capability status; missing catalog item; manifest/artifact/ruleset/prior/distribution/adapter mismatch; unhealthy backend; mapping error; deterministic reason ordering; no backend method called when ineligible; eligible boundary calls the injected search function once; any search exception/invalid candidate/no result returns the exact injected `heuristic_v0` result.
+**Tests first:** all Task-26 protocol methods; ordinary move/switch/Tera/forced-switch mappings; safe-root order preservation; observed versus complete-world type separation; both player views; simultaneous joint transition; chance outcome normalization; terminal/value mapping; unsupported/unknown fields; stale request/safe set; backend artifact mismatch; native exception; deterministic work count; no private data in `MappingReport`.
 
 **Implementation checklist:**
 
-- [ ] Freeze the approved TransitionModel and mapping evidence as protocol contract tests before implementation.
-- [ ] Add failing exhaustive eligibility truth-table and heuristic-identity fallback tests.
-- [ ] Implement the pure protocols/types, eligibility decision, and precomputed-incumbent orchestration.
-- [ ] Add architecture negative fixtures and fake model/random conformance tests.
-- [ ] Run Core-focused, architecture, package, and full repository gates.
+- [ ] Add failing port-conformance, state/action/view, safe-root, joint-transition, and mapping-failure tests against the merged Core API.
+- [ ] Implement state/action mapping and sanitized capability/mapping reports without changing Core.
+- [ ] Implement `PokeEngineTransitionModel` over the verified Task-25 artifact and exact transition-work accounting.
+- [ ] Add real bounded Gen-9/Tera port-conformance and architecture/package smokes.
+- [ ] Run focused Runtime tests and every repository gate; audit that no Task-25 probe or raw native type is public.
 
-**Failure/fallback:** the policy obtains `heuristic_v0` first as the safe incumbent. Eligibility denial or subsequent backend/search failure returns that unchanged submission with a stable internal fallback class. If heuristic selection itself cannot return a member of the safe set, the existing safety/forfeit behavior remains authoritative; search never invents an action.
+**Failure/fallback:** any missing field, unsupported choice, capability ambiguity, request/safe-set mismatch, artifact/adapter mismatch, native exception, or work-accounting inconsistency returns a typed mapping/backend failure. This task has no eligibility policy and does not select an action.
 
-**Provenance/digests:** decision includes only input identity digests, required capability IDs, eligibility outcome, stable reason, fixed search config/work identity when applicable, and selected safe-set index. It contains no prepared world, hidden set, raw backend exception, time, path, or host.
+**Provenance/digests:** adapter version/source digest, Task-26 port contract digest, engine source/build/wheel identity, fixture digest, required capability IDs, and sanitized mapping result bind conformance. Reports exclude hidden world contents, paths, hostnames, and raw exceptions.
 
-**CI/package smokes:** Core import smoke without Runtime; architecture negative fixtures attempting `poke_engine`, file, Node, clock, or network imports; deterministic fake transition conformance.
+**CI/package smokes:** base Runtime import remains engine-free; `[search]` installs the verified wheel; real adapter conformance runs on approved cells; architecture tests reject engine imports outside the adapter.
 
-**Acceptance criteria:** the truth table is exhaustive and deterministic; search cannot start unless all mechanics are exact and identities match; every denial/error returns registered `heuristic_v0`; the post-policy Runtime safety gate remains required.
+**Acceptance criteria:** the Runtime adapter implements the merged Core port without changing it; root mapping cannot create an action outside the safe set; all mapping failures are typed; no eligibility, algorithm, or exact-capability claim is added.
 
-**Non-goals:** real engine evidence, differential corpus, final record schema, either search algorithm, Runtime composition, or capability elevation.
+**Non-goals:** differential evidence, exact qualification, closed-world filtering, eligibility, algorithms, deadline isolation, Runtime session composition, or evaluation.
 
-**Prerequisites:** Tasks 25-26 and MD-06/07/08/14 decisions. **Blocks:** Tasks 28-33. **Safe review boundary:** safety policy is proven with fakes before real qualification or algorithm complexity can mask it.
+**Prerequisites:** Tasks 25-26 and MD-06/07 approval. **Blocks:** Tasks 28-42. **Safe review boundary:** the concrete backend mapping is reviewable against a stable Core contract before any decision policy can invoke it.
 
 ### Task 28 (F): Add the versioned Showdown-versus-`poke-engine` differential corpus and runner
 
-**Purpose:** Generate reproducible, reviewable evidence for each capability claimed exact.
+**Purpose:** Freeze the differential corpus format, reviewed fixtures, comparison/classification code, schemas, and synthetic/golden behavior before any real qualification outcome is produced.
 
 **Files:**
 
@@ -597,12 +620,11 @@ Unknown, unsupported, bounded approximation, missing evidence, any mismatch, or 
 - Create: `schemas/evaluation/differential-corpus.schema.json`, `differential-fixture.schema.json`, `differential-result.schema.json`, and `capability-qualification.schema.json` **[NEW SCHEMAS v1]** with valid/invalid examples.
 - Create: `artifacts/gen9ou/m2/differential/corpus-v1/{index.json,fixtures/*.json,README.md}` after MD-09 and fixture review; keep cases minimal and project-authored or properly licensed.
 - Create: `tools/validate_differential_corpus.py` and `tools/run_engine_differential.py`.
-- Modify: capability manifest/evidence artifacts from Task 26 by creating a new evidence-qualified version; never rewrite an earlier digest in place.
-- Modify: `tools/check_schemas.py`, `tools/smoke_packages.py`, their tests, and `.github/workflows/pr.yml` to validate the corpus on all PRs and run the bounded differential profile on approved engine/oracle cells.
+- Modify: `tools/check_schemas.py`, `tools/smoke_packages.py`, their tests, and `.github/workflows/pr.yml` to validate the corpus and run only synthetic/golden runner smokes on ordinary PRs.
 - Modify: Lab package exports and optional test/oracle profile metadata as needed; no Runtime-to-Lab edge.
 - Delete: none; deprecated corpus versions remain immutable and addressable.
 
-**Public types and APIs:** `DifferentialCorpus`, `DifferentialFixture`, `DifferentialRunner`, `CanonicalMechanicsObservation`, `DivergenceClass`, `FixtureResult`, and `CapabilityQualificationEvidence` are **[PUBLIC LAB API]**.
+**Public types and APIs:** `DifferentialCorpus`, `DifferentialFixture`, `DifferentialRunner`, `CanonicalMechanicsObservation`, `DivergenceClass`, `FixtureResult`, and `CapabilityQualificationEvidence` are **[PUBLIC LAB API]**. The evidence builder defaults to unknown/non-exact and cannot emit exact when any required result is absent, synthetic, skipped, failed, or unclassified.
 
 **Allowed imports:** Lab may import Core capability/types and the approved Runtime `PokeEngineAdapter` public surface. It calls the Lab oracle internally. It must not import private extension objects, and Runtime/Core must not import Lab.
 
@@ -621,22 +643,62 @@ Unknown, unsupported, bounded approximation, missing evidence, any mismatch, or 
 - [ ] Add failing corpus/schema/closure/classification/evidence tests, including skipped and crashed fixtures.
 - [ ] Implement canonical corpus loading, common observation conversion, runner, immutable raw results, and classifier.
 - [ ] Add reviewed minimal fixtures covering every proposed exact capability and known non-exact boundaries.
-- [ ] Run the real oracle-versus-engine matrix, create a new evidence-qualified manifest, and preserve all unfavorable results.
-- [ ] Run corpus/differential smokes and all repository gates; review every exact claim against raw evidence.
+- [ ] Run synthetic/golden oracle/engine doubles through every outcome class and prove the evidence builder rejects incomplete qualification.
+- [ ] Run corpus/differential harness smokes and all repository gates; freeze code, schemas, classifier, and corpus before Task 29.
 
 **Failure/fallback:** any unavailable oracle/engine artifact, mismatch, timeout, crash, mapping failure, incomplete corpus, or unclassified divergence makes affected capabilities non-exact and therefore search-ineligible. The report counts every fixture outcome; retries are recorded and cannot replace the original result silently.
 
 **Provenance/digests:** a Merkle-like index digest covers sorted fixture file digests and schema/classifier versions. Evidence references immutable raw result digests. A corpus change creates `corpus-v2` (or a semantically versioned successor), never edits v1 after evidence registration.
 
-**CI/package smokes:** fast data-only corpus validator on every PR; small real differential smoke on Ubuntu and Windows approved cells; full qualification profile as an explicit evidence job with retained artifacts. Network denial remains active.
+**CI/package smokes:** fast data-only corpus validator and synthetic/golden oracle/adapter doubles on every PR. Task 28 runs no real Showdown-versus-engine comparison; the first real matrix is Task 29 after this code merges. Network denial remains active.
 
-**Acceptance criteria:** all exact claims have complete, artifact-matched evidence and zero unclassified divergence; all failures are counted; reports reproduce from bound raw results; capability manifests default to unknown/non-exact when evidence is absent.
+**Acceptance criteria:** runner, classifier, corpus, schemas, golden vectors, and evidence rules are merged and immutable for the subsequent run; no real capability is elevated; synthetic incomplete/failure cases cannot yield exact.
 
-**Non-goals:** broad parity, engine qualification outside the exercised catalog/environment, search, closed-world distribution, protected evaluation, or reclassification to improve results.
+**Non-goals:** executing the qualification matrix, creating exact claims, broad parity, search, closed-world distribution, protected evaluation, or reclassification after results.
 
-**Prerequisites:** Tasks 24-27 and MD-09/14 approval. **Blocks:** exact-eligible Tasks 30-35. **Safe review boundary:** qualification evidence is reviewed before any search benefit or registered result exists.
+**Prerequisites:** Tasks 24-27 and MD-09/14/20 approval. **Blocks:** Tasks 29-42. **Safe review boundary:** all code and classification rules merge before real divergences are visible.
 
-### Task 29 (G): Add the evaluation-only closed-world distribution
+### Task 29 (G): Run data-only engine capability qualification
+
+**Purpose:** Execute the already merged differential tooling and corpus against the exact Showdown and `poke-engine` artifacts, preserving every outcome before any exact capability is usable.
+
+**Files:**
+
+- Create: `artifacts/gen9ou/m2/differential/runs/qualification-v1/{run-binding.json,raw-results.jsonl,result-index.json,report.json}`.
+- Create: `artifacts/gen9ou/m2/engine-capabilities/engine-capability-v2-qualified.json` and `capability-evidence-v1.json` only from complete retained results.
+- Modify: `artifacts/gen9ou/m2/differential/README.md` to link immutable run/evidence digests and scope.
+- Modify: no Python, schema, contract, corpus fixture/index, classifier, catalog, Runtime adapter, or CI file.
+- Delete: none; failed, crashed, timed-out, and unfavorable rows remain immutable.
+
+**Public APIs:** none.
+
+**Allowed imports:** none are added. This is a data/evidence-only PR invoking merged Lab public tools and creates no package import edge.
+
+**Qualification procedure:** resolve exact oracle source/build, engine source/build/wheel/adapter, ruleset, catalog, corpus/classifier, runner, environment, and seed digests before execution. Run the complete approved matrix once. Retain raw first-attempt results and any explicitly authorized retries as additional rows. Generate claims mechanically: exact requires every applicable fixture/environment cell, zero skipped/failed/known-affecting/unclassified divergence, and matching identities; anything else remains bounded, unsupported, or unknown under the premerged classifier.
+
+**Tests and validation first:** validate binding closure before the run; reject dirty/mismatched artifacts; prove the generated evidence reproduces from raw rows; ensure one missing/unclassified/crashed fixture rejects exact; compare corpus/classifier/tool source digests with Task 28; assert the diff contains only the named data/evidence paths.
+
+**Implementation checklist:**
+
+- [ ] Obtain explicit qualification-run authorization and close every input digest without changing Task-28 tooling.
+- [ ] Execute the complete matrix, retain all raw outcomes, and classify only through the merged classifier.
+- [ ] Generate the result index, report, capability evidence, and successor manifest mechanically.
+- [ ] Re-run evidence generation from raw rows and byte-compare canonical outputs.
+- [ ] Run artifact/schema/full repository gates and perform a data-only diff audit.
+
+**Failure/fallback:** unavailable/mismatched artifacts, runner failure, timeout, crash, incomplete matrix, or unclassified divergence prevents affected exact claims. It does not trigger code/schema/corpus edits inside this PR. A tooling defect marks the run invalid and requires a separately reviewed successor harness/corpus task followed by a new qualification version.
+
+**Provenance/digests:** raw/result/evidence closure includes all oracle, engine, adapter, catalog, corpus, classifier, runner, ruleset, environment, seed, and schema digests. No result is deleted or overwritten.
+
+**CI/package smokes:** data/evidence schema and closure validation; raw-to-report reproducibility; frozen Task-28 source/corpus digest assertion; ordinary package smokes remain unchanged.
+
+**Acceptance criteria:** the diff is data/evidence-only; every real outcome is retained; each exact claim has complete artifact-matched evidence and zero unclassified/affecting divergence; missing evidence remains non-exact.
+
+**Non-goals:** changing qualification semantics, adding fixtures after results, search, distribution, eligibility, evaluation pools, or parity claims.
+
+**Prerequisites:** Tasks 24-28, MD-20 approval, and explicit Maintainer run authorization. **Blocks:** Tasks 30-42. **Safe review boundary:** real mechanics outcomes cannot influence the already merged runner, schema, classifier, or corpus.
+
+### Task 30 (H): Add the evaluation-only closed-world distribution
 
 **Purpose:** Supply both registered search prototypes with the same frozen, deterministic distribution over complete opponent-team worlds, without introducing M3 belief semantics.
 
@@ -653,7 +715,7 @@ Unknown, unsupported, bounded approximation, missing evidence, any mismatch, or 
 - Modify: `tools/check_schemas.py`, `tools/check_architecture.py`, `tools/smoke_packages.py`, their tests, and `.github/workflows/pr.yml` for validation and hidden-information import/serialization restrictions.
 - Delete: none; prior versions become immutable once bound.
 
-**Public types and APIs:** `ClosedWorld`, `ClosedWorldPrior`, `PublicEvidence`, `ClosedWorldDistribution`, `ClosedWorldDistributionSummary`, and `ClosedWorldSampler` are **[PUBLIC CORE API]** but explicitly evaluation-only. No symbol contains or aliases `BeliefState`, and Runtime's general public API must not re-export them as production belief.
+**Public types and APIs:** `ClosedWorld`, `ClosedWorldPrior`, `PublicEvidence`, `ClosedWorldDistribution`, `ClosedWorldDistributionSummary`, and `ClosedWorldSampler` are **[PUBLIC CORE API]** but explicitly evaluation-only. `ClosedWorldDistributionSummary.to_identity()` returns the Task-26 generic `WorldDistributionIdentity`; eligibility never depends on this concrete class. No symbol contains or aliases `BeliefState`, and Runtime's general public API must not re-export them as production belief.
 
 **Allowed imports:** filtering/sampling imports only Core types and injected random ports. Lab artifact loaders may import Core. Core must not import Lab/file adapters, and Runtime may consume the Core distribution API only through explicitly configured evaluation/search composition.
 
@@ -688,41 +750,126 @@ There is no `OTHER`, open-world materialization, replay/meta pipeline, posterior
 
 **Non-goals:** M3 belief, open world, `OTHER`, imputation-as-truth, replay/meta ingestion, runtime opponent modeling, or protected-pool construction.
 
-**Prerequisites:** Task 27, MD-11 approval, and source/license review. Task 28 evidence may proceed independently in time but must be merged earlier under the serial sequence. **Blocks:** Tasks 30-35. **Safe review boundary:** hidden-information and prior semantics are reviewable without search code.
+**Prerequisites:** Tasks 23-29, MD-11 approval, and source/license review. **Blocks:** Tasks 31-42. **Safe review boundary:** hidden-information and prior semantics are reviewed after qualification but before eligibility/search, with no exception to strict serial merge order.
 
-### Task 30 (H): Implement the registered `determinization_search_v0`
+### Task 31 (I): Add pure Core eligibility and fail-closed heuristic policy
 
-**Purpose:** Implement the frozen determinization baseline exactly as registered, using only qualified transitions and the Task-29 distribution.
+**Purpose:** Decide, without backend imports or I/O, whether engine-backed search may start for the exact observed decision, using the already merged generic distribution identity and qualified capability evidence.
+
+**Files:**
+
+- Create: `packages/battlebelief-core/src/battlebelief_core/application/engine_eligibility.py` and `search_policy.py`.
+- Create: `packages/battlebelief-core/tests/application/{test_engine_eligibility.py,test_search_policy_fallback.py}`.
+- Create: `packages/battlebelief-core/tests/fakes/{transition_model.py,random_source.py}` with deterministic Task-26 protocol fakes.
+- Modify: Core curated exports and `tools/check_architecture.py`/tests for pure application restrictions.
+- Modify: no decision-record schema; Task 35 owns record/fallback representation.
+- Delete: none.
+
+**Public types and APIs:** `SearchEligibilityInput`, `SearchEligibilityDecision`, `EligibilityReason`, `SearchCandidate`, `SearchDecision`, and `EngineQualifiedSearchPolicy` are **[PUBLIC CORE API]**. `SearchEligibilityInput` accepts Task-26 `WorldDistributionIdentity`, never `ClosedWorldDistributionSummary`; Task 30 converts to the generic identity at the composition edge.
+
+**Allowed imports:** Core domain/ports/application code and standard library only. No concrete distribution class is required by eligibility. No adapter, engine, filesystem, environment, random global, clock, process, or network import is allowed.
+
+**Pure decision:** inputs are observed state, authoritative `SafeSubmissionSet`, required capability IDs from Task-27 mapping, generic world-distribution identity, Task-29 capability manifest/evidence, and backend/artifact health identity. Eligible requires a nonempty unchanged safe set; matching observed/request/prepared-root identity; matching distribution generation/format/ruleset/public-evidence/support identity; matching backend source/build/wheel/adapter/platform; exact evidence for every required capability; and no mapping/health failure. Unknown, unsupported, bounded approximation, missing evidence, mismatch, or backend failure is ineligible.
+
+**Tests first:** exhaustive reason/precedence table; empty/mutated/stale safe set; every capability status; missing catalog item/evidence; manifest/artifact/ruleset/distribution/adapter mismatch; unavailable distribution; unhealthy backend; mapping error; deterministic reason order; no backend call when ineligible; injected search called once when eligible; search error/invalid candidate/no result returns the identical injected `heuristic_v0` result.
+
+**Implementation checklist:**
+
+- [ ] Add failing generic-identity and exhaustive eligibility/fallback tests before application code.
+- [ ] Implement deterministic eligibility with no concrete Task-30 type dependency.
+- [ ] Implement precomputed heuristic-incumbent orchestration and typed internal reasons.
+- [ ] Add architecture and fake-model tests proving no I/O/backend call on denial.
+- [ ] Run focused Core, architecture, package, frozen-artifact, and full repository gates.
+
+**Failure/fallback:** eligibility denial or subsequent search/backend failure returns the unchanged precomputed heuristic submission and stable internal reason. If heuristic cannot return a safe member, existing safe failure/forfeit behavior governs; search never invents an action.
+
+**Provenance/digests:** decision includes input identity digests, required capability IDs, generic distribution identity, outcome/reason, config/work identity when applicable, and selected safe-set index; it excludes concrete worlds, hidden data, raw exception, clock, path, and host.
+
+**CI/package smokes:** Core-only import; architecture negative fixtures; deterministic fake transition/distribution identity; no real engine dependency.
+
+**Acceptance criteria:** the truth table is exhaustive; search cannot start unless all required mechanics are exact and all identities match; every denial/error returns `heuristic_v0`; no later concrete-distribution API change is needed.
+
+**Non-goals:** algorithm semantics/implementation, record schemas, deadlines, Runtime composition, evaluation, or capability elevation.
+
+**Prerequisites:** Tasks 23-30 and MD-06/08/14 approval. **Blocks:** Tasks 32-42. **Safe review boundary:** safety policy consumes stable prior APIs and evidence, so it requires no provisional distribution or adapter type.
+
+### Task 32 (J): Bind outcome-blind determinization and DUCT algorithm specifications
+
+**Purpose:** Resolve every search behavior not fixed by the frozen M1.5 artifacts before either algorithm is implemented or any evaluation outcome exists.
+
+**Files:**
+
+- Create: `schemas/manifests/determinization-algorithm-spec-v1.schema.json` and `information-set-duct-config-v1.schema.json` **[NEW SCHEMAS v1]** with valid/invalid examples.
+- Create: `artifacts/gen9ou/m2/search-specs/determinization-search-v0-algorithm-v1.json` and `information-set-duct-v0-config-v1.json` after explicit MD-16 approval.
+- Create: `packages/battlebelief-lab/src/battlebelief_lab/search_specs/{__init__.py,validator.py}` and tests for semantic cross-validation against the frozen registration/execution spec and accepted Search-v0 contract.
+- Create: `tools/validate_m2_search_specs.py`.
+- Modify: `docs/contracts/manifest-schemas.md`, schema tooling/tests, package smoke, and CI only for approved new manifest types; do not change accepted Search-v0 semantics.
+- Modify: no frozen registration, determinization execution manifest, calibration spec/evidence, metric, gate, or Task-21 binding.
+- Delete: none.
+
+**Public types and APIs:** `DeterminizationAlgorithmSpec`, `InformationSetDuctConfig`, and `validate_m2_search_specs(...)` are **[PUBLIC LAB API]** manifest values/validation. Core algorithms later receive validated immutable config values; this task adds no algorithm code.
+
+**Allowed imports:** Lab validation may import Core manifest/config value types and read the accepted/frozen artifacts through Lab file adapters. Core and Runtime do not import Lab; no engine, search execution, clock, or result data enters this task.
+
+**Required determinization fields:** exact depth-counting convention; terminal-before/at-depth handling; root safe-action enumeration; deterministic per-root work allocation and remainder rule for every grid point/candidate count; opponent policy and its information view; simultaneous own/opponent action-selection order without clairvoyance; chance enumeration/sampling/seed policy; leaf/terminal value function and perspective/range; backup rule; action/world aggregation order; numeric precision/non-finite handling; all tie orders; and failure semantics. It incorporates, but never changes, 16 worlds, depth 2, grid 64/128/256/512, one transition per work unit, arithmetic world mean, safe-order tie, and heuristic fallback.
+
+**Required DUCT fields:** exploration formula/constant; unvisited initialization; value perspective/range; visit/value backup; terminal/leaf evaluation; chance handling; exact information-state key contract; per-player marginal selection/ties; joint-transition timing; root aggregation; simulation/work accounting and work-matching rule; every seed domain; tree reset/reuse policy; numeric/failure behavior; and fixed single-thread reference configuration. All fields preserve the accepted Search-v0 invariants.
+
+**Tests first:** every required field absent/invalid; frozen value mismatch; ambiguous depth/work/remainder; backend/default sentinel values rejected; unknown policy/value/chance/backup IDs; DUCT config missing exploration/work rule; deterministic canonical digest; implementation-source test proving Tasks 33/34 config loaders reject unbound/default values.
+
+**Implementation checklist:**
+
+- [ ] Obtain MD-16 decisions for every enumerated semantic/parameter field before writing artifacts.
+- [ ] Add failing schemas, semantic cross-validation, frozen-value, completeness, and canonicalization tests.
+- [ ] Create and validate both outcome-blind specifications with explicit named policy/value/chance/backup IDs.
+- [ ] Bind their digests in a pre-implementation search-spec index without touching frozen artifacts.
+- [ ] Run schema/docs/frozen-artifact/package/full gates and audit that no result data informed the choices.
+
+**Failure/fallback:** any omitted, ambiguous, defaulted, or conflicting field blocks Tasks 33/34. A conflict with an accepted contract becomes a Maintainer decision before contract change; it is not resolved in code.
+
+**Provenance/digests:** each spec binds registration/execution/Search-v0/canonicalization/capability/distribution contract digests, authorizing decision record, schema, and complete canonical bytes. It contains no evaluation result or calibration outcome.
+
+**CI/package smokes:** schema/example/canonicalization; semantic validator against frozen artifacts; negative default/missing-field fixtures; immutable registration/arm-spec check.
+
+**Acceptance criteria:** both specs are complete, outcome-blind, versioned, canonical, and merged; every previously unspecified behavior named in MD-16 is resolved; later implementations require the exact spec digest and have no semantic defaults.
+
+**Non-goals:** algorithm code, calibration selection, performance tuning, evaluation, or frozen-artifact modification.
+
+**Prerequisites:** Tasks 23-31 and explicit MD-16 approval. **Blocks:** Tasks 33-42. **Safe review boundary:** specification choices are reviewed before implementation or outcomes can influence them.
+
+### Task 33 (K): Implement the registered `determinization_search_v0`
+
+**Purpose:** Implement the determinization baseline from the immutable M1.5 execution values plus the complete, outcome-blind Task-32 algorithm specification, using only qualified transitions and the Task-30 distribution.
 
 **Files:**
 
 - Create: `packages/battlebelief-core/src/battlebelief_core/application/search/__init__.py`.
 - Create: `packages/battlebelief-core/src/battlebelief_core/application/search/determinization_v0.py` and `work_accounting.py`.
-- Create: `packages/battlebelief-core/tests/application/search/{test_determinization_v0.py,test_work_accounting.py,test_determinization_registration_conformance.py}`.
+- Create: `packages/battlebelief-core/tests/application/search/{test_determinization_v0.py,test_work_accounting.py,test_determinization_registration_conformance.py,test_determinization_algorithm_spec_conformance.py}`.
 - Create: `packages/battlebelief-core/tests/fixtures/search/determinization_v0_vectors.json` with canonical project-authored fake-tree vectors.
 - Modify: Core curated exports.
 - Modify: `tools/check_architecture.py` and tests for pure-algorithm restrictions.
 - Modify: no registration or arm-spec file.
 - Delete: none.
 
-**Public types and APIs:** `DeterminizationSearchV0`, `DeterminizationConfigV0`, `DeterminizationResult`, `RootActionScore`, and `TransitionWorkCounter` are **[PUBLIC CORE API]**. The config parser accepts only the registered algorithm/execution values for the registered arm; generalization is not part of v0.
+**Public types and APIs:** `DeterminizationSearchV0`, `DeterminizationConfigV0`, `DeterminizationResult`, `RootActionScore`, and `TransitionWorkCounter` are **[PUBLIC CORE API]**. Configuration construction requires both the frozen execution-spec digest and Task-32 algorithm-spec digest; there are no backend/default values.
 
 **Allowed imports:** Core search imports Core ports/domain/application only. Real engine and artifact access enter through `TransitionModel`; no Runtime, Lab, file, clock, network, or global-random dependency is permitted.
 
 **Exact registered execution:**
 
 - sample exactly 16 worlds from `evaluation_closed_world_v0` using the dedicated world seed;
-- search to lookahead depth 2;
+- search to registered lookahead depth 2 using Task-32's exact depth-counting and terminal convention;
 - execute each registered `per_world_work` point in the ordered grid `64`, `128`, `256`, `512` as a separate calibrated configuration;
 - define one work unit as one call that advances one world transition, including terminal-producing transitions; bookkeeping, mapping, scoring, and sampling are not transition work;
-- allocate exactly `per_world_work` units to each of the 16 worlds and report total work as `16 * per_world_work`;
-- compute one value per safe root submission per world, then use the arithmetic mean across all 16 worlds; no weighting or optimistic selection is introduced;
+- allocate exactly `per_world_work` units to each of the 16 worlds and report total work as `16 * per_world_work`, distributing root/remainder work only by the Task-32 rule;
+- apply Task-32 opponent, simultaneous-action, chance, leaf-value, backup, and numeric rules, then use the frozen arithmetic mean across all 16 worlds; no backend policy/default or optimistic world selection is introduced;
 - select the maximal mean, breaking exact score ties by stable `SafeSubmissionSet` order;
 - return the existing `heuristic_v0` result on eligibility denial, invalid/empty result, work mismatch, or transition/backend failure.
 
-The implementation task must extract these values from or validate them against `registrations/gen9ou/arm-specs/determinization-search-v0-v4.json`; it must not edit that file or silently choose a different allocation interpretation.
+The implementation must validate frozen values against `registrations/gen9ou/arm-specs/determinization-search-v0-v4.json` and every remaining behavior against Task-32's specification. It must not edit either artifact or choose an allocation, opponent policy, chance, value, depth, backup, or remainder interpretation in code.
 
-**Tests first:** registration conformance loads the frozen spec; exactly 16 sampler calls; exactly 64/128/256/512 transitions per world and the corresponding totals; depth never exceeds 2; arithmetic mean vector distinguishing mean from max/weighted selection; equal-score safe-order tie; candidate set is exactly the safe set; seed-domain separation; iteration/map-order independence; terminal transition accounting; short/extra work raises a typed failure; backend error at each phase; sampled hidden world absent from result/record serialization; heuristic fallback identity.
+**Tests first:** conformance loads both specs; exactly 16 sampler calls; exactly 64/128/256/512 transitions per world and totals; exact depth/terminal boundary; every candidate-count remainder vector; opponent/simultaneous/chance/leaf/backup golden vectors; arithmetic mean versus max/weight; safe-order tie; exact safe candidate set; seed separation; iteration/map-order independence; terminal accounting; short/extra work; missing/wrong spec digest; backend errors; hidden-world exclusion; heuristic fallback identity.
 
 **Implementation checklist:**
 
@@ -734,19 +881,19 @@ The implementation task must extract these values from or validate them against 
 
 **Failure/fallback:** any Task-27 ineligibility, world sampling failure, transition/model failure, non-finite value, candidate/action mapping mismatch, work-budget violation, or no score for every safe root candidate returns the precomputed `heuristic_v0` incumbent with the stable class. Partial search does not override it in deterministic mode.
 
-**Provenance/digests:** result binds algorithm/version, frozen arm spec digest, search config/work point, 16-world distribution/support digest, distinct world/search/tie seed identities, transition-model artifact identity, capability manifest/evidence digest, and deterministic score summary. It never includes sampled world content.
+**Provenance/digests:** result binds algorithm/version, frozen execution-spec digest, Task-32 algorithm-spec digest, search config/work point, 16-world distribution/support digest, all named seed identities, transition-model artifact identity, capability evidence, and deterministic score summary. It never includes sampled world content.
 
 **CI/package smokes:** Core vector/conformance tests, architecture test, deterministic repeat smoke on fake transitions; no real engine dependency in Core tests.
 
-**Acceptance criteria:** every frozen value and tie/fallback rule has a direct test; all work points use exact transition counts; repeated pure executions match; no registered artifact changes.
+**Acceptance criteria:** every frozen and Task-32 semantic field has a direct conformance/golden test; all work points use exact transition counts and specified allocation; repeated pure executions match; no registered/spec artifact changes.
 
 **Non-goals:** DUCT, live deadlines, parallelism, adaptive worlds/depth/work, alternate averaging, tuning, engine qualification, or evaluation outcomes.
 
-**Prerequisites:** Tasks 27-29 with an exact-qualified engine available for integration smoke. **Blocks:** Tasks 31-35. **Safe review boundary:** implements one already registered baseline with artificial and then qualified-adapter conformance, no second algorithm.
+**Prerequisites:** Tasks 23-32. **Blocks:** Tasks 34-42. **Safe review boundary:** implements one fully specified algorithm with fakes and qualified-adapter conformance, no DUCT, records, clocks, or evaluation.
 
-### Task 31 (I): Implement `information_set_duct_v0` on the same closed world
+### Task 34 (L): Implement `information_set_duct_v0` on the same closed world
 
-**Purpose:** Implement the accepted Search-v0 information-set DUCT semantics without allowing hidden-state nodes or world-dependent joint-action optimization.
+**Purpose:** Implement the accepted Search-v0 information-set DUCT semantics and the complete Task-32 configuration without allowing hidden-state nodes, backend defaults, or world-dependent joint-action optimization.
 
 **Files:**
 
@@ -758,11 +905,11 @@ The implementation task must extract these values from or validate them against 
 - Modify: no accepted Search-v0 contract unless an actual contradiction is first recorded and separately approved as a Maintainer decision.
 - Delete: none.
 
-**Public types and APIs:** `InformationSetDuctV0`, `InformationSetDuctConfigV0`, `InformationSetDuctResult`, `InformationNodeKey`, `MarginalActionStats`, and `RootAggregate` are **[PUBLIC CORE API]**. Mutable tree/node implementation classes remain private.
+**Public types and APIs:** `InformationSetDuctV0`, `InformationSetDuctConfigV0`, `InformationSetDuctResult`, `InformationNodeKey`, `MarginalActionStats`, and `RootAggregate` are **[PUBLIC CORE API]**. Config construction requires the exact Task-32 DUCT-spec digest and exposes no defaults. Mutable tree/node implementation classes remain private.
 
-**Allowed imports:** identical to Task 30: Core-only dependencies plus injected ports. Neither the tree nor tests may import a Runtime hidden-state/backend type.
+**Allowed imports:** Core domain/application plus Task-26 injected ports and Task-32 validated configuration only. Neither the tree nor tests may import a Runtime hidden-state/backend type.
 
-**Contract invariants and direct tests:**
+**Tests first — contract invariants and direct tests:**
 
 1. **New world per simulation:** the distribution sampler is called once at the start of every simulation; a test fails implementations that reuse one world for a batch.
 2. **Information-state nodes:** node keys derive solely from the acting player's `PlayerView` plus public history/config identity, never from a hidden world ID or private set; two worlds with the same view share a node, and one world with different player views does not.
@@ -772,7 +919,7 @@ The implementation task must extract these values from or validate them against 
 6. **Root aggregation across worlds:** root submission values/visits aggregate over every sampled world by safe submission, not by hidden-state root node. Tests use worlds that reverse local preferences.
 7. **No world-dependent joint-action argmax:** an adversarial payoff matrix makes a clairvoyant joint argmax attractive; expected output follows marginal information-set selection instead.
 
-Additional tests cover exploration/visit initialization, deterministic tie order, terminal values, chance outcomes, legal-action changes, fixed-work accounting, seed-domain separation, non-finite values, model errors, and absence of hidden worlds from outputs. All randomness comes from injected streams. The first reference execution is single-threaded.
+Additional tests cover every Task-32 exploration/configuration field, visit/value initialization and backup, deterministic ties, terminal/leaf values, chance outcomes, legal-action changes, fixed-work matching, seed separation, numeric rules, model errors, wrong/missing spec digest, and absence of hidden worlds from outputs. All randomness comes from injected streams. The first reference execution is single-threaded.
 
 **Implementation checklist:**
 
@@ -784,19 +931,62 @@ Additional tests cover exploration/visit initialization, deterministic tie order
 
 **Failure/fallback:** eligibility denial, distribution failure, invalid information view/key, missing marginal legal action, joint-transition mismatch, work violation, backend error, or invalid root aggregation returns the precomputed `heuristic_v0` incumbent. No node from a failed simulation is published as evidence unless rollback semantics are explicitly tested.
 
-**Provenance/digests:** result binds the accepted Search-v0 contract digest, algorithm/config/work identity, the same Task-29 prior/distribution identity used by determinization, separate world/own-selection/opponent-selection/chance/tie seed identities, model/capability identities, and root aggregate summary. Tree dumps and hidden worlds are not decision-record fields.
+**Provenance/digests:** result binds the accepted Search-v0 contract digest, Task-32 DUCT-spec digest, algorithm/config/work identity, the same Task-30 prior/distribution identity used by determinization, separate world/own-selection/opponent-selection/chance/tie seeds, model/capability identities, and root aggregate summary. Tree dumps and hidden worlds are not decision-record fields.
 
 **CI/package smokes:** contract-invariant suite with fake transition model; deterministic one-thread vector smoke; architecture/leakage negative tests; qualified-adapter bounded integration smoke.
 
-**Acceptance criteria:** all seven invariants above have positive and adversarial negative tests; it uses the same closed-world distribution contract; no hidden-state node or joint-action argmax is possible through public APIs; failure is fail-closed.
+**Acceptance criteria:** all seven invariants and every Task-32 configuration field have positive/adversarial/golden tests; it uses the same distribution; no hidden-state node, joint-action argmax, or unbound default is possible; failure is fail-closed.
 
 **Non-goals:** open-world belief, learned priors/value/policy, multi-thread reference path, live timing, tree persistence across decisions, or registered evaluation.
 
-**Prerequisites:** Tasks 29-30 and MD-06/07/12 decisions. **Blocks:** Tasks 32-35. **Safe review boundary:** isolates information-set correctness from clocks, Runtime composition, and evaluation.
+**Prerequisites:** Tasks 23-33 and MD-06/07/12/16 decisions. **Blocks:** Tasks 35-42. **Safe review boundary:** isolates the second fully specified algorithm from records, clocks, Runtime composition, and evaluation.
 
-### Task 32 (J): Add `deterministic_benchmark` and `live_anytime` execution modes
+### Task 35 (M): Version request identity, Decision Record, and Search Measurement
 
-**Purpose:** Compose the two search kernels under the accepted deterministic and live operating semantics without contaminating Core with a clock.
+**Purpose:** Define backward-compatible, leakage-safe canonical records before deterministic/live executors or Runtime session composition depend on them.
+
+**Files:**
+
+- Create: `schemas/records/request-identity-v2.schema.json`, `decision-record-v3.schema.json`, and `search-measurement-v1.schema.json` **[NEW VERSIONED SCHEMAS]** with valid/invalid and migration examples.
+- Create: `schemas/canonicalization/decision-record-v3-test-vectors.json` and `search-decision-test-vectors.json`.
+- Create: `packages/battlebelief-core/src/battlebelief_core/domain/records/search.py` and corresponding Core tests.
+- Modify: `packages/battlebelief-core/src/battlebelief_core/domain/actions/decision_request.py`, `domain/records/decision_record.py`, and curated exports for approved v2/v3 dual-read models.
+- Modify: `docs/contracts/decision-records.md`, `legal-action-safety.md`, `manifest-schemas.md`, `provenance.md`, frontmatter/index, and migration docs only under explicit MD-05/10/14 normative approval.
+- Modify: schema/canonicalization/docs tools/tests and package smokes.
+- Modify: no Runtime composition/session file.
+- Delete: none; v1/v2 records, vectors, and readers remain byte-identical.
+
+**Public types and APIs:** `RequestIdentityV2` with `live_rqid`/`oracle_sequence` variants, Task-31 `SearchDecision` canonical projection, `SearchDecisionSummary`, `SearchFallbackReason`, `DecisionRecordV3`, `SearchMeasurement`, and `SearchTermination` are **[PUBLIC CORE RECORD API]**. Operational timing is absent from deterministic decision bytes and present only in the linked measurement.
+
+**Allowed imports:** Core record/canonicalization code only. No engine, clock read, filesystem, Runtime, or Lab import. Callers pass operational measurements explicitly.
+
+**Record semantics:** v3 stores algorithm/mode/spec/config identities, fixed work/world/simulation counts, selected safe-set index, eligibility outcome, stable successful fallback reason, and linked measurement ID. It excludes sampled worlds, opponent-private data, absolute time, duration, host/path/PID, and raw exceptions. Submitted fallback is not encoded as a v2 error. Oracle identity uses sequence plus request digest, never fake `rqid`.
+
+**Tests first:** v1/v2 parse/canonical bytes unchanged; both identity variants; identity mismatch; v3 searched success, successful fallback, error, timeout, and safety rejection; deterministic SearchDecision/row repeated bytes; measurement linkage; duration changes measurement but not decision row; unknown fallback; hidden/private/path/host/raw-exception leakage; canonical set/order vectors and migrations.
+
+**Implementation checklist:**
+
+- [ ] Obtain MD-05/10/14 approval and add failing schema, migration, canonical-byte, fallback, and leakage tests.
+- [ ] Implement typed dual-read identities/records and deterministic SearchDecision projection.
+- [ ] Implement linked operational measurement without reading a clock in Core.
+- [ ] Update approved normative owners, examples, canonical vectors, docs/schema tooling, and smokes.
+- [ ] Run focused contract/Core tests, immutable-old-vector checks, and every repository gate.
+
+**Failure/fallback:** invalid identity, unknown schema/reason, mismatched safe-set index, noncanonical data, forbidden private field, or bad measurement link rejects the record deterministically. It cannot change action selection.
+
+**Provenance/digests:** v3 binds runtime/contract/spec/config/distribution/capability/engine identities through references. Search Measurement binds its decision-record ID and operational taxonomy. Neither stores local paths, hostnames, or hidden worlds.
+
+**CI/package smokes:** cross-version schema/canonicalization, old-vector immutability, leakage negative fixtures, Core-only record import, docs/schema checks.
+
+**Acceptance criteria:** record and identity schemas merge before executors/integration; v1/v2 remain unchanged; deterministic SearchDecision and Decision Record v3 bytes are canonical; successful fallback and operational timing are represented without v2-error abuse or leakage.
+
+**Non-goals:** running algorithms, reading clocks, deadline isolation, Runtime composition, telemetry backend, or evaluation.
+
+**Prerequisites:** Tasks 23-34 and MD-05/10/14 approval. **Blocks:** Tasks 36-42. **Safe review boundary:** normative/schema/canonical-record evolution is independent from Runtime behavior.
+
+### Task 36 (N): Add `deterministic_benchmark`, `live_anytime`, and deadline isolation
+
+**Purpose:** Compose the two fully specified kernels under deterministic and live semantics and implement the Maintainer-approved native-call isolation/deadline contract without contaminating Core with a clock.
 
 **Files:**
 
@@ -804,43 +994,43 @@ Additional tests cover exploration/visit initialization, deterministic tie order
 - Create: `packages/battlebelief-core/tests/application/search/{test_executor.py,test_checkpoint.py,test_deterministic_reproducibility.py}`.
 - Create: `packages/battlebelief-runtime/src/battlebelief_runtime/clock.py` and `search_budget.py`.
 - Create: `packages/battlebelief-runtime/tests/{test_clock.py,test_search_budget.py,test_live_anytime.py}`.
-- Create: `schemas/records/search-measurement.schema.json` **[NEW SCHEMA v1]** plus valid/invalid examples after MD-10 approval.
+- Create under recommended MD-18 option C: `packages/battlebelief-runtime/src/battlebelief_runtime/search_worker/{__init__.py,protocol.py,client.py,server.py,lifecycle.py}` and `tests/search_worker/{test_protocol.py,test_client.py,test_lifecycle.py,test_equivalence.py}`. If the Maintainer selects A or B instead, revise these exact files/acceptance claims before Task 36 starts.
 - Create: `tools/smoke_deterministic_search.py`.
 - Modify: search-contract validation tests/examples only as needed to exercise the already accepted modes; do not change `schemas/manifests/search-contract.schema.json`. If implementation exposes an actual inconsistency, stop and raise a new Maintainer decision before a successor schema.
 - Modify: Runtime/Core exports, schema tooling, package smoke, and `.github/workflows/pr.yml` for deterministic reproduction.
 - Delete: none.
 
-**Public types and APIs:** `SearchExecutor`, `DeterministicBenchmarkBudget`, `SearchCheckpoint`, `LiveAnytimeBudget`, `MonotonicClock`, `SearchMeasurement`, and `SearchTermination` are **[PUBLIC APIs]** in their owning package. Core sees fixed work and an injected checkpoint/stop signal, not a clock object or duration.
+**Public types and APIs:** `SearchExecutor`, `DeterministicBenchmarkBudget`, `SearchCheckpoint`, `LiveAnytimeBudget`, `MonotonicClock`, `EngineExecutionMode`, and—under option C—`SearchWorkerClient`/`SearchWorkerFailure` are **[PUBLIC APIs]** in their owning package. Task-35 `SearchMeasurement`/`SearchTermination` are consumed unchanged. Core sees fixed work and an injected checkpoint/stop signal, not a clock or duration.
 
-**Allowed imports:** Core executor imports Core only; Runtime budget/clock imports Core executor protocols and standard-library monotonic-time primitives. Runtime does not import Lab, and Core never imports Runtime clock code.
+**Allowed imports:** Core executor imports Core only; Runtime budget/clock/worker imports Core executor/record protocols, the Task-27 adapter, and standard-library time/process/IPC primitives. Runtime does not import Lab, and Core never imports Runtime clock/worker code. The worker is the only live-hard-deadline process loading the native extension under option C.
 
 **`deterministic_benchmark`:** exactly one thread; fixed configured transition work; separate named random streams for worlds, own actions, opponent actions, chance, and ties; no wall-clock branch; stable iteration and serialization order; identical environment/artifacts/config/inputs/seeds yield action-identical results and byte-identical canonical Decision Rows. Operational measurements may differ and are stored separately.
 
-**`live_anytime`:** Runtime uses an injected monotonic clock and an explicit wall-time budget. Before search starts it holds the already safety-checked `heuristic_v0` incumbent. Core proposes a replacement only at a completed checkpoint with a member of the exact root safe set; Runtime accepts it as the incumbent only after an independent `ActionSafetyGate` check against the unchanged request/safe-set identity. On deadline, cancellation, or recoverable backend failure, Runtime returns the best completed and safety-checked incumbent, then applies the ordinary final pre-submission safety check again. If no searched candidate completed, it returns heuristic. The mode is never a teacher-target source.
+**`live_anytime`:** Runtime uses an injected monotonic clock and an explicit wall-time budget. Before native work it holds a safety-checked `heuristic_v0` incumbent. Core proposes replacements only at completed checkpoints; Runtime accepts one only after independent `ActionSafetyGate` validation. Under MD-18 A/C, potentially blocking native work runs in a killable worker, the parent owns the incumbent/deadline, and deadline expiry terminates the verified worker tree before returning the incumbent and applying the final safety check. Under B, the API is explicitly a soft deadline and can return only after the native call regains control; eligibility requires a bound maximum call-latency qualification. The mode is never a teacher-target source.
 
-**Tests first:** deterministic repeated byte vector across processes; random-stream separation (changing one seed cannot consume another); one-thread enforcement; exact work; no clock access in Core; fake-clock deadline before start/mid-transition/between checkpoints/after completion; deadline monotonicity; backend ignores cancellation; incumbent remains safe; partial invalid candidate ignored; time measurement outside canonical decision row; live result tagged ineligible for teacher target; all timeout/fallback/crash counters retained.
+**Tests first:** deterministic repeated Task-35 Decision Record v3 byte vector across processes; random-stream separation; one-thread/exact-work; no Core clock; fake-clock deadline before start/mid-transition/between checkpoints/after completion; clock regression; native worker hangs/ignores cancellation; parent kills worker tree and returns incumbent under A/C; hard-deadline claim rejected under B; qualified max-call-latency mismatch under B; worker crash/partial/malformed IPC; deterministic in-process/worker equivalence under C; timing only in Search Measurement; no teacher target; complete counters.
 
 **Implementation checklist:**
 
 - [ ] Add failing deterministic two-process byte vectors and seed-domain/one-thread/exact-work tests.
-- [ ] Add fake-clock deadline/cancellation/incumbent-safety and no-teacher-target tests.
-- [ ] Implement Core checkpoints/fixed-work executor and Runtime monotonic deadline controller.
-- [ ] Implement separate Search Measurement records and the repeatability smoke.
+- [ ] Obtain MD-18 approval and add fake-clock plus real killable-worker (or explicit soft-deadline) tests before promising timeout behavior.
+- [ ] Implement Core checkpoints/fixed-work executor and Runtime monotonic controller with the approved worker/latency boundary.
+- [ ] Populate Task-35 Search Measurement records and implement deterministic/worker-equivalence smokes.
 - [ ] Run focused Core/Runtime suites, repeatability smoke, package smokes, and all repository gates.
 
-**Failure/fallback:** invalid mode/config, attempted deterministic parallelism, clock regression, deadline exhaustion, checkpoint corruption, work mismatch, backend cancellation/error, or unsafe candidate follows MD-14 and retains the last safe incumbent. A hard process/backend crash is counted, not excluded from evaluation.
+**Failure/fallback:** invalid mode/config, attempted deterministic parallelism, clock regression, deadline, worker protocol/start/kill failure, checkpoint corruption, work mismatch, backend error, or unsafe candidate follows MD-14. Under A/C the parent returns the last safe incumbent only after regaining control/terminating the worker; under B a hung native call cannot truthfully guarantee deadline return. Every crash/timeout is counted.
 
-**Provenance/digests:** deterministic record contains fixed-work and seed identities; live measurement contains requested/effective duration, monotonic elapsed duration, completed work/simulations, termination/fallback class, engine health transition, and chosen incumbent source. Absolute time, hostname, PID, local path, and hidden worlds are excluded from canonical decision content.
+**Provenance/digests:** deterministic record contains fixed-work/spec/seed identities. Live measurement additionally binds execution-mode/worker protocol/source/artifact or maximum-call-latency evidence, requested/effective duration, elapsed duration, completed work, termination/fallback, engine health, and incumbent source. PID/path/host/hidden worlds are excluded.
 
-**CI/package smokes:** `tools/smoke_deterministic_search.py` runs twice and byte-compares canonical rows; fake-clock live smoke; Core architecture clock ban; one-thread assertion; supported Runtime search-extra cell.
+**CI/package smokes:** deterministic two-run Decision Record v3 byte comparison; fake-clock live smoke; worker hang/kill/process-tree cleanup and in-process equivalence on Ubuntu/Windows under A/C, or max-latency qualification under B; Core clock ban; one-thread; Runtime `[search]` cell.
 
-**Acceptance criteria:** deterministic mode is action- and byte-reproducible under bound inputs; live mode always returns a completed safe incumbent on timeout; telemetry is complete and separate; no live result can be labeled a teacher target.
+**Acceptance criteria:** deterministic mode is action- and Decision-Record-byte reproducible. Under A/C, a deliberately hung native worker is terminated and the parent returns the last safety-checked incumbent within the approved outer tolerance; under B, every API/schema/document says soft deadline and no hard-return claim exists. Telemetry is complete; no live result is a teacher target.
 
 **Non-goals:** Runtime battle-session integration, telemetry storage backend, multi-thread deterministic support, live action-quality guarantees, or evaluation.
 
-**Prerequisites:** Tasks 30-31, MD-10/12/14 approval. **Blocks:** Tasks 33-35. **Safe review boundary:** operating semantics are tested around stable kernels before public composition.
+**Prerequisites:** Tasks 23-35 and MD-10/12/14/18 approval. **Blocks:** Tasks 37-42. **Safe review boundary:** operating/deadline semantics and native isolation are proven before session/public composition.
 
-### Task 33 (K): Integrate Runtime composition, sessions, records, and the public Search API
+### Task 37 (O): Integrate Runtime composition, sessions, telemetry, and the public Search API
 
 **Purpose:** Make qualified search usable through Runtime while preserving request identity, safe submissions, the independent action-safety gate, and optional-extra behavior.
 
@@ -850,15 +1040,13 @@ Additional tests cover exploration/visit initialization, deterministic tie order
 - Create: `packages/battlebelief-runtime/src/battlebelief_runtime/public_api/search.py`.
 - Create: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/telemetry/search.py`.
 - Create: `packages/battlebelief-runtime/tests/composition/test_search.py`, `tests/public_api/test_search.py`, `tests/telemetry/test_search.py`, and `tests/test_battle_session_search.py`.
-- Create: `schemas/records/decision-record-v3.schema.json` and, if approved, `request-identity-v2.schema.json` **[NEW VERSIONED SCHEMAS]**, with canonical vectors and migration examples.
 - Modify: `packages/battlebelief-runtime/src/battlebelief_runtime/composition/battle_session.py`, `composition/battle_coordinator.py`, `testing/measurement_session.py`, and curated public exports.
 - Modify: corresponding Runtime tests and smokes.
-- Modify: `packages/battlebelief-core/src/battlebelief_core/domain/records/decision_record.py` and `domain/actions/decision_request.py` only for approved backward-compatible v3/v2 models from MD-05/10/14; preserve v1/v2 readers and canonical vectors.
-- Modify: `docs/contracts/decision-records.md`, `legal-action-safety.md`, `manifest-schemas.md`, and `provenance.md` only under explicit normative approval; record migration and update the normative index if required.
-- Modify: `tools/check_schemas.py`, `tools/check_architecture.py`, `tools/smoke_packages.py`, protocol/safety smokes, and `.github/workflows/pr.yml`.
+- Modify: `tools/check_architecture.py`, `tools/smoke_packages.py`, protocol/safety smokes, and `.github/workflows/pr.yml`.
+- Modify: no Core record/identity model, record schema, or normative contract; Task 35 owns those merged inputs.
 - Delete: none.
 
-**Public types and APIs:** `SearchRuntimeConfig`, `SearchPolicyFactory`, `RuntimeSearchPolicy`, `SearchDecisionSummary`, `SearchFallbackReason`, and `decide_with_search(...)` are **[PUBLIC RUNTIME API]**. A versioned `RuntimeDecisionPolicy` consumes observed state, request identity, and safe set; a compatibility adapter keeps `HeuristicPolicy` usable. `DecisionRecordV3` and typed oracle request identity are **[PUBLIC CORE RECORD API]** if approved.
+**Public types and APIs:** `SearchRuntimeConfig`, `SearchPolicyFactory`, `RuntimeSearchPolicy`, and `decide_with_search(...)` are **[PUBLIC RUNTIME API]**. A `RuntimeDecisionPolicy` consumes observed state, Task-35 request identity, and safe set; a compatibility adapter keeps `HeuristicPolicy` usable. Search summaries/fallbacks/records are imported unchanged from Task 35.
 
 **Allowed imports:** Runtime composition/public API imports approved Core and Runtime adapter APIs. `poke_engine` remains confined to its adapter. Measurement testing code may expose approved protocols to Lab, but Runtime never imports Lab.
 
@@ -874,12 +1062,12 @@ Additional tests cover exploration/visit initialization, deterministic tie order
 
 The optional extra is fail-closed: importing Runtime, using heuristic mode, and M1 protocol/safety paths work without `[search]`; requesting search without it yields heuristic plus `artifact_unavailable`, not an import-time crash.
 
-**Tests first:** no-extra import and call; correct qualified composition; each eligibility/fallback class; artifact changes after initial check; stale safe set/request; search returns an unsafe/not-member action; action-safety gate is still invoked and can reject; heuristic compatibility; live and oracle identity variants; v1/v2 records still parse/canonicalize unchanged; v3 successful fallback distinct from error; measurement linkage; deterministic rows exclude duration; record contains no sampled world/private opponent data/raw exception/path/hostname; BattleCoordinator reconnect/idempotence; MeasurementSession captures every outcome.
+**Tests first:** no-extra import/call; qualified composition; each eligibility/fallback; artifact changes after check; stale safe set/request; unsafe/not-member search result; checkpoint and final safety gates; heuristic compatibility; live/oracle identities; Task-35 record/measurement integration without schema change; no hidden/private/exception/path/host data; worker/soft-deadline outcome propagation; BattleCoordinator reconnect/idempotence; MeasurementSession captures every outcome.
 
 **Implementation checklist:**
 
-- [ ] Obtain MD-05/10/14 and normative record approval; add failing API, migration, no-extra, fallback, and leakage tests.
-- [ ] Implement versioned request/record models and the state-aware policy compatibility boundary.
+- [ ] Add failing public API, no-extra, fallback, Task-35 record-consumption, deadline-mode, and leakage tests without modifying Core/schema contracts.
+- [ ] Implement the state-aware policy compatibility boundary using merged Task-35 types.
 - [ ] Implement artifact resolution, Core eligibility/search composition, checkpoint safety checks, and final safety recheck.
 - [ ] Integrate BattleSession, BattleCoordinator, MeasurementSession, telemetry, public API, smokes, and CI.
 - [ ] Run Protocol/Safety and base/`[search]` package smokes plus every repository gate; inspect canonical rows manually.
@@ -888,21 +1076,107 @@ The optional extra is fail-closed: importing Runtime, using heuristic mode, and 
 
 **Provenance/digests:** every decision resolves runtime/contract/environment/implementation, engine source/build/wheel/adapter, capability/evidence, ruleset, prior/distribution, search config, and arm spec digests. The record includes references, not local artifact paths.
 
-**CI/package smokes:** base and `[search]` Runtime wheels in isolated environments; protocol and safety smokes with search absent/present; Gen-9 sentinel; deterministic row smoke; schema backward-compatibility vectors; architecture confinement.
+**CI/package smokes:** base and `[search]` Runtime wheels; protocol/safety smokes with search absent/present; Gen-9 sentinel; Task-36 deterministic/deadline smoke; Task-35 record vectors; architecture confinement.
 
 **Acceptance criteria:** public search can run only through verified qualification; all denied/error paths return `heuristic_v0`; final safety gate remains active; base install is unaffected; records are backward compatible and leakage-free.
 
 **Non-goals:** Lab evaluation, calibration/evidence binding, changing Runtime version/phase, public Showdown networking, or status/strength claims.
 
-**Prerequisites:** Tasks 25-32 and MD-05/10/13/14 approval plus any normative record changes. **Blocks:** Tasks 34-35. **Safe review boundary:** integration happens only after component semantics are independently tested.
+**Prerequisites:** Tasks 23-36 and approved record/deadline decisions. **Blocks:** Tasks 38-42. **Safe review boundary:** Runtime integration changes no public Core contract or record schema because those are already merged.
 
-### Task 34 (L): Close implementation/run bindings and calibration evidence
+### Task 38 (P): Implement the synthetic-only evaluation and statistical harness
+
+**Purpose:** Implement and freeze all metric, technical-outcome, estimand, bootstrap, result-schema, and report behavior using synthetic golden data before registered battle outcomes exist.
+
+**Files:**
+
+- Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/search/{__init__.py,session.py,technical_outcomes.py,metrics.py,statistics.py,report.py}`.
+- Create: `packages/battlebelief-lab/tests/evaluation/search/{test_session.py,test_technical_outcomes.py,test_metrics.py,test_statistics.py,test_report.py,test_golden_vectors.py}`.
+- Create: `packages/battlebelief-lab/tests/fixtures/evaluation/m2/{paired-outcomes.json,technical-outcomes.json,bootstrap-golden-vectors.json,report-golden.json}` with synthetic labels only.
+- Create: `schemas/evaluation/m2-evaluation-result-v1.schema.json` and `m2-evaluation-report-v1.schema.json` **[NEW SCHEMAS v1]** plus synthetic valid/invalid examples after MD-17 approval.
+- Create: `tools/run_m2_evaluation.py`, `tools/validate_m2_evaluation.py`, and `tools/smoke_m2_evaluation_harness.py`; the generic runner is exercised only with synthetic fixtures in this task.
+- Modify: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/measurement_runner.py` only to depend on a general measured-session protocol while preserving existing clients.
+- Modify: schema/docs/architecture/package-smoke tooling and CI for synthetic harness/golden validation.
+- Modify: no registration, threshold, development-pool artifact, run binding, real raw result, or evidence report.
+- Delete: none.
+
+**Public types and APIs:** `MeasuredDecisionSession`, `TechnicalOutcomeTreatmentV1`, `BattleOutcomeWeightedV1`, `PairedMeanDifferenceV1`, `WeightedClusterBootstrapV1`, `DeploymentBudgetView`, `MechanismBudgetView`, `M2EvaluationResult`, and `M2EvaluationReport` are **[PUBLIC LAB API]**. IDs and semantics must match accepted owners; the implementation cannot redefine thresholds.
+
+**Allowed imports:** Lab may import Core record/value types and approved Runtime public/testing protocols. Statistical code is pure over supplied rows/seeds. No Oracle, engine, development pool, or protected data is required by tests.
+
+**Harness contract:** implement `battle_outcome_weighted_v1`, `paired_mean_difference_v1`, `weighted_cluster_bootstrap_v1`, `technical_outcomes_full_v1`, one-sided 95% interval handling, lower-bound comparison, and latency tie-break eligibility exactly from accepted contracts/registration references. Produce deployment and mechanism views with explicit denominators. Count all fallbacks/timeouts/crashes/invalid actions; never filter them to improve the metric.
+
+**Tests first:** exact synthetic weighted outcome vectors; paired side/block/cluster handling; deterministic bootstrap seed/resample indices and golden quantiles; one-sided interval and exact 0.05 boundary; technical outcomes retained; missing/duplicate pair; zero/invalid weights; nonfinite data; deployment/mechanism denominators; latency cannot override primary failure; report schema/canonical bytes; measured-session compatibility; no real artifact path accepted in fixtures.
+
+**Implementation checklist:**
+
+- [ ] Obtain MD-17 approval and add failing metric/estimand/bootstrap/technical-outcome/schema golden vectors.
+- [ ] Implement pure analyzer components and measured-session protocol with no real run inputs.
+- [ ] Implement both budget views and deterministic report generation from synthetic rows.
+- [ ] Add schema, golden-vector, package, and CI harness smokes.
+- [ ] Run focused Lab/statistical tests twice, full gates, and audit that no real result or threshold change entered the PR.
+
+**Failure/fallback:** malformed/incomplete pairs, missing clusters, invalid weights, unbound analysis ID, nonfinite estimates, or missing technical outcomes make the synthetic/result validation fail. Analyzer exceptions are not converted into favorable estimates.
+
+**Provenance/digests:** result/report schemas reference registration, metric, estimand, analysis, technical-treatment, input-row, seed, analyzer-source, and canonicalizer digests. Golden fixtures are explicitly synthetic.
+
+**CI/package smokes:** synthetic analyzer/report smoke; deterministic golden bootstrap; schema validation; existing MeasurementRunner clients; no network/engine/oracle dependency.
+
+**Acceptance criteria:** `weighted_cluster_bootstrap_v1` and all dependent analysis/report code are merged with fixed golden vectors before real registered outcomes; the PR contains synthetic inputs only and changes no gate.
+
+**Non-goals:** constructing development inputs, calibrating, binding, running registered battles, viewing real outcomes, or evidence/status claims.
+
+**Prerequisites:** Tasks 23-37 and MD-17 approval. **Blocks:** Tasks 39-42. **Safe review boundary:** analysis code and schemas cannot be adapted after seeing registered outcomes.
+
+### Task 39 (Q): Construct and seal concrete M2 development inputs
+
+**Purpose:** Create the complete authorized Development-pool inputs required by the frozen M1.5 pool/schedule rules, without creating or opening protected pools.
+
+**Files:**
+
+- Create: `schemas/manifests/m2-development-pool-v1.schema.json` and `m2-development-schedule-v1.schema.json` **[NEW SCHEMAS v1]** with valid/invalid examples.
+- Create after MD-19 approval: `registrations/gen9ou/development/m2-development-inputs-v1/{README.md,team-sources.json,hero-teams/*.txt,opponent-teams/*.txt,opponent-policies/*.json,team-clusters.json,pool-manifest.json,schedule.json,seed-families.json}`.
+- Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/development_inputs.py` and `tests/evaluation/test_development_inputs.py` for construction/closure validation using existing pool/schedule/seed modules.
+- Create: `tools/validate_m2_development_inputs.py`.
+- Modify: Lab exports, schema/docs/package-smoke tooling, and CI data validator.
+- Modify: no Selection, Power Pilot, Release Holdout, frozen registration, Task-21 binding, analysis code, algorithm code, or outcome file.
+- Delete: none; sealed input versions are immutable.
+
+**Public types and APIs:** `DevelopmentInputManifest`, `DevelopmentPoolManifest`, `DevelopmentScheduleManifest`, and `validate_m2_development_inputs(...)` are **[PUBLIC LAB API]**. Existing team-cluster, matchup, schedule, side, and seed types remain authoritative where already implemented.
+
+**Allowed imports:** Lab data construction may import existing Core sealed-team and Lab pool/schedule/seed modules. It does not import private Runtime adapters or execute battles/search.
+
+**Construction requirements:** bind each hero/opponent team's source/license/content hash and legality/ruleset validation; bind every opponent-policy implementation/config/source digest; compute canonical exact-team clusters/near-duplicate rejection under the frozen rule ID; enumerate base matchups and schedule blocks; create alternating balanced p1/p2 assignments; derive all named seed families outcome-blind; bind development pool ID/version/digest and complete schedule digest. Inputs are selected and sealed before Task 41 outcomes.
+
+**Tests first:** missing/duplicate/illegal team; missing source/license; secret/local path; duplicate exact-team cluster across partitions; unbound opponent policy; absent hero/opponent/policy; unbalanced sides; schedule row/seed collision; wrong frozen construction/cluster/side/schedule rule ID; unstable ordering/digest; protected-pool path/name; mutation changes digest; full closure/reproduction from source bytes.
+
+**Implementation checklist:**
+
+- [ ] Obtain MD-19 approval for source/license, selection procedure, sizes, policies, and development-only access.
+- [ ] Add failing schema/closure/cluster/schedule/seed/protected-pool tests.
+- [ ] Materialize reviewed teams/policies and generate cluster, pool, schedule, and seed artifacts mechanically.
+- [ ] Seal canonical digests and reproduce the complete input set from approved source bytes.
+- [ ] Run legality/data/schema/frozen-rule/full gates and audit that protected pools remain absent/unopened.
+
+**Failure/fallback:** any missing provenance, illegality, duplicate/contamination, unbound policy, schedule imbalance, seed collision, or digest mismatch prevents sealing. No input is replaced after outcomes in the same version.
+
+**Provenance/digests:** source/license, team/policy bytes, ruleset/legality tool, clusters, pool, matchups, schedule blocks/rows, side assignments, seed families, construction code, and schema digests close transitively.
+
+**CI/package smokes:** data-only development-input closure and deterministic regeneration; no battle run; explicit assertion that Selection/Power Pilot/Release Holdout artifacts do not exist or remain unopened under registered state.
+
+**Acceptance criteria:** concrete hero teams, opponent teams/policies, clusters, pool manifest, all schedule rows/blocks/sides, and seed families are sealed and digest-resolvable under frozen rules; no protected pool is created/opened.
+
+**Non-goals:** closed-world prior, analysis changes, calibration, bindings, battle execution, result viewing, or strength claims.
+
+**Prerequisites:** Tasks 23-38 and MD-19 approval. **Blocks:** Tasks 40-42. **Safe review boundary:** evaluation inputs are selected and immutable before run bindings and outcomes.
+
+### Task 40 (R): Close implementation/run bindings and calibration evidence
 
 **Purpose:** Make every evaluation-relevant byte and environment fact resolvable before a registered run starts.
 
 **Files:**
 
-- Create: new versioned schemas such as `schemas/manifests/evaluation-arm-binding-v5.schema.json` and `evaluation-run-binding-v5.schema.json` **only if MD-13 approves and existing versions cannot express M2 closure**.
+- Create after MD-13 approval: `schemas/manifests/evaluation-arm-binding-v5.schema.json` and `evaluation-run-binding-v5.schema.json` **[NEW SCHEMAS v5]**; v4 cannot represent a real development run because it fixes `run_purpose` to `synthetic_acceptance`.
 - Create: valid/invalid M2 binding examples and canonical vectors.
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/bindings/{__init__.py,m2.py,closure.py}` and tests.
 - Create: `packages/battlebelief-lab/src/battlebelief_lab/calibration/{__init__.py,search.py,evidence.py}` and tests.
@@ -925,20 +1199,22 @@ The optional extra is fail-closed: importing Runtime, using heuristic mode, and 
 - engine commit/source/build/wheel/features/platform/adapter and capability/evidence manifest;
 - differential corpus/classifier/results;
 - closed-world source/prior/distribution;
-- search algorithm/accepted contract/frozen arm spec/config/work point/mode;
+- search algorithm/accepted contract/frozen execution spec/Task-32 algorithm specifications/config/work point/mode;
+- Task-35 identity/record/measurement schemas and Task-36 execution-isolation/worker-or-latency evidence;
 - environment OS/architecture/Python/Node/Rust/build-tool identities as applicable;
-- team and pool bindings, registration digest, metric/statistical configuration references, and seed plan;
+- Task-39 hero/opponent teams, opponent policies, clusters, development-pool/schedule/side/seed bindings;
+- registration digest and Task-38 metric/estimand/bootstrap/technical-outcome/analyzer/report source and golden-vector digests;
 - fallback/timeout/crash taxonomy version and telemetry/record schema versions.
 
-Calibration chooses among only the registered determinization work grid `64/128/256/512`; it does not tune worlds, depth, metric threshold, or DUCT semantics. Calibration inputs and output selection are bound before evaluation. If DUCT needs a work-matched configuration not fully owned by an accepted artifact, stop and record a new Maintainer decision rather than inventing it.
+Calibration chooses among only the registered determinization work grid `64/128/256/512` and applies Task-32's precommitted DUCT work-matching procedure. It does not tune worlds, depth, algorithm semantics, metric threshold, or any Task-32 configuration field. Calibration inputs, outcome-blind selection rule, and complete outputs are bound before Task 41.
 
-**Tests first:** complete valid closure; one missing/unknown/mismatched digest at every edge; wrong engine/oracle/ruleset/prior/environment; circular/unresolvable ref; local path or hostname; Task-21 immutable fixture byte check; calibration grid rejects other values; calibration run cannot use evaluation result; run binding cannot name unopened pool; v3 evidence compatibility; repeated binding canonical bytes.
+**Tests first:** complete valid closure; one missing/unknown/mismatched digest at every edge; wrong engine/oracle/ruleset/prior/spec/record/worker-or-latency/analyzer/development-input/environment; circular/unresolvable ref; path/host; Task-21 immutable bytes; v4 stays synthetic-only; v5 development closure; calibration rejects off-grid or Task-32 config change; calibration cannot use registered outcomes; unopened pool rejected; v3 evidence compatibility; repeated canonical bytes.
 
 **Implementation checklist:**
 
 - [ ] Obtain MD-13/16 approval; add failing schema, closure, immutable-old-artifact, and outcome-blind calibration tests.
 - [ ] Implement content-addressed binding resolution and complete M2 closure validation.
-- [ ] Implement calibration specifications/evidence restricted to registered choices and precommit the DUCT configuration.
+- [ ] Implement calibration evidence restricted to registered choices and the already precommitted Task-32 DUCT configuration/work-matching rule.
 - [ ] Generate bindings only from real verified inputs and validate every reference from a clean checkout.
 - [ ] Run focused schema/binding/calibration tests, frozen-artifact checks, package smokes, and all repository gates.
 
@@ -950,27 +1226,22 @@ Calibration chooses among only the registered determinization work grid `64/128/
 
 **Non-goals:** running registered comparisons, altering arm/metric/gate values, selecting favorable results after evaluation, opening pools, version/phase change, or strength claims.
 
-**Prerequisites:** Tasks 28-33 and MD-13 approval. **Blocks:** Task 35. **Safe review boundary:** provenance completeness is approved before outcome data exists.
+**Prerequisites:** Tasks 23-39 and MD-13/16/19 approval. **Blocks:** Tasks 41-42. **Safe review boundary:** provenance and calibration close only merged code/specs/inputs before registered outcomes exist.
 
-### Task 35 (M1): Run the registered development evaluation and create M2 run evidence
+### Task 41 (S): Execute the data-only registered development run
 
-**Purpose:** Execute the two frozen M2 core comparisons exactly as registered on authorized development inputs, with complete deployment and mechanism accounting.
+**Purpose:** Execute the two frozen comparisons with already merged Runtime/analyzer code and closed bindings, allowing only immutable run inputs, raw outcomes, measurements, and mechanically generated reports in the PR.
 
 **Files:**
 
-- Create: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/search/{__init__.py,session.py,runner.py,metrics.py,report.py}`.
-- Create: `packages/battlebelief-lab/tests/evaluation/search/{test_session.py,test_runner.py,test_metrics.py,test_report.py,test_pool_guard.py}`.
-- Create: `schemas/evaluation/m2-evaluation-result-v1.schema.json` and `m2-evaluation-report-v1.schema.json` **[NEW SCHEMAS v1]** after MD-17 approval; they reference existing metric/statistical IDs instead of restating thresholds.
-- Create: `tools/run_m2_evaluation.py` and `tools/validate_m2_evidence.py`.
-- Create: content-addressed `artifacts/gen9ou/m2/evaluation/...` run bindings, raw decision/measurement rows, summaries, and reports generated by the authorized run.
-- Modify: `packages/battlebelief-lab/src/battlebelief_lab/evaluation/measurement_runner.py` to depend on a measured-session protocol if needed; preserve existing `MeasurementRunner` clients.
-- Modify: Lab registration validator/reporting exports, schema tooling, package smoke, and CI evidence validator.
-- Modify: no frozen registration, arm spec, gate, pool manifest, or Task-21 binding.
+- Create: `artifacts/gen9ou/m2/evaluation/development-run-v1/{run-index.json,raw-battles.jsonl,decision-records.jsonl,search-measurements.jsonl,technical-outcomes.jsonl,evaluation-result.json,evaluation-report.json}`.
+- Modify: `artifacts/gen9ou/m2/evaluation/README.md` to link the closed Task-40 run binding and immutable output digests.
+- Modify: no Python, schema, contract, registration, algorithm specification, threshold, analyzer/golden vector, Runtime code, pool/schedule/seed input, binding/calibration artifact, or Task-21 file.
 - Delete: none; failed/aborted runs remain retained under provenance rules.
 
-**Public types and APIs:** `MeasuredDecisionSession`, `SearchEvaluationSession`, `M2EvaluationRunner`, `DeploymentBudgetView`, `MechanismBudgetView`, and `M2EvaluationReport` are **[PUBLIC LAB API]**. The oracle session creates separate authoritative player views; it never passes full truth into a Runtime decision policy.
+**Public types and APIs:** none. The PR invokes Task-38 `run_m2_evaluation.py`/public analyzer and Task-37 Runtime APIs without changing them.
 
-**Allowed imports:** Lab evaluation may import Core evaluation types and approved Runtime public/testing APIs, plus its own oracle/binding modules. It does not import private Runtime adapter internals; Runtime/Core never import the runner.
+**Allowed imports:** none are added. The merged Lab runner may import approved Core/Runtime APIs and its own oracle/binding modules; the data-only diff creates no import edge.
 
 **Frozen comparisons:**
 
@@ -979,39 +1250,39 @@ Calibration chooses among only the registered determinization work grid `64/128/
 
 For both, preserve `battle_outcome_weighted_v1`, one-sided 95% confidence, minimum effect `0.05`, and Go only when the lower confidence bound is at least `0.05`. `end_to_end_latency_ms_v1` is tie-break-only. Do not restate these as a new authority in generated prose; reference the frozen registration and record its digest.
 
-**Run procedure:** validate binding closure and development-pool authorization before starting; precommit seeds/pairings/side allocation; run through the local oracle and public Runtime composition; retain every decision and battle; compute paired/weighted metric exactly through existing evaluation code; produce both deployment-budget (all fallbacks/timeouts/crashes as deployed) and mechanism-budget (qualified completed search mechanism with denominator disclosures) views; make the registered inference once; render raw counts, rates, confidence bounds, effect, latency tie-break, artifact identities, and failure taxonomy.
+**Run procedure:** validate Task-40 binding closure and Task-39 development-pool authorization before starting; use the already sealed seeds/pairings/sides; run through the local oracle and public Runtime composition; retain every decision and battle; compute paired/weighted metrics exclusively through the merged Task-38 analyzer; produce deployment-budget (all fallbacks/timeouts/crashes as deployed) and mechanism-budget (qualified completed mechanism with disclosed denominators) views; make the registered inference once; render raw counts, rates, confidence bounds, effect, latency tie-break, artifact identities, and failure taxonomy.
 
 Protected selection, power-pilot, and release-holdout pools are rejected by the runner unless a later independent authorization and binding explicitly opens them. This task does not create them.
 
-**Tests first:** measured-session protocol compatibility with existing BattleSession/MeasurementSession; distinct player observations and adversarial leakage test; full truth unavailable to policy; registration digest/arm order/gate checks; wrong pool blocked; seed/pairing precommit; failure/timeout/crash retained in denominators; fallback counted in both declared views; no double counting; weighted metric and one-sided confidence vectors; exact 0.05 boundary; latency cannot override failed primary gate; interrupted run resumability without selective deletion; report regenerates byte-stable canonical data from raw evidence.
+**Tests and validation first:** Task-40 binding closure; exact Task-39 development pool/schedule/seed authorization; frozen registration/arm/spec/gate digests; merged Task-38 analyzer/golden digests; no protected pool; distinct-player leakage smoke; resume/idempotence dry run; raw-output destination empty; generated report reproduces byte-identically from retained rows; all failures/timeouts/crashes remain in denominators; diff allowlist is data-only.
 
 **Implementation checklist:**
 
-- [ ] Obtain explicit development-run and MD-17 approval; add failing session, pool, leakage, accounting, metric, inference, and report tests.
-- [ ] Implement the measured-session adapter, local-oracle evaluator, immutable raw-result writer, and resume rules.
-- [ ] Implement deployment/mechanism views and reports by referencing the frozen registration and accepted metric/statistical code.
-- [ ] Validate closure, precommit run inputs, execute the authorized comparisons, and retain every result/failure.
-- [ ] Rebuild reports from raw evidence, run evidence validators and full repository gates, and audit protected-pool access logs.
+- [ ] Obtain explicit development-run authorization and validate every closed input/code/spec/analyzer digest before starting.
+- [ ] Execute the precommitted schedule through the merged local oracle and Runtime; retain every battle/decision/measurement/technical outcome.
+- [ ] Generate both budget views, registered inference, and report only with the merged Task-38 analyzer.
+- [ ] Rebuild result/report from immutable raw rows and byte-compare canonical outputs.
+- [ ] Run evidence/schema/full gates and enforce a data-only diff plus protected-pool access audit.
 
 **Failure/fallback:** individual decision failures use the registered Runtime fallback and remain in the battle. Battle/oracle/backend crashes and timeouts are classified and counted; an invalid run is reported invalid, not removed. Binding, leakage, pool, or registration mismatch aborts before evaluation and produces no gate result.
 
-**Provenance/digests:** each row/run resolves the Task-34 closure plus pairing, seeds, teams, development pool, oracle session, Decision Record/Search Measurement, outcome, fallback/timeout/crash, metric, statistical-analysis, and report-renderer digests. No secret, host, path, or hidden world appears in public decision evidence.
+**Provenance/digests:** each row/run resolves Task-40 closure plus Task-39 pairing/seeds/teams/policies/pool/schedule, oracle session, Decision Record/Search Measurement, outcome, fallback/timeout/crash, Task-38 analyzer, and report-renderer digests. No secret, host, path, or hidden world appears in public decision evidence.
 
-**CI/package smokes:** synthetic miniature runner/report test in CI; M2 evidence validator for retained authorized artifacts; local oracle/search-extra/sentinel/differential/prior checks as prerequisites. The full registered run is an explicit retained-evidence workflow, not an unbounded ordinary PR test.
+**CI/package smokes:** validate retained authorized artifacts and raw-to-report reproduction; rerun existing synthetic analyzer smoke and oracle/search/qualification/prior prerequisites. CI does not rerun the full registered schedule automatically.
 
 **Acceptance criteria:** both comparisons are executed unchanged on an authorized development pool; all outcomes/failures are retained; reports show both budget views and the registered inference; no protected pool is touched; evidence is reproducible from bindings and raw rows.
 
-**Non-goals:** changing a gate after results, selection/power/release evaluation, ladder play, publishing strength/parity/MVP claims, opening pools, or changing Runtime phase/version.
+**Non-goals:** any code/schema/spec/analyzer/golden/pool/schedule/binding/calibration/threshold change, selection/power/release evaluation, ladder play, strength/parity/MVP claims, or Runtime phase/version change.
 
-**Prerequisites:** Tasks 24-34, real exact capability evidence, full binding closure, and explicit Maintainer authorization to run the registered development evaluation. **Blocks:** Task 36. **Safe review boundary:** evaluation cannot redefine implementation, qualification, or gates and produces evidence without status changes.
+**Prerequisites:** Tasks 23-40, real exact capability evidence, full binding closure, and explicit Maintainer authorization. **Blocks:** Task 42. **Safe review boundary:** real outcomes arrive in a data-only PR that cannot redefine analyzer, implementation, inputs, qualification, or gates.
 
-### Task 36 (M2): Review M2 acceptance evidence and propose any status transition
+### Task 42 (T): Review M2 acceptance evidence and propose any status transition
 
 **Purpose:** Decide whether the implemented prototype meets the M2 milestone using real retained evidence, without converting development results into a strength claim.
 
 **Files:**
 
-- Create: `docs/evidence/m2-engine-qualified-search-prototype.md` or the repository's approved evidence location, containing digest references rather than duplicated normative thresholds.
+- Create: `docs/operations/m2-engine-qualified-search-prototype-evidence.md`, following the repository's existing evidence/operations location and containing digest references rather than duplicated normative thresholds.
 - Create: `schemas/manifests/m2-evidence-index-v1.schema.json` **[NEW SCHEMA v1]** and its valid/invalid examples after MD-17 approval.
 - Modify: `docs/roadmap/milestones.md`, Runtime status/version metadata, README, Wiki, or release notes only after the Maintainer explicitly accepts the evidence and separately authorizes the exact status/version edits.
 - Modify: evidence validation tooling/CI if a new index is approved.
@@ -1034,7 +1305,7 @@ Protected selection, power-pilot, and release-holdout pools are rejected by the 
 **Implementation checklist:**
 
 - [ ] Obtain MD-15/17 disposition and add failing evidence-closure and claim-scope checks.
-- [ ] Build the evidence index/report exclusively from verified Task-35 artifacts and full gate results.
+- [ ] Build the evidence index/report exclusively from verified Task-41 artifacts and full gate results.
 - [ ] Review exact capability/environment scope, failures, protected-pool state, and all unmade claims.
 - [ ] Request explicit Maintainer acceptance and exact version/phase/documentation authority before any status edit.
 - [ ] Run complete local and PR gates, inspect the entire diff, and record every limitation or unexecuted external check.
@@ -1047,7 +1318,7 @@ Protected selection, power-pilot, and release-holdout pools are rejected by the 
 
 **Non-goals:** new implementation, new evaluation, gate changes, M3 work, or automatic release.
 
-**Prerequisites:** Task 35 and all retained evidence. **Blocks:** any claim that M2 is complete and any subsequent milestone transition. **Safe review boundary:** acceptance/status is not bundled with implementation or result generation.
+**Prerequisites:** Task 41 and all retained evidence. **Blocks:** any claim that M2 is complete and any subsequent milestone transition. **Safe review boundary:** acceptance/status is not bundled with analyzer implementation or result generation.
 
 ## 8. Cross-task safety, determinism, and compatibility rules
 
@@ -1093,18 +1364,24 @@ Canonical artifacts contain no credentials, cookies, tokens, private data, absol
 |---|---|
 | 23 | documentation/link governance; placeholder/secret/path scan; `git diff --check`; frozen-artifact and full-diff audit |
 | 24 | Lab oracle unit tests; manifest schemas; deterministic oracle and lifecycle smoke on Ubuntu/Windows; no-network test |
-| 25 | Runtime artifact/mapper/sentinel tests; base and `[search]` isolated package installs; Gen-9 sentinel on supported cells |
-| 26 | capability schema/examples/canonicalization; v1 compatibility; catalog/manifest closure |
-| 27 | Core eligibility/fallback truth table; fake transition port conformance; architecture negative tests |
-| 28 | corpus validator; classifier/evidence tests; real bounded differential smoke on Ubuntu/Windows |
-| 29 | closed-world schema, filtering, normalization, sampler, provenance, and leakage tests |
-| 30 | registration conformance; exact work/depth/world/mean/tie/fallback vectors |
-| 31 | all seven Search-v0 invariants; adversarial information/view/joint-argmax vectors |
-| 32 | deterministic two-run byte comparison; seed separation; fake-clock live timeout/incumbent tests |
-| 33 | no-extra/extra Runtime composition; BattleSession/MeasurementSession; records migration; Protocol and Safety smokes |
-| 34 | implementation/run/calibration schema closure; immutable Task-21 bindings; registered grid restriction |
-| 35 | measured-session/leakage/pool guards; metric/statistical vectors; synthetic report/evidence validation |
-| 36 | full evidence closure, claim-language review, status/version approval, full repository/PR gates |
+| 25 | Runtime artifact/private-probe/sentinel tests; no public mapper export; base and `[search]` isolated installs; Gen-9 sentinel |
+| 26 | capability/schema/canonicalization/v1 compatibility; Core transition/random port fake conformance; generic distribution identity |
+| 27 | Runtime state/action/view/joint-transition mapping; safe-root preservation; real Core-port conformance; import confinement |
+| 28 | corpus/classifier/evidence-builder schemas and synthetic/golden differential harness; no real exact claim |
+| 29 | data-only real matrix; frozen Task-28 digests; raw-to-evidence reproduction; zero unclassified/affecting divergence for exact |
+| 30 | closed-world filtering, normalization, sampler, generic-identity conversion, provenance, and leakage tests |
+| 31 | Core eligibility/fallback truth table over generic identity; no backend call on denial; architecture negatives |
+| 32 | both algorithm-spec schemas/completeness/canonicalization; frozen-value cross-validation; no semantic defaults |
+| 33 | determinization conformance to frozen plus Task-32 specs; allocation/remainder/opponent/chance/value/backup/depth/work vectors |
+| 34 | seven Search-v0 invariants plus Task-32 DUCT config/work/backup golden vectors and adversarial joint-argmax tests |
+| 35 | request/record/measurement schemas, migrations, canonical bytes, v1/v2 immutability, and leakage tests |
+| 36 | deterministic Decision Record byte comparison; seed separation; fake-clock plus worker hang/kill or soft-deadline qualification |
+| 37 | no-extra/extra Runtime composition; BattleSession/Coordinator/MeasurementSession; Task-35 records; Protocol/Safety smokes |
+| 38 | synthetic metric/estimand/technical-outcome/bootstrap/report golden vectors and schemas; no real outcomes |
+| 39 | team/policy/source/license/cluster/pool/schedule/side/seed closure; protected-pool absence; deterministic regeneration |
+| 40 | arm/run/calibration binding closure across specs, analyzer, development inputs, isolation evidence, and immutable Task-21 artifacts |
+| 41 | data-only run allowlist; pre-run closure; complete outcome retention; raw-to-report reproduction; protected-pool access audit |
+| 42 | full evidence closure, claim-language review, status/version approval, and complete repository/PR gates |
 
 Use the actual commands exposed by the repository at the task's baseline. Do not invent a command name when tooling has not yet been added; adding each named new tool and its tests is part of its owning task.
 
@@ -1135,8 +1412,11 @@ As their owning tasks land, add these isolated gates and keep them independent:
 - Runtime `[search]` build/install/import smoke without implicit source build;
 - Lab oracle profile build/lifecycle/no-network smoke;
 - real Gen-9/Terastallization/transition/minimal-search sentinel;
-- differential corpus closure and bounded real runner smoke;
-- deterministic benchmark two-run canonical-row byte comparison.
+- differential corpus/classifier synthetic golden smoke, followed by a separately authorized data-only qualification validator;
+- deterministic benchmark two-run Decision Record v3 byte comparison;
+- native worker hang/kill/process-tree cleanup smoke under a hard-deadline option, or explicit soft-deadline/max-call-latency qualification;
+- synthetic `weighted_cluster_bootstrap_v1`/technical-outcome golden-vector smoke;
+- M2 development-input pool/schedule/seed closure and protected-pool absence smoke.
 
 Full validation must inspect retained artifacts and the complete diff for generated binaries, secrets, local state, absolute paths, hostnames, unlicensed data, unexpected dependency/lock changes, frozen registration/binding changes, premature M2 status, and parity/strength/release claims.
 
@@ -1149,7 +1429,8 @@ These links identify the inspected snapshot. They do not select BattleBelief's f
 - [Package metadata at the observed revision](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/package.json)
 - [Official package lock at the observed revision](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/package-lock.json)
 - [Official MIT license](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/LICENSE)
-- [Official launcher with its Node version check](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/pokemon-showdown)
+- [Official launcher with its global-`fetch` feature test and Node-22 message](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/pokemon-showdown)
+- [Official server entry point with the same feature test/message](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/server/index.ts)
 - [Official simulator documentation](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/sim/SIMULATOR.md)
 - [Official simulator protocol documentation](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/sim/SIM-PROTOCOL.md)
 - [Official test workflow at the observed revision](https://github.com/smogon/pokemon-showdown/blob/6a1836dd71c0718e923206f3d089e61074410868/.github/workflows/test.yml)
@@ -1172,12 +1453,19 @@ Before approving this plan, verify that it:
 
 - keeps Task 23 documentation-only and leaves the current Runtime version/phase and M1.5/Task-21 artifacts unchanged;
 - assigns every new port, adapter, schema, artifact, test, smoke, and CI/tool change to exactly one serial task;
+- publishes no Runtime state/action mapper before the Core port and generic distribution identity merge;
 - treats Pokémon Showdown as authoritative and `poke-engine` as non-authoritative and artifact-qualified;
+- distinguishes Showdown's declared Node >=16 metadata, actual global-`fetch` feature test, Node-22 message, and Node-18 CI coverage;
 - requires exact capability evidence and rejects unknown, unsupported, bounded approximation, mismatch, and backend failure;
+- freezes differential code/classifier/corpus before a separate data-only qualification run;
 - treats the closed-world distribution as evaluation-only and never as M3 belief;
 - reproduces every frozen determinization value without modification;
+- binds all otherwise unspecified determinization and DUCT semantics outcome-blind before either implementation;
 - maps every Search-v0 invariant to an adversarial test;
-- separates deterministic canonical rows from live operational measurement;
+- versions record/canonical-byte semantics before modes and Runtime integration, and separates deterministic rows from live measurement;
+- makes hard native-call deadlines depend on killable isolation, or explicitly narrows the API to a qualified soft deadline;
+- seals concrete Development teams, policies, clusters, pool, schedule, sides, and seeds before bindings and outcomes;
+- merges the synthetic-only statistical analyzer and golden vectors before a data-only registered run;
 - retains all fallbacks, timeouts, crashes, invalid actions, and failed runs in evaluation accounting;
 - keeps protected pools closed and makes no strength, parity, ladder, MVP, or release claim;
 - presents every discovered inconsistency or proposed improvement as a Maintainer decision rather than an implicit change;
