@@ -128,18 +128,8 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
         raise RegistrationValidationError(
             f"unknown selection_rule_id: {spec.get('selection_rule_id')}"
         )
-    if spec.get("schema_version") == 4:
-        reference_environment = spec.get("reference_environment_specification")
-        if not isinstance(reference_environment, Mapping) or set(reference_environment) != {
-            "python",
-            "platform",
-            "runtime_profile",
-        }:
-            raise RegistrationValidationError(
-                "calibration reference environment is not fully specified"
-            )
-        if reference_environment.get("runtime_profile") != "offline_m15_calibration":
-            raise RegistrationValidationError("calibration reference runtime profile is invalid")
+    schema_version = spec.get("schema_version")
+    if schema_version in {3, 4}:
         if spec.get("calibrated_parameter") != "per_world_work":
             raise RegistrationValidationError("calibration parameter must be per_world_work")
         if spec.get("world_sampling_count") != 16:
@@ -148,7 +138,7 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
             raise RegistrationValidationError("calibration total-work formula is invalid")
         expected_rule = (
             "m15-synthetic-calibration-state-v2"
-            if spec.get("schema_version") == 4
+            if schema_version == 4
             else "m15-synthetic-calibration-state-v1"
         )
         if spec.get("calibration_state_rule_id") != expected_rule:
@@ -164,6 +154,18 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
             )
         if not _DIGEST_RE.fullmatch(str(spec.get("calibration_state_manifest_digest", ""))):
             raise RegistrationValidationError("calibration state manifest digest is invalid")
+    if schema_version == 4:
+        reference_environment = spec.get("reference_environment_specification")
+        if not isinstance(reference_environment, Mapping) or set(reference_environment) != {
+            "python",
+            "platform",
+            "runtime_profile",
+        }:
+            raise RegistrationValidationError(
+                "calibration reference environment is not fully specified"
+            )
+        if reference_environment.get("runtime_profile") != "offline_m15_calibration":
+            raise RegistrationValidationError("calibration reference runtime profile is invalid")
     grid = spec.get("ordered_work_grid")
     if not isinstance(grid, list) or any(
         not isinstance(value, int) or isinstance(value, bool) for value in grid
@@ -199,7 +201,13 @@ def validate_calibration_evidence(
     """Validate measured calibration rows against their frozen specification."""
 
     validate_calibration_spec(spec)
-    if spec.get("schema_version") in {3, 4}:
+    schema_version = spec.get("schema_version")
+    if schema_version == 4:
+        if environment_manifest is None:
+            raise RegistrationValidationError("calibration environment manifest is required")
+        if implementation_binding is None:
+            raise RegistrationValidationError("calibration implementation binding is required")
+    if schema_version in {3, 4}:
         if evidence.get("calibration_spec_digest") != manifest_digest(dict(spec)):
             raise RegistrationValidationError("calibration specification digest mismatch")
         if evidence.get("actual_calibration_state_digest") != spec.get(
@@ -207,6 +215,10 @@ def validate_calibration_evidence(
         ):
             raise RegistrationValidationError("calibration state manifest digest mismatch")
         if environment_manifest is not None:
+            if evidence.get("actual_environment_digest") != manifest_digest(
+                dict(environment_manifest)
+            ):
+                raise RegistrationValidationError("calibration environment digest mismatch")
             validate_calibration_environment_manifest(environment_manifest)
             reference = spec.get("reference_environment_specification")
             actual = environment_manifest.get("runtime_environment")

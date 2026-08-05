@@ -503,10 +503,15 @@ def test_search_fallback_resolves_to_registered_heuristic_arm() -> None:
 
 def test_calibration_selection_requires_wall_and_cpu_limits() -> None:
     spec = _load(CALIBRATION_SPEC)
+    environment = _load(CALIBRATION_ENVIRONMENT)
+    implementation = _load(IMPLEMENTATION)
     evidence = {
+        "calibration_spec_digest": artifact_digest(spec),
         "measurement_profile_id": spec["measurement_profile_id"],
         "selection_measurement_id": spec["selection_measurement_id"],
         "runtime_limits_ms": spec["runtime_limits_ms"],
+        "actual_environment_digest": artifact_digest(environment),
+        "actual_calibration_state_digest": spec["calibration_state_manifest_digest"],
         "runtime_measurements": [
             {
                 "work_value": work_value,
@@ -520,11 +525,73 @@ def test_calibration_selection_requires_wall_and_cpu_limits() -> None:
     }
 
     try:
-        validate_calibration_evidence(evidence, spec)
-    except RegistrationValidationError:
-        pass
+        validate_calibration_evidence(
+            evidence,
+            spec,
+            environment_manifest=environment,
+            implementation_binding=implementation,
+        )
+    except RegistrationValidationError as error:
+        assert "completed calibration row is over_limit" in str(error)
     else:
         raise AssertionError("CPU-over-limit calibration was accepted")
+
+
+def test_v4_calibration_evidence_requires_environment_binding() -> None:
+    spec = _load(CALIBRATION_SPEC)
+    evidence = {
+        "calibration_spec_digest": artifact_digest(spec),
+        "measurement_profile_id": spec["measurement_profile_id"],
+        "selection_measurement_id": spec["selection_measurement_id"],
+        "runtime_limits_ms": spec["runtime_limits_ms"],
+        "actual_environment_digest": "sha256:" + "1" * 64,
+        "actual_calibration_state_digest": spec["calibration_state_manifest_digest"],
+        "runtime_measurements": [
+            {
+                "work_value": work_value,
+                "status": "failed",
+                "measurements": {},
+                "error_class": "calibration_fixture_failed",
+            }
+            for work_value in spec["ordered_work_grid"]
+        ],
+        "selected_work_value": None,
+    }
+
+    with pytest.raises(RegistrationValidationError, match="environment manifest is required"):
+        validate_calibration_evidence(evidence, spec)
+
+
+def test_v4_calibration_evidence_binds_actual_environment_digest() -> None:
+    spec = _load(CALIBRATION_SPEC)
+    environment = _load(CALIBRATION_ENVIRONMENT)
+    implementation = _load(IMPLEMENTATION)
+    evidence = {
+        "calibration_spec_digest": artifact_digest(spec),
+        "measurement_profile_id": spec["measurement_profile_id"],
+        "selection_measurement_id": spec["selection_measurement_id"],
+        "runtime_limits_ms": spec["runtime_limits_ms"],
+        "actual_environment_digest": "sha256:" + "1" * 64,
+        "actual_calibration_state_digest": spec["calibration_state_manifest_digest"],
+        "runtime_measurements": [
+            {
+                "work_value": work_value,
+                "status": "failed",
+                "measurements": {},
+                "error_class": "calibration_fixture_failed",
+            }
+            for work_value in spec["ordered_work_grid"]
+        ],
+        "selected_work_value": None,
+    }
+
+    with pytest.raises(RegistrationValidationError, match="environment digest mismatch"):
+        validate_calibration_evidence(
+            evidence,
+            spec,
+            environment_manifest=environment,
+            implementation_binding=implementation,
+        )
 
 
 def test_synthetic_fixture_rejects_unresolved_base_matchup_fixture() -> None:

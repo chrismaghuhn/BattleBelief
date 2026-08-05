@@ -779,6 +779,17 @@ def test_v3_calibration_evidence_binds_spec_and_state_manifest_digests() -> None
         validate_calibration_evidence(evidence, spec)
 
 
+def test_v3_calibration_spec_keeps_shared_c1_invariants() -> None:
+    root = Path(__file__).resolve().parents[2]
+    spec = json.loads(
+        (root / "registrations/gen9ou/budgets/m15-search-work-calibration-v1.json").read_text()
+    )
+    spec["world_sampling_count"] = 15
+
+    with pytest.raises(RegistrationValidationError, match="world count"):
+        validate_calibration_spec(spec)
+
+
 def test_calibration_environment_manifest_binds_its_runtime_environment() -> None:
     environment = {
         "schema_version": 1,
