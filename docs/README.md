@@ -4,7 +4,7 @@ title: BattleBelief-Dokumentation
 document_type: guide
 status: accepted
 normative: false
-version: 5
+version: 6
 applies_to:
   - repository
 effective_from: 2026-08-03
@@ -12,7 +12,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-05
 ---
 
 # BattleBelief-Dokumentation
@@ -93,6 +93,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 ## Erklärungen, Entscheidungen und Planung
 
 - [Systemüberblick](architecture/overview.md)
+- [Memory-Hierarchie und battle-lokale Working Sets](architecture/memory-hierarchy.md)
 - [ADR-0001 Information-Set DUCT](adr/ADR-0001-information-set-duct-v0.md)
 - [ADR-0003 BattleBelief-Naming und Drei-Pakete-Monorepo](adr/ADR-0003-battlebelief-naming.md)
 - [ADR-0004 Sauberer Showdown-Runtime-Adapter](adr/ADR-0004-clean-showdown-runtime-adapter.md)
