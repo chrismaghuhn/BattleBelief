@@ -10,7 +10,8 @@ The project currently targets **Smogon Gen 9 OU** and studies whether an explici
 > evidence. Runtime remains version 0.2.0 and phase M1. Observed live
 > measurement coverage is not established. Next milestone: M2 —
 > Engine-qualified Search Prototype. Battle strength, engine parity, release
-> readiness, and MVP status are not claimed.
+> readiness, and MVP status are not claimed. See the [M1.5 measurement
+> evidence](https://github.com/chrismaghuhn/BattleBelief/blob/11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6/docs/operations/m1-5-measurement-harness-evidence.md).
 
 ## Start here
 

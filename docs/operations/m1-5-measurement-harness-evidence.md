@@ -31,8 +31,11 @@ Task-21 merge commit, not this later documentation commit.
 | Artifact or check | Measured value |
 |---|---|
 | `validated_source_commit` | [`eeb608e6d2f897665b6d01c97e56010ff7f73d56`](https://github.com/chrismaghuhn/BattleBelief/commit/eeb608e6d2f897665b6d01c97e56010ff7f73d56) |
-| Successful main PR workflow | [`31005007421`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007421) |
-| Successful main push workflow | [`31005007415`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007415) |
+| `evidence_execution_commit` | [`11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6`](https://github.com/chrismaghuhn/BattleBelief/commit/11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6) |
+| Task-21 PR workflow (`pull_request`, PR #30) | [`31003761078`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31003761078) |
+| Task-21 main validation workflow (`push`, validated source) | [`31005007421`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007421) |
+| Task-21 CodeQL workflow (`push`, validated source) | [`31005007415`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007415) |
+| Task-22 PR workflow (`pull_request`, evidence execution commit) | [`31006644403`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31006644403) |
 | Registration | [`m1-5-core-comparisons-v1`](https://github.com/chrismaghuhn/BattleBelief/blob/eeb608e6d2f897665b6d01c97e56010ff7f73d56/registrations/gen9ou/m1-5-core-comparisons-v1.json) |
 | Registration digest | `sha256:c05cbeb123bcc797d325807a739402266ccdaf0c8e4de9691764af012a3ad03b` |
 | Heuristic implementation binding | [`heuristic_v0-implementation-v2`](https://github.com/chrismaghuhn/BattleBelief/blob/eeb608e6d2f897665b6d01c97e56010ff7f73d56/registrations/gen9ou/bindings/heuristic_v0-implementation-v2.json) |
@@ -114,9 +117,11 @@ uv run pytest packages/battlebelief-lab/tests/evaluation/test_seed_families.py p
 uv run pytest tests/tooling/test_m15_registration_artifacts.py -q
 ```
 
-Pool partition and exact-team near-duplicate checks pass for the declared
-synthetic fixtures. No concrete Selection, Power Pilot, or Release Holdout
-pool is created or opened by this audit. The registered budget mode is
+The generic pool-partitioning and team-clustering contract tests are green.
+The Task-21 synthetic team fixtures are identity fixtures rather than complete
+team objects; this audit makes no concrete near-duplicate classification claim
+for them. No concrete Selection, Power Pilot, or Release Holdout pool is
+created or opened by this audit. The registered budget mode is
 `calibrated_grid`: `per_world_work` uses the frozen grid `[64, 128, 256, 512]`
 and 16 worlds, while deployment limits are recorded in the registration.
 Measured Calibration Evidence is intentionally deferred until the applicable

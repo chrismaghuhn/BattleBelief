@@ -31,7 +31,7 @@ Implemented on `main`:
 - frozen M1.5 registration and heuristic implementation binding;
 - deterministic row-specific synthetic run bindings and Decision Records; and
 - measured M1.5 acceptance evidence with Selection, Power Pilot, and Release
-  Holdout access unopened.
+  Holdout access unopened. See the [M1.5 measurement evidence](https://github.com/chrismaghuhn/BattleBelief/blob/11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6/docs/operations/m1-5-measurement-harness-evidence.md).
 
 Not established by M1.5:
 
