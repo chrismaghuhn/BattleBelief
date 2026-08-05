@@ -2,20 +2,33 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from battlebelief_core.canonicalization import manifest_digest
+from battlebelief_core.domain.records.decision_record import (
+    MeasurementRunContext,
+    ResolvedDecisionRecordBinding,
+    RunScopePayload,
+    RuntimeAndContractDigests,
+)
+from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_lab.evaluation.measurement_runner import MeasurementRunner
+from battlebelief_lab.evaluation.schedule import ScheduleRow, SideAssignment
+from battlebelief_lab.evaluation.seed_families import SeedFamily
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
     _git_blob_bytes,
     _validate_implementation_provenance,
     artifact_digest,
+    validate_calibration_environment_manifest,
     validate_calibration_evidence,
     validate_calibration_state_manifest,
     validate_repository_artifacts,
@@ -30,6 +43,9 @@ RUN_BINDING_DIR = ROOT / "registrations/gen9ou/bindings"
 FIXTURES = ROOT / "registrations/gen9ou/synthetic/m15-acceptance-inputs-v1.json"
 EXECUTION_SPEC = ROOT / "registrations/gen9ou/arm-specs/determinization-search-v0-v4.json"
 CALIBRATION_SPEC = ROOT / "registrations/gen9ou/budgets/m15-search-work-calibration-v2.json"
+CALIBRATION_ENVIRONMENT = (
+    ROOT / "registrations/gen9ou/calibration/m15-calibration-environment-v2.json"
+)
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -288,6 +304,196 @@ def test_calibration_states_bind_executable_public_inputs() -> None:
         assert "public_observed_state" in state
         assert "decision_request" in state
         assert "safe_submission_set" in state
+        assert state["public_state"]["active_slot_count"] == 1
+        assert state["public_observed_state"]["p1"]["active_slot"] == 1
+        assert state["public_observed_state"]["p2"]["active_slot"] == 1
+    assert len(manifest["states"]) == 12
+
+
+def test_calibration_environment_matches_reference_and_implementation() -> None:
+    specification = _load(CALIBRATION_SPEC)
+    environment = _load(CALIBRATION_ENVIRONMENT)
+    implementation = _load(IMPLEMENTATION)
+
+    validate_calibration_environment_manifest(environment)
+    assert environment["implementation_binding_digest"] == artifact_digest(implementation)
+    assert environment["runtime_digest"] == implementation["runtime_digest"]
+    for field, expected in specification["reference_environment_specification"].items():
+        assert environment["runtime_environment"][field] == expected
+    assert validate_repository_artifacts(ROOT) == []
+
+    wrong_python = json.loads(json.dumps(environment))
+    wrong_python["runtime_environment"]["python"] = "3.13"
+    wrong_python["runtime_environment_digest"] = manifest_digest(
+        wrong_python["runtime_environment"]
+    )
+    with pytest.raises(RegistrationValidationError, match="reference environment"):
+        validate_calibration_evidence(
+            {
+                "calibration_spec_digest": artifact_digest(specification),
+                "measurement_profile_id": specification["measurement_profile_id"],
+                "selection_measurement_id": specification["selection_measurement_id"],
+                "runtime_limits_ms": specification["runtime_limits_ms"],
+                "actual_environment_digest": artifact_digest(wrong_python),
+                "actual_calibration_state_digest": specification[
+                    "calibration_state_manifest_digest"
+                ],
+                "runtime_measurements": [],
+                "selected_work_value": None,
+            },
+            specification,
+            environment_manifest=wrong_python,
+            implementation_binding=implementation,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("platform", "windows-2025"), ("runtime_profile", "other-profile")],
+)
+def test_calibration_environment_rejects_reference_mismatches(field: str, value: str) -> None:
+    specification = _load(CALIBRATION_SPEC)
+    environment = _load(CALIBRATION_ENVIRONMENT)
+    implementation = _load(IMPLEMENTATION)
+    environment["runtime_environment"][field] = value
+    environment["runtime_environment_digest"] = manifest_digest(environment["runtime_environment"])
+    evidence = {
+        "calibration_spec_digest": artifact_digest(specification),
+        "measurement_profile_id": specification["measurement_profile_id"],
+        "selection_measurement_id": specification["selection_measurement_id"],
+        "runtime_limits_ms": specification["runtime_limits_ms"],
+        "actual_environment_digest": artifact_digest(environment),
+        "actual_calibration_state_digest": specification["calibration_state_manifest_digest"],
+        "runtime_measurements": [],
+        "selected_work_value": None,
+    }
+    with pytest.raises(RegistrationValidationError, match="calibration"):
+        validate_calibration_evidence(
+            evidence,
+            specification,
+            environment_manifest=environment,
+            implementation_binding=implementation,
+        )
+
+
+def test_calibration_environment_rejects_unrelated_runtime_digest() -> None:
+    specification = _load(CALIBRATION_SPEC)
+    environment = _load(CALIBRATION_ENVIRONMENT)
+    implementation = _load(IMPLEMENTATION)
+    environment["runtime_digest"] = "sha256:" + "0" * 64
+    evidence = {
+        "calibration_spec_digest": artifact_digest(specification),
+        "measurement_profile_id": specification["measurement_profile_id"],
+        "selection_measurement_id": specification["selection_measurement_id"],
+        "runtime_limits_ms": specification["runtime_limits_ms"],
+        "actual_environment_digest": artifact_digest(environment),
+        "actual_calibration_state_digest": specification["calibration_state_manifest_digest"],
+        "runtime_measurements": [],
+        "selected_work_value": None,
+    }
+    with pytest.raises(RegistrationValidationError, match="runtime digest"):
+        validate_calibration_evidence(
+            evidence,
+            specification,
+            environment_manifest=environment,
+            implementation_binding=implementation,
+        )
+
+
+def test_each_synthetic_row_builds_a_core_run_context_and_runner() -> None:
+    fixture = _load(FIXTURES)
+    implementation = _load(IMPLEMENTATION)
+    implementation_digest = artifact_digest(implementation)
+    for binding_path in sorted(RUN_BINDING_DIR.glob("heuristic_v0-m15-synthetic-run-*.json")):
+        binding = _load(binding_path)
+        row_value = next(
+            row for row in fixture["schedule_rows"] if row["row_id"] == binding["schedule_row_id"]
+        )
+        row = ScheduleRow(
+            row_id=row_value["row_id"],
+            base_matchup_id=row_value["base_matchup_id"],
+            side_assignment=SideAssignment(row_value["side_assignment"]),
+            schedule_block=row_value["schedule_block"],
+            seed_family=SeedFamily(**row_value["seed_family"]),
+            repetition_index=row_value["repetition_index"],
+        )
+        digests = RuntimeAndContractDigests(
+            runtime_digest=implementation["runtime_digest"],
+            contract_set_digest=implementation["contract_set_digest"],
+            policy_digest=implementation["components"]["policy"]["digest"],
+            fallback_and_safety_digest=implementation["components"]["fallback_and_safety"][
+                "digest"
+            ],
+        )
+        resolved = ResolvedDecisionRecordBinding(
+            evaluation_run_binding_digest=artifact_digest(binding),
+            registration_digest=binding["registration_digest"],
+            arm_binding_digest=implementation_digest,
+            schedule_digest=binding["schedule_digest"],
+            budget_profile_digest=binding["budget_profile_digest"],
+            seed_family_digest=binding["seed_family_digest"],
+            arm_id="heuristic_v0",
+            runtime_and_contract_digests=digests,
+        )
+        context = MeasurementRunContext.create(
+            resolved_binding=resolved,
+            run_scope=RunScopePayload(
+                registration_digest=binding["registration_digest"],
+                arm_binding_digest=implementation_digest,
+                schedule_digest=binding["schedule_digest"],
+                schedule_row_id=row.row_id,
+                budget_profile_digest=binding["budget_profile_digest"],
+                seed_family_digest=row.seed_family.digest,
+                runtime_digest=implementation["runtime_digest"],
+                contract_set_digest=implementation["contract_set_digest"],
+            ),
+            battle_ordinal=0,
+        )
+        sink = SimpleNamespace(records=(), accepted_record_count=0, accepted_record_digests=())
+
+        class _NoRequestSession:
+            def __init__(self, trace_sink: Any) -> None:
+                self.trace_sink = trace_sink
+
+            async def run(self) -> Any:
+                return SimpleNamespace(
+                    trace_error=None,
+                    record_error=None,
+                    primary_error=None,
+                    state=ObservedState.initial("ash"),
+                    explicit_request_submissions=0,
+                    default_submissions=0,
+                    room_control_or_chat_count=0,
+                )
+
+            def failure_result(self, error: BaseException) -> Any:
+                del error
+                return SimpleNamespace(
+                    trace_error=None,
+                    record_error=None,
+                    primary_error=None,
+                    state=ObservedState.initial("ash"),
+                    explicit_request_submissions=0,
+                    default_submissions=0,
+                    room_control_or_chat_count=0,
+                )
+
+            def flush_trace(self) -> None:
+                return None
+
+            def close_trace(self) -> None:
+                return None
+
+        session = _NoRequestSession(sink)
+        runner = MeasurementRunner(
+            session=session,
+            trace_sink=sink,
+            run_context=context,
+            schedule_row=row,
+        )
+        result = asyncio.run(runner.run())
+        assert result.run_context_digest == context.run_context_digest
+        assert result.run_status.value == "no_request"
 
 
 def test_search_fallback_resolves_to_registered_heuristic_arm() -> None:

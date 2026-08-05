@@ -128,7 +128,18 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
         raise RegistrationValidationError(
             f"unknown selection_rule_id: {spec.get('selection_rule_id')}"
         )
-    if spec.get("schema_version") in {3, 4}:
+    if spec.get("schema_version") == 4:
+        reference_environment = spec.get("reference_environment_specification")
+        if not isinstance(reference_environment, Mapping) or set(reference_environment) != {
+            "python",
+            "platform",
+            "runtime_profile",
+        }:
+            raise RegistrationValidationError(
+                "calibration reference environment is not fully specified"
+            )
+        if reference_environment.get("runtime_profile") != "offline_m15_calibration":
+            raise RegistrationValidationError("calibration reference runtime profile is invalid")
         if spec.get("calibrated_parameter") != "per_world_work":
             raise RegistrationValidationError("calibration parameter must be per_world_work")
         if spec.get("world_sampling_count") != 16:
@@ -178,7 +189,13 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
         raise RegistrationValidationError("runtime and quality measurement sets overlap")
 
 
-def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str, Any]) -> None:
+def validate_calibration_evidence(
+    evidence: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    *,
+    environment_manifest: Mapping[str, Any] | None = None,
+    implementation_binding: Mapping[str, Any] | None = None,
+) -> None:
     """Validate measured calibration rows against their frozen specification."""
 
     validate_calibration_spec(spec)
@@ -189,6 +206,30 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
             "calibration_state_manifest_digest"
         ):
             raise RegistrationValidationError("calibration state manifest digest mismatch")
+        if environment_manifest is not None:
+            validate_calibration_environment_manifest(environment_manifest)
+            reference = spec.get("reference_environment_specification")
+            actual = environment_manifest.get("runtime_environment")
+            if not isinstance(reference, Mapping) or not isinstance(actual, Mapping):
+                raise RegistrationValidationError("calibration reference environment is invalid")
+            for field, expected in reference.items():
+                if actual.get(field) != expected:
+                    raise RegistrationValidationError(
+                        f"calibration reference environment mismatch: {field}"
+                    )
+            if implementation_binding is not None:
+                if environment_manifest.get("implementation_binding_digest") != manifest_digest(
+                    dict(implementation_binding)
+                ):
+                    raise RegistrationValidationError(
+                        "calibration environment implementation binding mismatch"
+                    )
+                if environment_manifest.get("runtime_digest") != implementation_binding.get(
+                    "runtime_digest"
+                ):
+                    raise RegistrationValidationError(
+                        "calibration environment runtime digest mismatch"
+                    )
     shared_fields = ("measurement_profile_id", "selection_measurement_id")
     for field in shared_fields:
         if evidence.get(field) != spec.get(field):
@@ -283,6 +324,16 @@ def validate_calibration_environment_manifest(value: Mapping[str, Any]) -> None:
         raise RegistrationValidationError("calibration runtime environment is invalid")
     if value.get("runtime_environment_digest") != manifest_digest(dict(runtime_environment)):
         raise RegistrationValidationError("calibration runtime environment digest mismatch")
+    if value.get("schema_version") == 2:
+        implementation_digest = value.get("implementation_binding_digest")
+        if type(implementation_digest) is not str or not _DIGEST_RE.fullmatch(
+            implementation_digest
+        ):
+            raise RegistrationValidationError(
+                "calibration environment implementation binding digest is invalid"
+            )
+        if runtime_environment.get("runtime_profile") != "offline_m15_calibration":
+            raise RegistrationValidationError("calibration runtime profile is invalid")
     if not _DIGEST_RE.fullmatch(str(value.get("runtime_digest", ""))):
         raise RegistrationValidationError("calibration runtime digest is invalid")
 
@@ -723,8 +774,13 @@ def _schema_for_artifact(
             "calibration_evidence",
         )
     if value.get("environment_kind") == "calibration_runtime":
+        schema_name = (
+            "calibration-environment-manifest-v2.schema.json"
+            if value.get("schema_version") == 2
+            else "calibration-environment-manifest-v1.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/calibration-environment-manifest-v1.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "calibration_environment",
         )
     if "reference_environment_specification" in value:
@@ -1735,6 +1791,9 @@ def _calibration_input_payload(public_state: Mapping[str, Any], state_id: str) -
     """Build one deterministic, public calibration input bundle."""
 
     turn_index = public_state["turn_index"]
+    active_slot_count = public_state["active_slot_count"]
+    if active_slot_count != 1:
+        raise RegistrationValidationError("calibration active_slot_count is invalid for Singles")
     request_kind = "move" if public_state["request_kind"] == "move" else "forced_switch"
     request_identity = {
         "rqid": turn_index + 1,
@@ -1770,10 +1829,10 @@ def _calibration_input_payload(public_state: Mapping[str, Any], state_id: str) -
         "p1": {
             "side_id": "p1",
             "team_size": 6,
-            "active_slot": 1,
+            "active_slot": active_slot_count,
             "pokemon": [
                 {
-                    "slot": 1,
+                    "slot": active_slot_count,
                     "details": "Pikachu, L50",
                     "active": True,
                     "hp": {"current": 100, "maximum": 100, "precision": "exact", "fainted": False},
@@ -1784,10 +1843,10 @@ def _calibration_input_payload(public_state: Mapping[str, Any], state_id: str) -
         "p2": {
             "side_id": "p2",
             "team_size": 6,
-            "active_slot": 1,
+            "active_slot": active_slot_count,
             "pokemon": [
                 {
-                    "slot": 1,
+                    "slot": active_slot_count,
                     "details": "Bulbasaur, L50",
                     "active": True,
                     "hp": {"current": 100, "maximum": 100, "precision": "exact", "fainted": False},
@@ -1803,7 +1862,7 @@ def _calibration_input_payload(public_state: Mapping[str, Any], state_id: str) -
         "kind": request_kind,
         "side_id": "p1",
         "team_member_count": 6,
-        "active_identity": "fixture-p1-slot-1",
+        "active_identity": f"fixture-p1-slot-{active_slot_count}",
         "is_update": False,
     }
     safe_submission_set = {
@@ -1825,7 +1884,7 @@ def _validate_executable_calibration_state_manifest(value: Mapping[str, Any]) ->
         "public_fields_only": True,
         "declared_domains": {
             "turn_index": [0, 1, 2],
-            "active_slot_count": [1, 2],
+            "active_slot_count": [1],
             "request_kind": ["move", "switch"],
             "weather_class": ["none", "sun"],
         },
@@ -2079,6 +2138,21 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 validate_calibration_environment_manifest(value)
             except RegistrationValidationError as exc:
                 errors.append(f"{relative}: {exc}")
+            if value.get("schema_version") == 2:
+                implementation_digest = value.get("implementation_binding_digest")
+                implementation = (
+                    by_digest.get(implementation_digest)
+                    if isinstance(implementation_digest, str)
+                    else None
+                )
+                if implementation is None or implementation[2] != "implementation":
+                    errors.append(
+                        f"{relative}: calibration environment implementation binding is unresolved"
+                    )
+                elif value.get("runtime_digest") != implementation[1].get("runtime_digest"):
+                    errors.append(
+                        f"{relative}: calibration environment runtime digest does not match implementation"
+                    )
             continue
         if kind not in {"implementation", "run"}:
             if kind != "calibration_evidence":
@@ -2095,8 +2169,23 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             )
             if environment is None or environment[2] != "calibration_environment":
                 errors.append(f"{relative}: calibration environment digest is unresolved")
+            calibration_implementation: tuple[Path, Mapping[str, Any], str] | None = None
+            if environment is not None and environment[2] == "calibration_environment":
+                implementation_digest = environment[1].get("implementation_binding_digest")
+                if isinstance(implementation_digest, str):
+                    calibration_implementation = by_digest.get(implementation_digest)
             try:
-                validate_calibration_evidence(value, specification)
+                validate_calibration_evidence(
+                    value,
+                    specification,
+                    environment_manifest=(environment[1] if environment is not None else None),
+                    implementation_binding=(
+                        calibration_implementation[1]
+                        if calibration_implementation is not None
+                        and calibration_implementation[2] == "implementation"
+                        else None
+                    ),
+                )
             except RegistrationValidationError as exc:
                 errors.append(f"{relative}: {exc}")
             continue

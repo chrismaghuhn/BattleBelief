@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 14
+version: 15
 applies_to:
   - manifests
   - release
@@ -38,7 +38,7 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Evaluationslauf-Bindung v2/v3/v4 | [`evaluation-run-binding.schema.json`](../../schemas/manifests/evaluation-run-binding.schema.json), [`evaluation-run-binding-v3.schema.json`](../../schemas/manifests/evaluation-run-binding-v3.schema.json), [`evaluation-run-binding-v4.schema.json`](../../schemas/manifests/evaluation-run-binding-v4.schema.json) |
 | Budget-Kalibrierungsspezifikation v2/v3/v4 | [`budget-calibration-spec.schema.json`](../../schemas/manifests/budget-calibration-spec.schema.json), [`budget-calibration-spec-v3.schema.json`](../../schemas/manifests/budget-calibration-spec-v3.schema.json), [`budget-calibration-spec-v4.schema.json`](../../schemas/manifests/budget-calibration-spec-v4.schema.json) |
 | Budget-Kalibrierungsevidenz v2/v3 | [`budget-calibration-evidence.schema.json`](../../schemas/manifests/budget-calibration-evidence.schema.json), [`budget-calibration-evidence-v3.schema.json`](../../schemas/manifests/budget-calibration-evidence-v3.schema.json) |
-| Kalibrierumgebungsmanifest v1 | [`calibration-environment-manifest-v1.schema.json`](../../schemas/manifests/calibration-environment-manifest-v1.schema.json) |
+| Kalibrierumgebungsmanifest v1/v2 | [`calibration-environment-manifest-v1.schema.json`](../../schemas/manifests/calibration-environment-manifest-v1.schema.json), [`calibration-environment-manifest-v2.schema.json`](../../schemas/manifests/calibration-environment-manifest-v2.schema.json) |
 | Kalibrierzustandsmanifest v1/v2 | [`calibration-state-manifest-v1.schema.json`](../../schemas/manifests/calibration-state-manifest-v1.schema.json), [`calibration-state-manifest-v2.schema.json`](../../schemas/manifests/calibration-state-manifest-v2.schema.json) |
 | Deklarative Search-Ausführungsspezifikation v2/v3/v4 | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json), [`search-execution-spec-v3.schema.json`](../../schemas/manifests/search-execution-spec-v3.schema.json), [`search-execution-spec-v4.schema.json`](../../schemas/manifests/search-execution-spec-v4.schema.json) |
 | Synthetisches Fixture-Manifest v2/v3 | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json), [`synthetic-fixture-manifest-v3.schema.json`](../../schemas/manifests/synthetic-fixture-manifest-v3.schema.json) |
@@ -71,6 +71,11 @@ Ein Manifest-Digest besitzt die Form:
 ```text
 sha256:<64 lowercase hexadecimal characters>
 ```
+
+Das v2-Manifest bindet zusätzlich das Runtime-Profil, die
+`implementation_binding_digest` und den daraus abgeleiteten `runtime_digest`.
+Die Referenzumgebung der v4-Spezifikation muss mit den tatsächlichen
+Umgebungsfeldern übereinstimmen.
 
 Ein Hash wird erst nach erfolgreicher Schema-Validierung gebildet. Eingaben mit
 unbekannten Feldern, nicht endlichen Zahlen, mehrfachen JSON-Schlüsseln oder

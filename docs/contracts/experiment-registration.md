@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 8
+version: 9
 applies_to:
   - research
   - evaluation
@@ -57,7 +57,7 @@ Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 | `stop_rule_id` | `no_effect_stop_v1` | Stops a comparison at the preregistered null-effect criterion. |
 | `pivot_rule_id` | `uncertain_effect_pivot_v1` | Routes an uncertain effect through the preregistered pivot path. |
 | `go_rule_id` | `lower_confidence_bound_at_least_minimum_effect_v1` | Go only when the one-sided lower confidence bound for `right - left` reaches the registered practical margin. |
-| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v2` | Constructs the fixed, outcome-blind calibration states with executable public observation, request, and safe-submission inputs used by the M1.5 budget specification. |
+| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v2` | Constructs the fixed, outcome-blind 12-state Gen-9-OU Singles grid with executable public observation, request, and safe-submission inputs used by the M1.5 budget specification. |
 
 ## Task-21-Präregistrierung
 
@@ -106,6 +106,12 @@ Digest der zugehörigen SeedFamily. Ein vollständiger Schedule-Digest bleibt
 zusätzlich erhalten. Dadurch kann jeder Run Context direkt zu genau einer
 Task-20-ScheduleRow rekonstruiert werden, ohne einen Listendigest als einzelne
 SeedFamily auszugeben.
+
+Die v2-Kalibrierumgebung bindet ein konkretes Runtime-Profil an die
+`implementation_binding_digest` und übernimmt den `runtime_digest` aus dieser
+Implementierungsbindung. Eine Kalibrierevidenz ist nur gültig, wenn Python,
+Plattform und Runtime-Profil die in der Kalibrierspezifikation eingefrorene
+Referenzumgebung erfüllen.
 
 Die deklarative Search-Spezifikation bindet ihre Kalibrierspezifikation und das
 ausführbare Zustandsmanifest. Ein Fallback wird als `fallback_arm_id` auf einen
