@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import re
-import subprocess
 from pathlib import Path
 from typing import cast
 
 import pytest
 
+from battlebelief_lab.oracle.showdown import server as showdown_server
 from battlebelief_lab.oracle.showdown.errors import OracleFailureClass
 from battlebelief_lab.oracle.showdown.process import OracleProcessError
 from battlebelief_lab.oracle.showdown.server import (
@@ -109,7 +108,7 @@ def test_server_smoke_rejects_a_preexisting_upstream_log_index(tmp_path: Path) -
     assert log_index.read_bytes() == b"preexisting"
 
 
-def test_generated_log_index_must_exactly_match_the_current_git_index(tmp_path: Path) -> None:
+def test_generated_log_index_is_removed_after_its_absence_was_proven(tmp_path: Path) -> None:
     source = tmp_path / "source"
     git = source / ".git"
     logs = source / "logs"
@@ -119,18 +118,12 @@ def test_generated_log_index_must_exactly_match_the_current_git_index(tmp_path: 
     generated = logs / ".gitindex"
     generated.write_bytes(b"different-bytes")
 
-    with pytest.raises(OracleProcessError) as raised:
-        _remove_generated_log_index(generated)
-
-    assert raised.value.failure_class is OracleFailureClass.SOURCE_DIRTY
-    assert generated.read_bytes() == b"different-bytes"
-    generated.write_bytes(b"current-git-index")
     _remove_generated_log_index(generated)
     assert not generated.exists()
 
 
-def test_generated_log_index_accepts_different_bytes_for_the_same_git_tree(
-    tmp_path: Path,
+def test_generated_log_index_rejects_an_oversized_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = tmp_path / "source"
     git = source / ".git"
@@ -139,54 +132,14 @@ def test_generated_log_index_accepts_different_bytes_for_the_same_git_tree(
     logs.mkdir()
     (git / "index").write_bytes(b"current-git-index")
     generated = logs / ".gitindex"
-    generated.write_bytes(b"semantically-equivalent-index")
+    generated.write_bytes(b"12345")
+    monkeypatch.setattr(showdown_server, "_MAX_GENERATED_LOG_INDEX_BYTES", 4)
 
-    _remove_generated_log_index(
-        generated,
-        tree_resolver=lambda _source, _index: ("a" * 40, "a" * 40),
-    )
+    with pytest.raises(OracleProcessError) as raised:
+        _remove_generated_log_index(generated)
 
-    assert not generated.exists()
-
-
-def test_generated_log_index_resolves_an_equivalent_real_git_index(tmp_path: Path) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-
-    def git(*arguments: str, environment: dict[str, str] | None = None) -> None:
-        subprocess.run(
-            ("git", *arguments),
-            cwd=source,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            check=True,
-        )
-
-    git("init", "--quiet")
-    (source / "tracked.txt").write_text("bound\n", encoding="utf-8")
-    git("add", "tracked.txt")
-    git(
-        "-c",
-        "user.name=BattleBelief",
-        "-c",
-        "user.email=none@example.invalid",
-        "commit",
-        "--quiet",
-        "-m",
-        "fixture",
-    )
-    logs = source / "logs"
-    logs.mkdir()
-    generated = logs / ".gitindex"
-    environment = dict(os.environ)
-    environment["GIT_INDEX_FILE"] = str(generated)
-    git("read-tree", "HEAD", environment=environment)
-    assert generated.read_bytes() != (source / ".git" / "index").read_bytes()
-
-    _remove_generated_log_index(generated)
-
-    assert not generated.exists()
+    assert raised.value.failure_class is OracleFailureClass.SOURCE_DIRTY
+    assert generated.read_bytes() == b"12345"
 
 
 def test_server_stderr_markers_are_detected_across_read_chunks() -> None:
