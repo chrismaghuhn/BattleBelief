@@ -235,7 +235,7 @@ class _NativeWindowsJob:
 
     @classmethod
     def _kernel32(cls) -> Any:
-        kernel32 = ctypes.windll.kernel32
+        kernel32 = cast(Any, ctypes).windll.kernel32
         kernel32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
         kernel32.CreateJobObjectW.restype = wintypes.HANDLE
         kernel32.SetInformationJobObject.argtypes = [
@@ -491,7 +491,7 @@ def _resume_suspended_windows_threads(pid: int) -> None:
 
     if os.name != "nt":
         raise _WindowsJobError("Windows thread snapshot is unavailable")
-    kernel32 = ctypes.windll.kernel32
+    kernel32 = cast(Any, ctypes).windll.kernel32
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
     kernel32.Thread32First.argtypes = [wintypes.HANDLE, wintypes.LPVOID]
@@ -702,7 +702,7 @@ def _windows_has_descendant(parent_pid: int) -> bool:
             ("szExeFile", ctypes.c_wchar * 260),
         ]
 
-    kernel32 = ctypes.windll.kernel32
+    kernel32 = cast(Any, ctypes).windll.kernel32
     snapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
     invalid_handle_value = ctypes.c_void_p(-1).value
     if snapshot in (0, invalid_handle_value):
