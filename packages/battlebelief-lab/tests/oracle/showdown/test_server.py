@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -124,6 +126,66 @@ def test_generated_log_index_must_exactly_match_the_current_git_index(tmp_path: 
     assert generated.read_bytes() == b"different-bytes"
     generated.write_bytes(b"current-git-index")
     _remove_generated_log_index(generated)
+    assert not generated.exists()
+
+
+def test_generated_log_index_accepts_different_bytes_for_the_same_git_tree(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    git = source / ".git"
+    logs = source / "logs"
+    git.mkdir(parents=True)
+    logs.mkdir()
+    (git / "index").write_bytes(b"current-git-index")
+    generated = logs / ".gitindex"
+    generated.write_bytes(b"semantically-equivalent-index")
+
+    _remove_generated_log_index(
+        generated,
+        tree_resolver=lambda _source, _index: ("a" * 40, "a" * 40),
+    )
+
+    assert not generated.exists()
+
+
+def test_generated_log_index_resolves_an_equivalent_real_git_index(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+
+    def git(*arguments: str, environment: dict[str, str] | None = None) -> None:
+        subprocess.run(
+            ("git", *arguments),
+            cwd=source,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=True,
+        )
+
+    git("init", "--quiet")
+    (source / "tracked.txt").write_text("bound\n", encoding="utf-8")
+    git("add", "tracked.txt")
+    git(
+        "-c",
+        "user.name=BattleBelief",
+        "-c",
+        "user.email=none@example.invalid",
+        "commit",
+        "--quiet",
+        "-m",
+        "fixture",
+    )
+    logs = source / "logs"
+    logs.mkdir()
+    generated = logs / ".gitindex"
+    environment = dict(os.environ)
+    environment["GIT_INDEX_FILE"] = str(generated)
+    git("read-tree", "HEAD", environment=environment)
+    assert generated.read_bytes() != (source / ".git" / "index").read_bytes()
+
+    _remove_generated_log_index(generated)
+
     assert not generated.exists()
 
 

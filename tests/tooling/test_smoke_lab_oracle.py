@@ -12,6 +12,14 @@ from tools import smoke_lab_oracle
 from battlebelief_lab.oracle.showdown.errors import OracleFailureClass
 from battlebelief_lab.oracle.showdown.process import OracleProcessError
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_cjs_oracle_assets_are_checkout_stable_lf_text() -> None:
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+
+    assert "*.cjs text eol=lf" in attributes
+
 
 def test_fixture_paths_bind_exact_project_fixture_names_and_reject_extras(tmp_path: Path) -> None:
     (tmp_path / "minimal_gen9ou_input.json").write_text("{}", encoding="utf-8")
