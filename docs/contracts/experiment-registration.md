@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 9
 applies_to:
   - research
   - evaluation
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-05
 ---
 
 # Experimentregistrierung und Artefaktbindungen
@@ -26,6 +26,8 @@ Hypothesen, Nullhypothesen, registrierte Arme, Vergleichsreihenfolge,
 Metrik- und Contractverweise, Budgets, Poolzugriff sowie Stop-/Pivotregeln.
 Ihre kanonische Struktur ist in
 [`experiment-registration.schema.json`](../../schemas/manifests/experiment-registration.schema.json)
+und für die M1.5-Präregistrierung in
+[`experiment-registration-v4.schema.json`](../../schemas/manifests/experiment-registration-v4.schema.json)
 definiert.
 
 Eine Arm-Implementierungsbindung versiegelt später die konkrete Implementierung
@@ -54,6 +56,26 @@ Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 | `tie_break_rule_id` | `prefer_lower_runtime_v1` | Resolves a registered tie in favor of the lower runtime. |
 | `stop_rule_id` | `no_effect_stop_v1` | Stops a comparison at the preregistered null-effect criterion. |
 | `pivot_rule_id` | `uncertain_effect_pivot_v1` | Routes an uncertain effect through the preregistered pivot path. |
+| `go_rule_id` | `lower_confidence_bound_at_least_minimum_effect_v1` | Go only when the one-sided lower confidence bound for `right - left` reaches the registered practical margin. |
+| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v2` | Constructs the fixed, outcome-blind 12-state Gen-9-OU Singles grid with executable public observation, request, and safe-submission inputs used by the M1.5 budget specification. |
+
+## Task-21-Präregistrierung
+
+Die bestätigte M1.5-Registrierung verwendet `battle_outcome_weighted_v1` als
+Primärmetrik. Die Richtung ist `higher_is_better`; der Estimand ist der
+rechte minus den linken Arm. Die Mindestmarge beträgt `0.05`, das
+Konfidenzniveau `0.95`, und die Grenze ist einseitig. Ein Vergleich ist
+`go`, wenn die untere Konfidenzgrenze mindestens `0.05` beträgt. Er ist
+`stop`, wenn die Punktschätzung höchstens `0` oder die obere Grenze höchstens
+`0` ist; andernfalls wird er als unsicher an den registrierten Pivotpfad
+geleitet. Die Metrik `end_to_end_latency_ms_v1` mit Richtung
+`lower_is_better` ist ausschließlich der Tie-Break.
+
+Die Deployment-Ansicht bindet 2.000 ms Wandzeit und 2.000 ms CPU-Zeit. Die
+Mechanismus-Ansicht kalibriert ausschließlich `per_world_work` auf dem
+vorab eingefrorenen Grid `[64, 128, 256, 512]`; die Gesamtarbeit ist
+`world_sampling.count * per_world_work`. Die Kalibrierung darf nur Laufzeit-
+und Ressourcenmessungen verwenden.
 
 Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Diese
 versionierte Tabelle ist der normative Eigentümer der zulässigen IDs und ihrer
@@ -61,6 +83,39 @@ Minimalbedeutung; spezialisierte Verträge dürfen die Verfahren operationalisie
 aber keine abweichende Identität einführen.
 
 ## Komponentenstatus
+
+Die v4-Kalibrierung bindet Wandzeit und CPU-Zeit beide als harte
+Auswahlbedingungen. Ihr `calibration_state_manifest_digest` verweist auf ein
+eigenes, versioniertes Manifest mit expliziten öffentlichen Zustandsfeldern,
+Domänen, Reihenfolge und deterministischer Zustandsliste. Jeder Zustand bindet
+zusätzlich einen vollständigen öffentlichen Observed State, einen Decision
+Request und ein Safe Submission Set. Der `work_value`
+bleibt bis zur Kalibrierevidenz `null`; ein fester Wert in einem synthetischen
+Acceptance-Binding ist davon getrennt.
+
+Eine Implementierungsbindung mit `source_commit` prüft ihre Source-Manifeste
+gegen die Blobbytes dieses Commits, nicht gegen den späteren Arbeitsbaum. So
+bleibt eine eingefrorene Binding auch nach Änderungen in M2 reproduzierbar.
+Die Bindung validiert jede gebundene Komponente gegen ihr eigenes Source-Manifest
+und bildet daraus die kanonische Union. Die Runtime-Implementierung besitzt
+zusätzlich ein separates `runtime_source_manifest` und `runtime_digest`; die
+Laufumgebung bleibt als `runtime_environment_digest` davon getrennt.
+
+Ein synthetisches v4-Run-Binding bindet genau eine `schedule_row_id` und den
+Digest der zugehörigen SeedFamily. Ein vollständiger Schedule-Digest bleibt
+zusätzlich erhalten. Dadurch kann jeder Run Context direkt zu genau einer
+Task-20-ScheduleRow rekonstruiert werden, ohne einen Listendigest als einzelne
+SeedFamily auszugeben.
+
+Die v2-Kalibrierumgebung bindet ein konkretes Runtime-Profil an die
+`implementation_binding_digest` und übernimmt den `runtime_digest` aus dieser
+Implementierungsbindung. Eine Kalibrierevidenz ist nur gültig, wenn Python,
+Plattform und Runtime-Profil die in der Kalibrierspezifikation eingefrorene
+Referenzumgebung erfüllen.
+
+Die deklarative Search-Spezifikation bindet ihre Kalibrierspezifikation und das
+ausführbare Zustandsmanifest. Ein Fallback wird als `fallback_arm_id` auf einen
+aktiven registrierten Arm aufgelöst; freie Fallback-Texte sind nicht zulässig.
 
 Jede Komponente einer Implementierungsbindung besitzt genau einen Status:
 
@@ -79,7 +134,7 @@ den jeweils akzeptierten Freigabekriterien geschlossen. Ein synthetischer
 Acceptance-Lauf verwendet ausschließlich deklarierte Fixture-Manifeste und
 öffnet oder simuliert keinen Evaluationspool.
 
-Schema-Version 2 aktiviert nur synthetische Acceptance-Bindings. Evaluation-
+Schema-Version 4 aktiviert nur synthetische Acceptance-Bindings. Evaluation-
 Bindings bleiben geschlossen, solange keine auflösbaren Poolartefakte und
 Poolrollen existieren; ein solcher Lauf darf keinen geschützten Pool nur über
 einen freien Digest öffnen.

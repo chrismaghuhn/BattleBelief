@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "manifest_id": "m15-synthetic-calibration-states-v1",
+  "rule_id": "m15-synthetic-calibration-state-v1",
+  "construction": {
+    "algorithm_id": "public-observation-grid-v1",
+    "field_order": ["turn_index", "active_slot_count", "request_kind", "weather_class"],
+    "enumeration_order": "lexicographic_over_declared_domains",
+    "public_fields_only": true,
+    "declared_domains": {
+      "turn_index": [0, 1, 2],
+      "active_slot_count": [1, 2],
+      "request_kind": ["move", "switch"],
+      "weather_class": ["none", "sun"]
+    },
+    "state_set": "explicit_public_states_v1"
+  },
+  "states": [
+    {"state_id": "sha256:75489410965bffa18877ad5bd21bba928708757077ac1bba9791b212aa5a2d02", "public_state": {"turn_index": 0, "active_slot_count": 1, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:f3d4d36c1d6e68144a629ddf113acfffbe3595ca1a373ed0263070b3ce5c2546", "public_state": {"turn_index": 0, "active_slot_count": 1, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:5c6576bdd7baf9130b3fa97c9ce656829321334e830a494497f36d556794d047", "public_state": {"turn_index": 0, "active_slot_count": 1, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:40e1f5cb7a3145fc84dc5674bc27020c01aba8d9938c8f8f1cc45240ef716aac", "public_state": {"turn_index": 0, "active_slot_count": 1, "request_kind": "switch", "weather_class": "sun"}},
+    {"state_id": "sha256:bb81874f7f41b0f4d1ffe80b832cde299a088e12bfc21a8517d552bcb6e337d8", "public_state": {"turn_index": 0, "active_slot_count": 2, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:de0d6aefd7aae5fa3ddfb10810123ba227bfb033c22ffd1dce4572b3a81390a8", "public_state": {"turn_index": 0, "active_slot_count": 2, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:dafb7ce84d8610463244bf2d212d2803a9d0a7978ea2c07fc2e4b9f2266bdafb", "public_state": {"turn_index": 0, "active_slot_count": 2, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:0793e0c503b7f8d10fc46f7d60149caea6c89bddd43808903b792d40f2e35449", "public_state": {"turn_index": 0, "active_slot_count": 2, "request_kind": "switch", "weather_class": "sun"}},
+    {"state_id": "sha256:29d3323d24e50746a9ec7d886bf2658d4e3b6cad4dfb9ac78dfc1a7e21eec0ed", "public_state": {"turn_index": 1, "active_slot_count": 1, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:ed2fb4e7f372865dfaedb348d53cbe951e20a4fe34d5ad45f5ce641550b48559", "public_state": {"turn_index": 1, "active_slot_count": 1, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:45f85d24da1909d75dadacfa23512a22d442bc597f933e995c6cc52f9ca71601", "public_state": {"turn_index": 1, "active_slot_count": 1, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:6dd79c98a0531e951e68a960883a927ed9c25ba2c56acc81ca30b2a99c049def", "public_state": {"turn_index": 1, "active_slot_count": 1, "request_kind": "switch", "weather_class": "sun"}},
+    {"state_id": "sha256:63555c3c5543f4808ec1f370cb6bfc83282142b5a56270e8df7e86f5b5c63e12", "public_state": {"turn_index": 1, "active_slot_count": 2, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:f021ab68e76166da40269b94ae57719e563ced450beb0a511b6ba7ed7d009b3c", "public_state": {"turn_index": 1, "active_slot_count": 2, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:e3fa99f2b44110a2d4765e6d6f37d69aac9b8fd876ea31efa14610c07b7a61ef", "public_state": {"turn_index": 1, "active_slot_count": 2, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:a50dc2642d00d580f09f32feed942be0c291b563afa0358935f1824265f843bf", "public_state": {"turn_index": 1, "active_slot_count": 2, "request_kind": "switch", "weather_class": "sun"}},
+    {"state_id": "sha256:87ee6286ee82c787b1c9be4041d351d70b1e25fb1e2fad7f88590b21acc2001a", "public_state": {"turn_index": 2, "active_slot_count": 1, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:c9288ee74b6c073d42719b37165e3d574a3aa1497884cb5d6c728597ac2d9c96", "public_state": {"turn_index": 2, "active_slot_count": 1, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:819d9f0da11048c2a8fff546f42d0df27abdcccfce44766e36a74c23431347bc", "public_state": {"turn_index": 2, "active_slot_count": 1, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:df09ee8def41d464977359bafbb74dee89967b2856ed458ff016bb37c5e79d05", "public_state": {"turn_index": 2, "active_slot_count": 1, "request_kind": "switch", "weather_class": "sun"}},
+    {"state_id": "sha256:9faf498a2dd6cd17ffbfabc4f67f72e0a92db9cd2452c5ae74eba0497d3e4f9c", "public_state": {"turn_index": 2, "active_slot_count": 2, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:516a897580adb71bc66318a6f6c74b1732347b5bfd43f4a9d1d698f067b61117", "public_state": {"turn_index": 2, "active_slot_count": 2, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:b9e6f8837353b421ebfd484591a389b96b6c73aea6723d1356001dd76d58f079", "public_state": {"turn_index": 2, "active_slot_count": 2, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:0f7aff3931cd2b0ece3e02258d6ca8b7bdadd5a258ef15753fd432b8c2f4a6d8", "public_state": {"turn_index": 2, "active_slot_count": 2, "request_kind": "switch", "weather_class": "sun"}}
+  ]
+}

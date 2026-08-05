@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:synthetic-fixture-manifest:v3",
+  "title": "Synthetic M1.5 acceptance fixture manifest v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "purpose", "team_fixtures", "opponent_policy_fixtures", "base_matchups", "schedule_rows", "budget_profile", "runtime_environment", "ruleset_snapshot"],
+  "properties": {
+    "schema_version": {"const": 3}, "manifest_id": {"type": "string", "minLength": 1}, "purpose": {"const": "synthetic_acceptance"},
+    "team_fixtures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fileFixture"}}, "opponent_policy_fixtures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fileFixture"}}, "base_matchups": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/baseMatchup"}},
+    "schedule_rows": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scheduleRow"}},
+    "budget_profile": {"$ref": "#/$defs/budgetProfile"}, "runtime_environment": {"type": "object", "minProperties": 1},
+    "ruleset_snapshot": {"$ref": "#/$defs/rulesetSnapshot"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "fileFixture": {"type": "object", "additionalProperties": false, "required": ["fixture_id", "repository_path", "content_digest"], "properties": {"fixture_id": {"type": "string", "minLength": 1}, "repository_path": {"type": "string", "pattern": "^tests/fixtures/(teams|policies)/.+$"}, "content_digest": {"$ref": "#/$defs/digest"}}},
+    "seedFamily": {"type": "object", "additionalProperties": false, "required": ["derivation_id", "search_seed", "world_seed", "policy_seed", "simulator_seed", "schedule_seed", "side_assignment_seed"], "properties": {"derivation_id": {"const": "sha256-canonical-fields-v1"}, "search_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "world_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "policy_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "simulator_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "schedule_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "side_assignment_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "baseMatchup": {"type": "object", "additionalProperties": false, "required": ["base_matchup_id", "hero_team_fixture_id", "opponent_team_fixture_id", "opponent_archetype", "opponent_policy_fixture_id", "schedule_block"], "properties": {"base_matchup_id": {"$ref": "#/$defs/digest"}, "hero_team_fixture_id": {"type": "string", "minLength": 1}, "opponent_team_fixture_id": {"type": "string", "minLength": 1}, "opponent_archetype": {"type": "string", "minLength": 1}, "opponent_policy_fixture_id": {"type": "string", "minLength": 1}, "schedule_block": {"type": "string", "minLength": 1}}},
+    "scheduleRow": {"type": "object", "additionalProperties": false, "required": ["row_id", "base_matchup_id", "side_assignment", "schedule_block", "seed_family", "repetition_index"], "properties": {"row_id": {"$ref": "#/$defs/digest"}, "base_matchup_id": {"$ref": "#/$defs/digest"}, "side_assignment": {"enum": ["p1", "p2"]}, "schedule_block": {"type": "string", "minLength": 1}, "seed_family": {"$ref": "#/$defs/seedFamily"}, "repetition_index": {"type": "integer", "minimum": 0}}},
+    "budgetView": {"type": "object", "additionalProperties": false, "required": ["wall_time_budget_ms", "cpu_time_budget_ms", "work_value", "work_unit"], "properties": {"wall_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "cpu_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "work_value": {"type": "integer", "minimum": 1}, "work_unit": {"type": "string", "minLength": 1}}},
+    "budgetProfile": {"type": "object", "additionalProperties": false, "required": ["profile_id", "mode", "deployment", "mechanism", "calibration_spec_digest"], "properties": {"profile_id": {"type": "string", "minLength": 1}, "mode": {"const": "calibrated_grid"}, "deployment": {"$ref": "#/$defs/budgetView"}, "mechanism": {"$ref": "#/$defs/budgetView"}, "calibration_spec_digest": {"$ref": "#/$defs/digest"}}},
+    "rulesetSnapshot": {"type": "object", "additionalProperties": false, "required": ["format_id", "ruleset_id", "ruleset_version", "ruleset_digest", "repository_path", "content_digest"], "properties": {"format_id": {"const": "gen9ou"}, "ruleset_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"}, "ruleset_version": {"type": "integer", "minimum": 1}, "ruleset_digest": {"$ref": "#/$defs/digest"}, "repository_path": {"type": "string", "pattern": "^tests/fixtures/rulesets/.+$"}, "content_digest": {"$ref": "#/$defs/digest"}}}
+  }
+}

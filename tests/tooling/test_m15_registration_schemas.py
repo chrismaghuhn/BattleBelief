@@ -56,9 +56,9 @@ def test_m15_examples_use_explicit_schema_mappings() -> None:
         assert errors == [], f"{example_name}: {errors}"
 
 
-def test_m15_record_directory_is_activated_but_registrations_remain_closed() -> None:
+def test_m15_record_directory_and_registration_artifacts_are_activated() -> None:
     assert (ROOT / "schemas/records").exists()
-    assert not (ROOT / "registrations").exists()
+    assert (ROOT / "registrations/gen9ou/m1-5-core-comparisons-v1.json").is_file()
 
 
 def test_bound_component_requires_digest_and_unbound_component_forbids_it() -> None:

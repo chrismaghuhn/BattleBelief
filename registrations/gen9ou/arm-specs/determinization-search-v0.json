@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "spec_id": "determinization-search-v0-execution-v2",
+  "arm_id": "determinization_search_v0",
+  "algorithm_version": "v0",
+  "world_sampling": {
+    "count": 16,
+    "distribution": "evaluation_closed_world_v0"
+  },
+  "lookahead": {"depth": 2},
+  "budget_parameter": {
+    "parameter_id": "per_world_work",
+    "work_unit": "search_work_units",
+    "ordered_work_grid": [64, 128, 256, 512],
+    "total_work_formula": "world_sampling_count_times_per_world_work",
+    "calibration_spec_digest": "sha256:fbf4357c1e86f2cf02f84f9dd928396b81c24e3e078d1ba4b4aa1829aeaaa590"
+  },
+  "value_aggregation": "arithmetic_mean",
+  "action_aggregation": "mean_value_then_stable_safe_submission_order",
+  "tie_break": "safe_submission_order",
+  "budget_consumption": "one_work_unit_per_world_transition",
+  "fallback": "deterministic_heuristic_v0",
+  "calibration_state_rule_id": "m15-synthetic-calibration-state-v1",
+  "research_reference": {
+    "document_id": "roadmap-research-strategy-and-experiments",
+    "document_version": 1,
+    "document_digest": "sha256:8dbfbf67721318001dcc903a832fb30bcce8689cc5b1f12ac86a8a8feebc1777"
+  }
+}
