@@ -51,7 +51,7 @@
     "mode": "calibrated_grid",
     "deployment": {"wall_time_budget_ms": 2000, "cpu_time_budget_ms": 2000, "work_value": 64, "work_unit": "per_world_work"},
     "mechanism": {"wall_time_budget_ms": null, "cpu_time_budget_ms": null, "work_value": 64, "work_unit": "per_world_work"},
-    "calibration_spec_digest": "sha256:cf0abb3ce61d1f2fdd58e5acc9533d5ab5e423522567d5631cca89526a0e6da9"
+    "calibration_spec_digest": "sha256:fbf4357c1e86f2cf02f84f9dd928396b81c24e3e078d1ba4b4aa1829aeaaa590"
   },
   "runtime_environment": {"python": "3.14", "platform": "repository-fixture", "network": "disabled"},
   "ruleset_snapshot": {

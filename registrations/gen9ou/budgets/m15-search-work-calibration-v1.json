@@ -11,7 +11,7 @@
     "runtime_profile": "offline_m15_calibration"
   },
   "calibration_state_rule_id": "m15-synthetic-calibration-state-v1",
-  "calibration_state_manifest_digest": "sha256:beca0641e4549cdc0989829bd5c0c887a03ba827d24dc1ac1605d3356adc54e5",
+  "calibration_state_manifest_digest": "sha256:3b1a505036594d640ad40ddc029a80bf227df3e6ed302786c4b547f5d07051c4",
   "ordered_work_grid": [64, 128, 256, 512],
   "selection_rule_id": "largest-value-under-runtime-limit-v1",
   "measurement_profile_id": "m15-runtime-only-v1",

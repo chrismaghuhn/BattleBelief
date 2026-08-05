@@ -726,6 +726,69 @@ def test_calibration_evidence_rejects_status_runtime_inconsistency() -> None:
         validate_calibration_evidence(evidence, spec)
 
 
+def test_schema_v2_calibration_evidence_does_not_require_cpu_measurement() -> None:
+    root = Path(__file__).resolve().parents[2]
+    spec = json.loads((root / "schemas/examples/budget-calibration-spec.example.json").read_text())
+    evidence = json.loads(
+        (root / "schemas/examples/budget-calibration-evidence.example.json").read_text()
+    )
+    spec["required_measurement_ids"] = ["wall_time_ms"]
+    spec["allowed_runtime_measurements"] = ["wall_time_ms"]
+    for row in evidence["runtime_measurements"]:
+        row["measurements"].pop("cpu_time_ms", None)
+
+    validate_calibration_evidence(evidence, spec)
+
+
+def test_v3_calibration_evidence_binds_spec_and_state_manifest_digests() -> None:
+    root = Path(__file__).resolve().parents[2]
+    spec = json.loads(
+        (root / "registrations/gen9ou/budgets/m15-search-work-calibration-v1.json").read_text()
+    )
+    evidence = {
+        "schema_version": 3,
+        "evidence_id": "m15-test-evidence-v1",
+        "calibration_spec_digest": manifest_digest(spec),
+        "measurement_profile_id": spec["measurement_profile_id"],
+        "selection_measurement_id": spec["selection_measurement_id"],
+        "runtime_limits_ms": spec["runtime_limits_ms"],
+        "actual_environment_digest": "sha256:" + "1" * 64,
+        "actual_calibration_state_digest": spec["calibration_state_manifest_digest"],
+        "runtime_measurements": [
+            {
+                "work_value": work_value,
+                "status": "completed",
+                "measurements": {"wall_time_ms": 1000, "cpu_time_ms": 1000},
+                "error_class": None,
+            }
+            for work_value in spec["ordered_work_grid"]
+        ],
+        "selected_work_value": spec["ordered_work_grid"][-1],
+    }
+
+    validate_calibration_evidence(evidence, spec)
+
+    evidence["calibration_spec_digest"] = "sha256:" + "2" * 64
+    with pytest.raises(RegistrationValidationError, match="specification digest"):
+        validate_calibration_evidence(evidence, spec)
+
+    evidence["calibration_spec_digest"] = manifest_digest(spec)
+    evidence["actual_calibration_state_digest"] = "sha256:" + "3" * 64
+    with pytest.raises(RegistrationValidationError, match="state manifest digest"):
+        validate_calibration_evidence(evidence, spec)
+
+
+def test_decision_gates_reject_duplicate_comparison_bindings() -> None:
+    root = Path(__file__).resolve().parents[2]
+    registration = json.loads(
+        (root / "registrations/gen9ou/m1-5-core-comparisons-v1.json").read_text()
+    )
+    registration["decision_gates"].append(deepcopy(registration["decision_gates"][0]))
+
+    with pytest.raises(RegistrationValidationError, match="exactly one gate"):
+        validate_registration_semantics(registration, root)
+
+
 def test_synthetic_run_binding_must_match_fixture_components(tmp_path: Path) -> None:
     root, registration = _repository_fixture(tmp_path)
     implementation = _implementation_binding(registration, "implementation-a")

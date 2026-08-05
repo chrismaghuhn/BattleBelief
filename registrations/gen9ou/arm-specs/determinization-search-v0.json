@@ -13,7 +13,7 @@
     "work_unit": "search_work_units",
     "ordered_work_grid": [64, 128, 256, 512],
     "total_work_formula": "world_sampling_count_times_per_world_work",
-    "calibration_spec_digest": "sha256:fbdba9aeae9c9cdab119c866cedd18f82a43ee05f9bc6be5537c4e758e285f53"
+    "calibration_spec_digest": "sha256:fbf4357c1e86f2cf02f84f9dd928396b81c24e3e078d1ba4b4aa1829aeaaa590"
   },
   "value_aggregation": "arithmetic_mean",
   "action_aggregation": "mean_value_then_stable_safe_submission_order",

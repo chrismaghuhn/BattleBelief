@@ -9,7 +9,7 @@ import re
 import subprocess
 import unicodedata
 from collections.abc import Mapping
-from itertools import pairwise
+from itertools import pairwise, product
 from pathlib import Path
 from typing import Any
 
@@ -177,6 +177,13 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
     """Validate measured calibration rows against their frozen specification."""
 
     validate_calibration_spec(spec)
+    if spec.get("schema_version") == 3:
+        if evidence.get("calibration_spec_digest") != manifest_digest(dict(spec)):
+            raise RegistrationValidationError("calibration specification digest mismatch")
+        if evidence.get("actual_calibration_state_digest") != spec.get(
+            "calibration_state_manifest_digest"
+        ):
+            raise RegistrationValidationError("calibration state manifest digest mismatch")
     shared_fields = ("measurement_profile_id", "selection_measurement_id")
     for field in shared_fields:
         if evidence.get(field) != spec.get(field):
@@ -237,12 +244,15 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
             selected = measurements.get(selection_id)
             if not isinstance(selected, (int, float)) or isinstance(selected, bool):
                 raise RegistrationValidationError("selection measurement is not numeric")
-            cpu_time = measurements.get("cpu_time_ms")
-            if not isinstance(cpu_time, (int, float)) or isinstance(cpu_time, bool):
-                raise RegistrationValidationError("CPU measurement is not numeric")
-            if status == "completed" and (selected > wall_limit or cpu_time > cpu_limit):
+            over_limit = selected > wall_limit
+            if spec.get("schema_version") == 3:
+                cpu_time = measurements.get("cpu_time_ms")
+                if not isinstance(cpu_time, (int, float)) or isinstance(cpu_time, bool):
+                    raise RegistrationValidationError("CPU measurement is not numeric")
+                over_limit = over_limit or cpu_time > cpu_limit
+            if status == "completed" and over_limit:
                 raise RegistrationValidationError("completed calibration row is over_limit")
-            if status == "over_limit" and (selected <= wall_limit and cpu_time <= cpu_limit):
+            if status == "over_limit" and not over_limit:
                 raise RegistrationValidationError(
                     "over_limit calibration row is below runtime limit"
                 )
@@ -581,9 +591,18 @@ def validate_registration_semantics(
                 if isinstance(comparison, Mapping)
             }
             gates = registration.get("decision_gates")
-            if not isinstance(gates, list) or set(comparisons_by_id) != {
-                gate.get("comparison_id") for gate in gates if isinstance(gate, Mapping)
-            }:
+            gate_comparison_ids = (
+                [gate.get("comparison_id") for gate in gates if isinstance(gate, Mapping)]
+                if isinstance(gates, list)
+                else []
+            )
+            if (
+                not isinstance(gates, list)
+                or len(gate_comparison_ids) != len(gates)
+                or len(gate_comparison_ids) != len(comparisons_by_id)
+                or len(set(gate_comparison_ids)) != len(gate_comparison_ids)
+                or set(comparisons_by_id) != set(gate_comparison_ids)
+            ):
                 raise RegistrationValidationError(
                     "decision gates must bind exactly one gate to each comparison"
                 )
@@ -1259,8 +1278,17 @@ def _git_blob_bytes(root: Path, source_commit: str, repository_path: str) -> byt
             ["git", "-C", str(root), "show", f"{source_commit}:{repository_path}"],
             check=True,
             capture_output=True,
+            timeout=30,
         )
-    except (OSError, subprocess.CalledProcessError) as exc:
+    except subprocess.TimeoutExpired as exc:
+        raise RegistrationValidationError(
+            f"git source lookup timed out while reading {repository_path}"
+        ) from exc
+    except OSError as exc:
+        raise RegistrationValidationError(
+            f"git execution failed while reading {repository_path}"
+        ) from exc
+    except subprocess.CalledProcessError as exc:
         raise RegistrationValidationError(
             f"source commit does not contain {repository_path}"
         ) from exc
@@ -1326,12 +1354,12 @@ def _validate_repository_file_manifest(
 
 def _validate_implementation_provenance(value: Mapping[str, Any], root: Path) -> None:
     source_commit = value.get("source_commit")
-    if source_commit != _TASK21_SOURCE_COMMIT:
-        raise RegistrationValidationError(
-            "implementation source_commit is not the validated Task-20 commit"
-        )
     if not isinstance(source_commit, str):
         raise RegistrationValidationError("implementation source_commit is invalid")
+    if source_commit != _TASK21_SOURCE_COMMIT:
+        raise RegistrationValidationError(
+            "implementation source_commit is not the validated Task-21 commit"
+        )
     _validate_repository_file_manifest(
         root, value.get("source_manifest"), "implementation", source_commit=source_commit
     )
@@ -1526,17 +1554,15 @@ def validate_synthetic_fixture_manifest(fixture: Mapping[str, Any], root: Path) 
         rows = fixture.get("schedule_rows")
         if not isinstance(rows, list):
             raise RegistrationValidationError("schedule rows are invalid")
+        if not all(isinstance(row, Mapping) for row in rows):
+            raise RegistrationValidationError("schedule row is not an object")
+        for row in rows:
+            base_matchup = base_matchup_by_id.get(row.get("base_matchup_id"))
+            if base_matchup is None or row.get("schedule_block") != base_matchup.get(
+                "schedule_block"
+            ):
+                raise RegistrationValidationError("schedule row references an unknown base matchup")
         try:
-            if not all(isinstance(row, Mapping) for row in rows):
-                raise RegistrationValidationError("schedule row is not an object")
-            for row in rows:
-                base_matchup = base_matchup_by_id.get(row.get("base_matchup_id"))
-                if base_matchup is None or row.get("schedule_block") != base_matchup.get(
-                    "schedule_block"
-                ):
-                    raise RegistrationValidationError(
-                        "schedule row references an unknown base matchup"
-                    )
             typed_rows = tuple(
                 ScheduleRow(
                     row_id=row["row_id"],
@@ -1592,8 +1618,23 @@ def validate_calibration_state_manifest(value: Mapping[str, Any]) -> None:
     states = value.get("states")
     if not isinstance(states, list) or not states:
         raise RegistrationValidationError("calibration state list is invalid")
+    domains = construction["declared_domains"]
+    field_order = construction["field_order"]
+    expected_states = []
+    for combination in product(*(domains[field] for field in field_order)):
+        expected_public_state = dict(zip(field_order, combination, strict=True))
+        expected_states.append(
+            {
+                "state_id": manifest_digest(expected_public_state),
+                "public_state": expected_public_state,
+            }
+        )
+    if len(states) != len(expected_states):
+        raise RegistrationValidationError(
+            "calibration state construction does not match declared product"
+        )
     seen: set[str] = set()
-    for state in states:
+    for state, expected_state in zip(states, expected_states, strict=True):
         if not isinstance(state, Mapping):
             raise RegistrationValidationError("calibration state is invalid")
         state_id = state.get("state_id")
@@ -1605,6 +1646,10 @@ def validate_calibration_state_manifest(value: Mapping[str, Any]) -> None:
             or state_id != manifest_digest(dict(public_state))
         ):
             raise RegistrationValidationError("calibration state identity is not canonical")
+        if dict(public_state) != expected_state["public_state"]:
+            raise RegistrationValidationError(
+                "calibration state enumeration order is not canonical"
+            )
         seen.add(state_id)
 
 

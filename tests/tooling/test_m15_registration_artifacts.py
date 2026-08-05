@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
@@ -13,6 +16,7 @@ from battlebelief_lab.registration_validation import (
     _validate_implementation_provenance,
     artifact_digest,
     validate_calibration_evidence,
+    validate_calibration_state_manifest,
     validate_repository_artifacts,
     validate_synthetic_fixture_manifest,
 )
@@ -159,12 +163,8 @@ def test_synthetic_fixture_rejects_noncanonical_schedule_identity() -> None:
     fixture = _load(FIXTURES)
     fixture["schedule_rows"][0]["row_id"] = "sha256:" + "0" * 64
 
-    try:
+    with pytest.raises(RegistrationValidationError, match="schedule row"):
         validate_synthetic_fixture_manifest(fixture, ROOT)
-    except ValueError as error:
-        assert "schedule row" in str(error)
-    else:
-        raise AssertionError("noncanonical schedule row was accepted")
 
 
 def test_heuristic_binding_declares_recomputable_source_manifests() -> None:
@@ -191,24 +191,50 @@ def test_heuristic_binding_rejects_a_tampered_policy_digest() -> None:
     implementation = _load(IMPLEMENTATION)
     implementation["components"]["policy"]["digest"] = "sha256:" + "0" * 64
 
-    try:
+    with pytest.raises(RegistrationValidationError, match="policy digest"):
         _validate_implementation_provenance(implementation, ROOT)
-    except RegistrationValidationError as error:
-        assert "policy digest" in str(error)
-    else:
-        raise AssertionError("tampered policy provenance was accepted")
+
+
+def test_git_blob_timeout_is_reported_as_registration_validation_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def timeout(*args: Any, **kwargs: Any) -> None:
+        del args, kwargs
+        raise subprocess.TimeoutExpired(cmd="git show", timeout=30)
+
+    monkeypatch.setattr(subprocess, "run", timeout)
+
+    with pytest.raises(RegistrationValidationError, match="timed out"):
+        _git_blob_bytes(ROOT, "ebbc648fc62908a0227e8d90ab03b3692f583aca", "file.txt")
 
 
 def test_implementation_provenance_rejects_malformed_component_manifest() -> None:
     implementation = _load(IMPLEMENTATION)
     implementation["components"]["policy"]["source_manifest"] = [None]
 
-    try:
+    with pytest.raises(RegistrationValidationError):
         _validate_implementation_provenance(implementation, ROOT)
-    except RegistrationValidationError:
-        pass
-    else:
-        raise AssertionError("malformed component manifest was accepted")
+
+
+def test_calibration_state_manifest_matches_complete_frozen_product() -> None:
+    manifest = _load(
+        ROOT / "registrations/gen9ou/calibration/m15-synthetic-calibration-states-v1.json"
+    )
+
+    incomplete = json.loads(json.dumps(manifest))
+    incomplete["states"].pop()
+
+    with pytest.raises(RegistrationValidationError, match="state construction"):
+        validate_calibration_state_manifest(incomplete)
+
+    reordered = json.loads(json.dumps(manifest))
+    reordered["states"][0], reordered["states"][1] = (
+        reordered["states"][1],
+        reordered["states"][0],
+    )
+
+    with pytest.raises(RegistrationValidationError, match="enumeration order"):
+        validate_calibration_state_manifest(reordered)
 
 
 def test_calibration_selection_requires_wall_and_cpu_limits() -> None:

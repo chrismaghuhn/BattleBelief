@@ -5,7 +5,7 @@
   "artifact_version": 1,
   "supersedes_digest": null,
   "registration_id": "m15-core-comparisons-v1",
-  "registration_digest": "sha256:329980118b718ec6c5c8f6b36bc102aea25a9b3f768958a1beb1c39a0bec9302",
+  "registration_digest": "sha256:ce38d80ca923a26f145cf95417db4f36b8e792688f089bec5114135bbc25f70c",
   "arm_id": "heuristic_v0",
   "source_commit": "ebbc648fc62908a0227e8d90ab03b3692f583aca",
   "source_manifest": [
