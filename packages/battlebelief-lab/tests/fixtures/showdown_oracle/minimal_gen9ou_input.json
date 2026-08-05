@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "fixture_id": "minimal-gen9ou-v1",
+  "format_id": "gen9ou",
+  "ruleset_snapshot_digest": "sha256:df8f92de638d1a36246bd57c990a65913d8105ece2782fe1820522db31521bb3",
+  "seed_domain": "showdown-fixture-v1",
+  "seed": [1, 2, 3, 4],
+  "players": {
+    "p1": {
+      "name": "p1",
+      "team": "Garchomp||Leftovers|RoughSkin|Earthquake|Jolly|252,252,4,,,|||||,,,,,Ground",
+      "team_choice": "team 1",
+      "move_choice": "move 1"
+    },
+    "p2": {
+      "name": "p2",
+      "team": "Blissey||Leftovers|NaturalCure|SeismicToss|Bold|252,,252,,4,||,0,,,,|||,,,,,Normal",
+      "team_choice": "team 1",
+      "move_choice": "move 1"
+    }
+  },
+  "expected_tera_line": null
+}

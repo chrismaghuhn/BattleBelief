@@ -197,7 +197,7 @@ def test_document_reference_resolves_an_immutable_versioned_snapshot(tmp_path: P
         encoding="utf-8",
     )
     snapshots = docs / "archive/document-snapshots"
-    snapshots.mkdir(parents=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
     snapshot = snapshots / "example-doc.v1.md"
     snapshot.write_bytes(b"historical document bytes\n")
     digest = "sha256:" + hashlib.sha256(snapshot.read_bytes()).hexdigest()
@@ -250,7 +250,7 @@ def test_registration_semantics_use_the_exact_referenced_metric_snapshot(tmp_pat
     metrics_path = tmp_path / "docs/evaluation/metrics.md"
     historical_metrics = metrics_path.read_bytes()
     snapshots = tmp_path / "docs/archive/document-snapshots"
-    snapshots.mkdir(parents=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
     (snapshots / "evaluation-metrics.v4.md").write_bytes(historical_metrics)
     metrics_digest = "sha256:" + hashlib.sha256(historical_metrics).hexdigest()
     (snapshots / "evaluation-metrics.v4.metadata.json").write_text(
@@ -286,7 +286,7 @@ def test_non_normative_roadmap_snapshot_resolves_for_search_spec(tmp_path: Path)
     roadmap_path = tmp_path / "docs/roadmap/research-strategy-and-experiments.md"
     historical_roadmap = roadmap_path.read_bytes()
     snapshots = tmp_path / "docs/archive/document-snapshots"
-    snapshots.mkdir(parents=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
     snapshot = snapshots / "roadmap-research-strategy-and-experiments.v1.md"
     snapshot.write_bytes(historical_roadmap)
     digest = "sha256:" + hashlib.sha256(historical_roadmap).hexdigest()
@@ -331,7 +331,7 @@ def test_snapshot_reference_enforces_document_type_and_normative_flag(
     roadmap_path = tmp_path / "docs/roadmap/research-strategy-and-experiments.md"
     snapshot_bytes = roadmap_path.read_bytes()
     snapshots = tmp_path / "docs/archive/document-snapshots"
-    snapshots.mkdir(parents=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
     snapshot = snapshots / "roadmap-research-strategy-and-experiments.v1.md"
     snapshot.write_bytes(snapshot_bytes)
     digest = "sha256:" + hashlib.sha256(snapshot_bytes).hexdigest()

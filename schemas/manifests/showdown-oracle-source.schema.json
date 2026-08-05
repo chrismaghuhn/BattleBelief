@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:showdown-oracle-source:v1",
+  "title": "BattleBelief local Showdown oracle source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "repository_url", "commit", "package_name", "package_version", "declared_node_version", "license_path", "license_digest", "package_lock_path", "lockfile_version", "package_lock_digest", "package_json_path", "package_json_digest", "source_scope", "source_files", "source_tree_digest", "git_tree_oid", "source_file_count", "adapter_version", "canonicalization_profile", "schema_id"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manifest_id": {"$ref": "#/$defs/id"},
+    "repository_url": {"const": "https://github.com/smogon/pokemon-showdown"},
+    "commit": {"const": "6a1836dd71c0718e923206f3d089e61074410868"},
+    "package_name": {"const": "pokemon-showdown"},
+    "package_version": {"const": "0.11.11"},
+    "declared_node_version": {"const": ">=16.0.0"},
+    "license_path": {"const": "LICENSE"},
+    "license_digest": {"const": "sha256:b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0"},
+    "package_lock_path": {"const": "package-lock.json"},
+    "lockfile_version": {"const": 2},
+    "package_lock_digest": {"const": "sha256:f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a"},
+    "package_json_path": {"const": "package.json"},
+    "package_json_digest": {"const": "sha256:561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9"},
+    "source_scope": {"const": "full_git_tree"},
+    "source_files": {"type": "array", "minItems": 984, "maxItems": 984, "items": {"$ref": "#/$defs/fileRecord"}},
+    "source_tree_digest": {"const": "sha256:1b4a43fbd5ce2357f04554143a61012dd3fd032d529ae94ab4fa65476f3bef75"},
+    "git_tree_oid": {"const": "b0404c1084b81b68d48102b6ba17b455199668db"},
+    "source_file_count": {"const": 984},
+    "adapter_version": {"const": "showdown-oracle-v1"},
+    "canonicalization_profile": {"const": "rfc8785-jcs-v1"},
+    "schema_id": {"const": "urn:battlebelief:schema:manifest:showdown-oracle-source:v1"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._@+~=-]+(?:/[A-Za-z0-9._@+~=-]+)*$"},
+    "fileRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "size"],
+      "properties": {"path": {"$ref": "#/$defs/path"}, "digest": {"$ref": "#/$defs/digest"}, "size": {"type": "integer", "minimum": 0}}
+    }
+  }
+}

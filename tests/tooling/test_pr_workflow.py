@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 _CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
 _SETUP_PYTHON_ACTION = "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97"
+_SETUP_NODE_ACTION = "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38"
 
 
 def _load_workflow() -> dict[str, object]:
@@ -57,6 +58,7 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert gate["needs"] == [
         "quality",
         "package-smoke",
+        "oracle-smoke",
         "dependency-review",
         "protocol-smoke",
         "safety-smoke",
@@ -64,10 +66,12 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert "permissions" not in gate
     assert all("uses" not in step for step in gate["steps"])
     gate_step = gate["steps"][0]
+    assert gate_step["env"]["ORACLE_SMOKE"] == "${{ needs['oracle-smoke'].result }}"
     assert gate_step["env"]["PROTOCOL_SMOKE"] == ("${{ needs['protocol-smoke'].result }}")
     assert gate_step["env"]["SAFETY_SMOKE"] == ("${{ needs['safety-smoke'].result }}")
     assert '"$PROTOCOL_SMOKE"' in gate_step["run"]
     assert '"$SAFETY_SMOKE"' in gate_step["run"]
+    assert '"$ORACLE_SMOKE"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
 
 
@@ -79,3 +83,72 @@ def test_repository_contracts_run_m15_semantic_validation() -> None:
         if step.get("name") == "Repository contracts"
     )
     assert "uv run python tools/validate_m15_registration.py" in contracts_step["run"]
+
+
+def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["oracle-smoke"]
+    assert job["name"] == "oracle-smoke-${{ matrix.os }}-node${{ matrix.node }}"
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["strategy"]["matrix"]["include"] == [
+        {
+            "os": "ubuntu-24.04",
+            "node": "18.20.8",
+            "npm": "10.8.2",
+            "role": "comparison",
+        },
+        {
+            "os": "windows-2025",
+            "node": "18.20.8",
+            "npm": "10.8.2",
+            "role": "comparison",
+        },
+        {
+            "os": "ubuntu-24.04",
+            "node": "20.20.2",
+            "npm": "10.8.2",
+            "role": "comparison",
+        },
+        {
+            "os": "windows-2025",
+            "node": "20.20.2",
+            "npm": "10.8.2",
+            "role": "comparison",
+        },
+        {
+            "os": "ubuntu-24.04",
+            "node": "22.23.2",
+            "npm": "10.9.8",
+            "role": "candidate",
+        },
+        {
+            "os": "windows-2025",
+            "node": "22.23.2",
+            "npm": "10.9.8",
+            "role": "candidate",
+        },
+    ]
+
+    steps = job["steps"]
+    uses = [step["uses"] for step in steps if "uses" in step]
+    assert uses == [_CHECKOUT_ACTION, _SETUP_PYTHON_ACTION, _SETUP_NODE_ACTION]
+    node_setup = next(step for step in steps if step.get("uses") == _SETUP_NODE_ACTION)
+    assert node_setup["with"] == {"node-version": "${{ matrix.node }}"}
+    commands = "\n".join(step.get("run", "") for step in steps)
+    assert "npm ci" not in commands
+    assert "tools/build_showdown_oracle.py" in commands
+    assert "tools/smoke_lab_oracle.py" in commands
+    assert '--probe-role "${{ matrix.role }}"' in commands
+    assert '--checkout "${{ runner.temp }}/pokemon-showdown"' in commands
+    assert "--verify-only" in commands
+    assert "schemas/examples/showdown-oracle-source.example.json" in commands
+    assert "packages/battlebelief-lab/tests/fixtures/showdown_oracle" in commands
+
+
+def test_pr_gate_requires_oracle_smoke() -> None:
+    workflow = _load_workflow()
+    gate = workflow["jobs"]["pr-gate"]
+    assert "oracle-smoke" in gate["needs"]
+    gate_step = gate["steps"][0]
+    assert gate_step["env"]["ORACLE_SMOKE"] == "${{ needs['oracle-smoke'].result }}"
+    assert '"$ORACLE_SMOKE"' in gate_step["run"]

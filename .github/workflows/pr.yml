@@ -72,6 +72,84 @@ jobs:
       - name: Run isolated wheel smokes
         run: python tools/smoke_packages.py
 
+  oracle-smoke:
+    name: oracle-smoke-${{ matrix.os }}-node${{ matrix.node }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            node: "18.20.8"
+            npm: "10.8.2"
+            role: comparison
+          - os: windows-2025
+            node: "18.20.8"
+            npm: "10.8.2"
+            role: comparison
+          - os: ubuntu-24.04
+            node: "20.20.2"
+            npm: "10.8.2"
+            role: comparison
+          - os: windows-2025
+            node: "20.20.2"
+            npm: "10.8.2"
+            role: comparison
+          - os: ubuntu-24.04
+            node: "22.23.2"
+            npm: "10.9.8"
+            role: candidate
+          - os: windows-2025
+            node: "22.23.2"
+            npm: "10.9.8"
+            role: candidate
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Set up exact Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Sync locked workspace
+        run: uv sync --frozen --all-packages --group dev
+      - name: Resolve exact Node and npm executables
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "ORACLE_NODE=$(command -v node)" >> "$GITHUB_ENV"
+          echo "ORACLE_NPM=$(command -v npm)" >> "$GITHUB_ENV"
+      - name: Resolve exact Node and npm executables on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "ORACLE_NODE=$((Get-Command node.exe).Source)" >> $env:GITHUB_ENV
+          "ORACLE_NPM=$((Get-Command npm.cmd).Source)" >> $env:GITHUB_ENV
+      - name: Build and bind the pinned oracle
+        run: uv run python tools/build_showdown_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --probe-role "${{ matrix.role }}" --npm-cache "${{ runner.temp }}/showdown-npm-cache" --npm-home "${{ runner.temp }}/showdown-npm-home" --output "${{ runner.temp }}/showdown-oracle-build.json"
+      - name: Verify the finished build without rebuilding
+        run: uv run python tools/build_showdown_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --probe-role "${{ matrix.role }}" --npm-cache "${{ runner.temp }}/showdown-npm-cache" --npm-home "${{ runner.temp }}/showdown-npm-home" --output "${{ runner.temp }}/showdown-oracle-build.json" --verify-only
+      - name: Run the hermetic oracle smoke twice
+        run: |
+          uv run python tools/smoke_lab_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --build-manifest "${{ runner.temp }}/showdown-oracle-build.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --fixtures-dir "packages/battlebelief-lab/tests/fixtures/showdown_oracle" > "${{ runner.temp }}/oracle-smoke-1.json"
+          uv run python tools/smoke_lab_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --build-manifest "${{ runner.temp }}/showdown-oracle-build.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --fixtures-dir "packages/battlebelief-lab/tests/fixtures/showdown_oracle" > "${{ runner.temp }}/oracle-smoke-2.json"
+      - name: Compare and report canonical evidence
+        env:
+          BUILD_MANIFEST: ${{ runner.temp }}/showdown-oracle-build.json
+          ORACLE_SMOKE_ONE: ${{ runner.temp }}/oracle-smoke-1.json
+          ORACLE_SMOKE_TWO: ${{ runner.temp }}/oracle-smoke-2.json
+          EXPECTED_NPM: ${{ matrix.npm }}
+        run: uv run python -c "import hashlib,json,os; from pathlib import Path; one=Path(os.environ['ORACLE_SMOKE_ONE']).read_bytes(); two=Path(os.environ['ORACLE_SMOKE_TWO']).read_bytes(); assert one == two; build=Path(os.environ['BUILD_MANIFEST']).read_bytes(); document=json.loads(build); assert document['npm_version'] == os.environ['EXPECTED_NPM']; print('build_manifest_file_sha256=' + hashlib.sha256(build).hexdigest()); print(one.decode('utf-8').strip())"
+
   protocol-smoke:
     name: protocol-smoke
     runs-on: ubuntu-24.04
@@ -123,6 +201,7 @@ jobs:
     needs:
       - quality
       - package-smoke
+      - oracle-smoke
       - dependency-review
       - protocol-smoke
       - safety-smoke
@@ -132,12 +211,13 @@ jobs:
         env:
           QUALITY: ${{ needs.quality.result }}
           PACKAGE_SMOKE: ${{ needs.package-smoke.result }}
+          ORACLE_SMOKE: ${{ needs['oracle-smoke'].result }}
           DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
           PROTOCOL_SMOKE: ${{ needs['protocol-smoke'].result }}
           SAFETY_SMOKE: ${{ needs['safety-smoke'].result }}
         shell: bash
         run: |
-          for result in "$QUALITY" "$PACKAGE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE"; do
+          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE"; do
             case "$result" in
               success|skipped) ;;
               *) echo "Required job result: $result"; exit 1 ;;

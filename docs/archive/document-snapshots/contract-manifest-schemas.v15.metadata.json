@@ -1,0 +1,11 @@
+{
+  "document_id": "contract-manifest-schemas",
+  "document_version": 15,
+  "document_type": "contract",
+  "status": "accepted",
+  "normative": true,
+  "source_path": "docs/contracts/manifest-schemas.md",
+  "source_digest": "sha256:c875023b2d9d2886d25b97062447d73652c2f81392bfe0b01c7a8960fb72cd28",
+  "snapshot_path": "docs/archive/document-snapshots/contract-manifest-schemas.v15.md",
+  "snapshot_digest": "sha256:c875023b2d9d2886d25b97062447d73652c2f81392bfe0b01c7a8960fb72cd28"
+}

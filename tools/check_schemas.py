@@ -21,6 +21,10 @@ from battlebelief_core.domain.records.decision_record import (  # noqa: E402
 from battlebelief_lab.evaluation.measurement_runner import (  # noqa: E402
     validate_measurement_run_result_document,
 )
+from battlebelief_lab.oracle.showdown import (  # noqa: E402
+    ShowdownBuildManifest,
+    ShowdownSourceManifest,
+)
 from battlebelief_lab.registration_validation import (  # noqa: E402
     RegistrationValidationError,
     _schema_for_artifact,
@@ -53,6 +57,13 @@ EXAMPLE_SCHEMA_MAP = {
     "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
     "measurement-run-result.example.json": "measurement-run-result.schema.json",
+    "showdown-oracle-source.example.json": "showdown-oracle-source.schema.json",
+    "showdown-oracle-build.example.json": "showdown-oracle-build.schema.json",
+}
+
+INVALID_EXAMPLE_SCHEMA_MAP = {
+    "invalid/showdown-oracle-source.invalid.json": "showdown-oracle-source.schema.json",
+    "invalid/showdown-oracle-build.invalid.json": "showdown-oracle-build.schema.json",
 }
 
 
@@ -202,6 +213,39 @@ def collect_schema_errors(root: Path) -> list[str]:
                         )
                 except RegistrationValidationError as error:
                     errors.append(f"{example_path.relative_to(root)}: {error}")
+        if example_path.name == "showdown-oracle-source.example.json":
+            try:
+                ShowdownSourceManifest.from_dict(instance)
+            except ValueError as error:
+                errors.append(f"{example_path.relative_to(root)}: source manifest: {error}")
+        if example_path.name == "showdown-oracle-build.example.json":
+            try:
+                ShowdownBuildManifest.from_dict(instance)
+            except ValueError as error:
+                errors.append(f"{example_path.relative_to(root)}: build manifest: {error}")
+
+    invalid_root = schema_root / "examples" / "invalid"
+    invalid_paths = sorted(invalid_root.rglob("*.invalid.json")) if invalid_root.exists() else []
+    invalid_names = {
+        path.relative_to(schema_root / "examples").as_posix() for path in invalid_paths
+    }
+    if invalid_names != set(INVALID_EXAMPLE_SCHEMA_MAP):
+        errors.append("schemas/examples/invalid: explicit invalid example mapping is incomplete")
+    for invalid_path in invalid_paths:
+        invalid_name = invalid_path.relative_to(schema_root / "examples").as_posix()
+        schema_name = INVALID_EXAMPLE_SCHEMA_MAP.get(invalid_name)
+        if schema_name is None:
+            continue
+        schema_path = _schema_path_for_example(schema_root, schema_name)
+        if not schema_path.exists():
+            errors.append(f"{invalid_path.relative_to(root)}: schema missing")
+            continue
+        instance = load_json_strict(invalid_path)
+        schema = load_json_strict(schema_path)
+        if not list(
+            Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(instance)
+        ):
+            errors.append(f"{invalid_path.relative_to(root)}: expected schema rejection")
 
     vectors: list[dict[str, Any]] = load_json_strict(
         schema_root / "canonicalization/test-vectors.json"

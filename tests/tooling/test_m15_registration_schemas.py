@@ -27,6 +27,8 @@ EXAMPLE_SCHEMA_MAP = {
     "decision-record-payload-v2.example.json": "decision-record-payload-v2.schema.json",
     "measurement-run.example.json": "measurement-run.schema.json",
     "measurement-run-result.example.json": "measurement-run-result.schema.json",
+    "showdown-oracle-build.example.json": "showdown-oracle-build.schema.json",
+    "showdown-oracle-source.example.json": "showdown-oracle-source.schema.json",
 }
 
 RECORD_SCHEMAS = frozenset(

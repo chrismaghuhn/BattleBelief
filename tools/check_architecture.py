@@ -16,9 +16,10 @@ CORE_FORBIDDEN = frozenset(
         "sqlite3",
         "websockets",
         "poke_engine",
+        "subprocess",
     }
 )
-RUNTIME_FORBIDDEN = frozenset({"battlebelief_lab", "torch", "duckdb", "pyarrow"})
+RUNTIME_FORBIDDEN = frozenset({"battlebelief_lab", "torch", "duckdb", "pyarrow", "subprocess"})
 LAB_RUNTIME_ALLOWED = (
     "battlebelief_runtime.adapters",
     "battlebelief_runtime.testing",

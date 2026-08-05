@@ -1,0 +1,4946 @@
+{
+  "schema_version": 1,
+  "manifest_id": "showdown-oracle-source-6a1836dd",
+  "repository_url": "https://github.com/smogon/pokemon-showdown",
+  "commit": "6a1836dd71c0718e923206f3d089e61074410868",
+  "package_name": "pokemon-showdown",
+  "package_version": "0.11.11",
+  "declared_node_version": ">=16.0.0",
+  "license_path": "LICENSE",
+  "license_digest": "sha256:b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0",
+  "package_lock_path": "package-lock.json",
+  "lockfile_version": 2,
+  "package_lock_digest": "sha256:f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a",
+  "package_json_path": "package.json",
+  "package_json_digest": "sha256:561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9",
+  "source_scope": "full_git_tree",
+  "source_files": [
+    {
+      "path": ".editorconfig",
+      "digest": "sha256:94d18c70e4d84a6e526055f2ed62f8ebe04c81b4c74ff69aa2ef43698fe5ceae",
+      "size": 464
+    },
+    {
+      "path": ".gitattributes",
+      "digest": "sha256:e753774a5c6c845d5b43db5e4e133c8b7308c233f036517be1e2ae01cb068790",
+      "size": 12
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "digest": "sha256:2b9af8a4a33bdfd8fa252b324b239b088ec33e418c2f79a6c6b71998aea7a82e",
+      "size": 1540
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "digest": "sha256:4bdd3d147275ee1b2eb83dbfe3c90d83f38cacd98b03e79522bf44a818f14db6",
+      "size": 2926
+    },
+    {
+      "path": ".github/workflows/update_version.yml",
+      "digest": "sha256:41304507ebde28442b124dcda9019fb593d136d0160a024bbc4dae6857993d82",
+      "size": 1315
+    },
+    {
+      "path": ".gitignore",
+      "digest": "sha256:435829de010394ff6cd6dcc7d9930022b73ff67446d7bb97fecb7c464e02bd44",
+      "size": 843
+    },
+    {
+      "path": ".mocharc.json",
+      "digest": "sha256:44626758d825595e8a687bf322e116371cf75bf15ada7c654e63f8c8136197d8",
+      "size": 233
+    },
+    {
+      "path": ".npmignore",
+      "digest": "sha256:706be2a8bf5eb7d4863865efbfb062e2f7875490b76c1ccc8f9ed2ecdfde3d9c",
+      "size": 659
+    },
+    {
+      "path": ".npmrc",
+      "digest": "sha256:2cbb6fedd756e15cffb401288df8cae226a5cfad706eefa735a1e8c830389633",
+      "size": 39
+    },
+    {
+      "path": ".vscode/launch.json",
+      "digest": "sha256:9fefee233a969fb525311693d23aaa9aa31f2b699e0aae4d6b0c43f28cef6e51",
+      "size": 1050
+    },
+    {
+      "path": ".vscode/settings.json",
+      "digest": "sha256:eb8ed9c6c243d2dec1b8b1f2fef9605dd30363bb82db971ed59c145c33ea113a",
+      "size": 215
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "digest": "sha256:b193529883b1880f8586b7333ce1327bfb418136cf23fd5aa4d0d214c54d34ca",
+      "size": 3313
+    },
+    {
+      "path": "CODEOWNERS",
+      "digest": "sha256:51e2ae5ae9831026379d987820aab3520c5e60b6fbeb7a0882a7396cd8d31e99",
+      "size": 1441
+    },
+    {
+      "path": "COMMANDLINE.md",
+      "digest": "sha256:a35d93f671dd977845513c4b70fd75cd1e05f7279910f706d748032eca68e13d",
+      "size": 3733
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "digest": "sha256:d276423019a967983ce97b7bf9152436d6e3866146a719228cf7098bf594af07",
+      "size": 18971
+    },
+    {
+      "path": "LICENSE",
+      "digest": "sha256:b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0",
+      "size": 1136
+    },
+    {
+      "path": "PROTOCOL.md",
+      "digest": "sha256:399a301c48de30dabd849d5447c8a10cddca96feabbd3c1b4444239c20321dbd",
+      "size": 16810
+    },
+    {
+      "path": "Procfile",
+      "digest": "sha256:062050afb2bc5d7c8911cd8d66a2373ce2441cae00104c077d23a445d3ee6c39",
+      "size": 32
+    },
+    {
+      "path": "README.md",
+      "digest": "sha256:062e07dc0d5e0322e925f4bfc7d78905fc9b8ff3eeb92496b46f5aae44683038",
+      "size": 3609
+    },
+    {
+      "path": "build",
+      "digest": "sha256:9172c1b59203f31d5565ecd4aafbd2962741c5dc99cd3ac487d42e0e4fa854d0",
+      "size": 1594
+    },
+    {
+      "path": "config/CUSTOM-RULES.md",
+      "digest": "sha256:1ad34dd1f3478f0d3cddb6d499a517aca8f9fe593aac4b4f199ff553eddaeb0a",
+      "size": 16417
+    },
+    {
+      "path": "config/avatars/README.md",
+      "digest": "sha256:fd39943df2beb229e6842a4cfdba4fe35c4aac824846abd8f1277c86edcca2d9",
+      "size": 173
+    },
+    {
+      "path": "config/chat-plugins/README.md",
+      "digest": "sha256:709b044394df3a609d1838dac50e214706f42e0996988d802c291ccbed37a8b8",
+      "size": 55
+    },
+    {
+      "path": "config/config-example.js",
+      "digest": "sha256:05fb15ac3bf2bed1a45ba6cc30183efc37fbb5896bbb58329bcf457cbf9611e9",
+      "size": 24435
+    },
+    {
+      "path": "config/custom-example.css",
+      "digest": "sha256:734780d0fe76312bfcc07ecc790c26c38784c3a5b1ad9fa08dbf35ae2513c0a2",
+      "size": 351
+    },
+    {
+      "path": "config/formats.ts",
+      "digest": "sha256:953d845b93ee6533651098692b764cfe1f2b2c6068ae24a08e0ce81af40b9af2",
+      "size": 265970
+    },
+    {
+      "path": "config/hosts.csv",
+      "digest": "sha256:0a876e00bc20ff39afad7742589806020f34bb2580022e96b8e1ceac28bf1759",
+      "size": 4878
+    },
+    {
+      "path": "config/ladders/README.md",
+      "digest": "sha256:dbb39feb5c86238ab1cc2efee3390b88a68da47958d3ea4d2fad1a50ea037210",
+      "size": 203
+    },
+    {
+      "path": "config/proxies.csv",
+      "digest": "sha256:945f657a06f70571132dd3f0b6683a8b13b6ea267f17ca878e889081e245ce21",
+      "size": 250276
+    },
+    {
+      "path": "data/FORMES.md",
+      "digest": "sha256:92425e1cd24734208f3a6cdeb697ee87cc62eb1cd4479caa93df160c968923d2",
+      "size": 8208
+    },
+    {
+      "path": "data/abilities.ts",
+      "digest": "sha256:175067b1e827ca11ae4728169215c9bdd27ac4cb3e35d2e83eaaaee7e9e8c842",
+      "size": 156616
+    },
+    {
+      "path": "data/aliases.ts",
+      "digest": "sha256:70c3b336c8859823adfcc6879bc433566783cf91cfdf49f8447950298dcbae7a",
+      "size": 72254
+    },
+    {
+      "path": "data/conditions.ts",
+      "digest": "sha256:03ec1b90913f864a0baab0574a70abb856d5e84f722acf96ab11a7601a72fc35",
+      "size": 28860
+    },
+    {
+      "path": "data/formats-data.ts",
+      "digest": "sha256:d5434f5cf2242b829ce26c6a403ecf21dc1408b80a5a948a73586ee0872c9b2b",
+      "size": 93261
+    },
+    {
+      "path": "data/items.ts",
+      "digest": "sha256:fd7a7b798ac872e53f7ee41806b3ec5692fa5bebcd720b544dd45bbed79a0a14",
+      "size": 163613
+    },
+    {
+      "path": "data/learnsets.ts",
+      "digest": "sha256:a528380689497c018af77730aa9a13da0c1d8499e269e1a8db3f67f363d2875f",
+      "size": 3722917
+    },
+    {
+      "path": "data/mods/afd/abilities.ts",
+      "digest": "sha256:917837a377fd1f9ee628cebc9f4d75ac9380d94cb342d5efbbc866b55e2535e2",
+      "size": 6076
+    },
+    {
+      "path": "data/mods/afd/conditions.ts",
+      "digest": "sha256:138a58dc3628abbb48261b941259ed57cd4707922903173f1b3d2faf9cb74770",
+      "size": 725
+    },
+    {
+      "path": "data/mods/afd/items.ts",
+      "digest": "sha256:2379473022c5be74189938a2f5c6301f9d524b52f7ba7827d34e42942d5df2c5",
+      "size": 2374
+    },
+    {
+      "path": "data/mods/afd/moves.ts",
+      "digest": "sha256:b0ad04423f7e4ccd9b74053531033662487a9efa979c100f06aefdae6acc4fa8",
+      "size": 15692
+    },
+    {
+      "path": "data/mods/afd/pokedex.ts",
+      "digest": "sha256:58dc9ddb3436f318e3618a4f868bfc46f7a496fd3d41eedcecc0c6e3a1ae8a9d",
+      "size": 7256
+    },
+    {
+      "path": "data/mods/afd/random-teams.ts",
+      "digest": "sha256:6c8130e71a1a7fd46111a53ef00f1f4aeeaeff05a7fe6df2186254a1a58f0e9b",
+      "size": 30092
+    },
+    {
+      "path": "data/mods/afd/scripts.ts",
+      "digest": "sha256:4c19f14e89d9bfa02a2b2daf5eddae0a29e4626af8d9ce0141818cefd17f82db",
+      "size": 17739
+    },
+    {
+      "path": "data/mods/afd/sets.json",
+      "digest": "sha256:a17534a4fdf9e0c52d052f4da776deab6085e6e34d64d0f792419e30124dbf5f",
+      "size": 32150
+    },
+    {
+      "path": "data/mods/afd/typechart.ts",
+      "digest": "sha256:5d6e2ed11e0368688333dd2883e91b35d918be32a925b30abd4f766379e8e4bc",
+      "size": 682
+    },
+    {
+      "path": "data/mods/biomechmons/abilities.ts",
+      "digest": "sha256:926cd3ed283ad760d435dbf782bc639543c76ca1391f29297b4b8eaf943159d8",
+      "size": 8789
+    },
+    {
+      "path": "data/mods/biomechmons/conditions.ts",
+      "digest": "sha256:1cd3f3bf654fcd4b24fac0124d63a0c4b1e6b1a2dbd31ddd4131e5b6c42fd972",
+      "size": 1441
+    },
+    {
+      "path": "data/mods/biomechmons/items.ts",
+      "digest": "sha256:ea8c7ed182859bc6d2d88c70453b059c4defc7e73458d9397f612e8db295ab5e",
+      "size": 1677
+    },
+    {
+      "path": "data/mods/biomechmons/moves.ts",
+      "digest": "sha256:c8a6907866665153e82f0716ea4162cf6acc284b515aef799e316563b16e11ad",
+      "size": 16698
+    },
+    {
+      "path": "data/mods/biomechmons/scripts.ts",
+      "digest": "sha256:3f8ff7072d6b36f872814530d3d35c5662a2cdd87b972a05afc4fc6b4c80aef9",
+      "size": 24444
+    },
+    {
+      "path": "data/mods/ccapm2025/abilities.ts",
+      "digest": "sha256:fdfd6fa46d512872b4474fa2537c0245f39ffdbbf03e6512e67a2282528e3dec",
+      "size": 45924
+    },
+    {
+      "path": "data/mods/ccapm2025/conditions.ts",
+      "digest": "sha256:8cebb45bfd2aeb7c8e2b1c7cd40befc7a1f451d2076e81c3ccbb2b3c5d0e9a3e",
+      "size": 6328
+    },
+    {
+      "path": "data/mods/ccapm2025/formats-data.ts",
+      "digest": "sha256:831c575692b949511d1d74800ef34506381e66b841efc6d6af96be7d0b12e178",
+      "size": 9995
+    },
+    {
+      "path": "data/mods/ccapm2025/items.ts",
+      "digest": "sha256:4cf5d6d6ea5df6d20cd7edfb9cbca9c27068ee1a5e90e1b330ec2ba7fecbb40c",
+      "size": 20849
+    },
+    {
+      "path": "data/mods/ccapm2025/learnsets.ts",
+      "digest": "sha256:48d59537abf3fa34c14b63e46df25eeaabbdf6ac0f5daa53c0b2095601413461",
+      "size": 71067
+    },
+    {
+      "path": "data/mods/ccapm2025/moves.ts",
+      "digest": "sha256:648518fc7c01df408374f58bce09b725f91bc9663be6272999f06d19e002ddfe",
+      "size": 80170
+    },
+    {
+      "path": "data/mods/ccapm2025/pokedex.ts",
+      "digest": "sha256:98fef96bcf6d3a4344907c0d6d2a9ed7adb0d025611293245c80cafb802aa86c",
+      "size": 67663
+    },
+    {
+      "path": "data/mods/ccapm2025/rulesets.ts",
+      "digest": "sha256:188fe1648fb72a6ae1bf712e6c684467ca37d6867e94c6513fc96d2c1da5b7cf",
+      "size": 10994
+    },
+    {
+      "path": "data/mods/ccapm2025/scripts.ts",
+      "digest": "sha256:e972f4c8c610c57d3cbed49ac2cee1d33bc781b9179640367250f949ece88e09",
+      "size": 31928
+    },
+    {
+      "path": "data/mods/champions/abilities.ts",
+      "digest": "sha256:5e370ba986e026c37b9f446cd3c40c9abf8b88a896597e1819be3755256af23f",
+      "size": 2672
+    },
+    {
+      "path": "data/mods/champions/conditions.ts",
+      "digest": "sha256:851507309dde0b58807e33b17d8ce7e607dad70893546f67bad294ad70249005",
+      "size": 1834
+    },
+    {
+      "path": "data/mods/champions/formats-data.ts",
+      "digest": "sha256:dcdb0f9cf9433e439e1cbac68309ded78a2ed9697c80a4fe9ea9367dd6657a75",
+      "size": 74197
+    },
+    {
+      "path": "data/mods/champions/items.ts",
+      "digest": "sha256:0a046bd8f5975217bab643bc01cde52d7973c4984aa8228fc9342055bb21f38a",
+      "size": 16209
+    },
+    {
+      "path": "data/mods/champions/learnsets.ts",
+      "digest": "sha256:78fc395c01406008e054f63b168fe0b4ec7f7fec6ff6454f4d14a502147d2a9b",
+      "size": 313506
+    },
+    {
+      "path": "data/mods/champions/moves.ts",
+      "digest": "sha256:25060fc40be0125c47b285e8addb4bf860282d884a389158310b2f16e8c88bf5",
+      "size": 20683
+    },
+    {
+      "path": "data/mods/champions/rulesets.ts",
+      "digest": "sha256:31671152a6ff1f09d81a5306baadaa1593ef235e5c7cdcc9180c67bac8e84cd9",
+      "size": 2469
+    },
+    {
+      "path": "data/mods/champions/scripts.ts",
+      "digest": "sha256:8282488fa630255417e8bd4d6037d45e8d382ae28cdd84c230e59b33befa5fc2",
+      "size": 21966
+    },
+    {
+      "path": "data/mods/championsregma/formats-data.ts",
+      "digest": "sha256:253c1626e2cf37b7475cf9984cae3e04eb73c3043eccaa2ae43435f61f587388",
+      "size": 75339
+    },
+    {
+      "path": "data/mods/championsregma/items.ts",
+      "digest": "sha256:08ffe35460c61266d33a4f540e9750a69d55dae3bb10b54da783375b0552e5a5",
+      "size": 1979
+    },
+    {
+      "path": "data/mods/championsregma/scripts.ts",
+      "digest": "sha256:efebc59baa78aa99cf6d98d7bf572b8141abbff804d1f9f6d17b77de479b0919",
+      "size": 85
+    },
+    {
+      "path": "data/mods/chatbats/abilities.ts",
+      "digest": "sha256:eb836b4e3e0480efcf8f55db3447b1a1d0a392c66ae37ad2468040361875621c",
+      "size": 32166
+    },
+    {
+      "path": "data/mods/chatbats/conditions.ts",
+      "digest": "sha256:4e11b3cd358e71ae322ef5e6333a614e8a82b3b3cbe0685576382a5893e8c543",
+      "size": 590
+    },
+    {
+      "path": "data/mods/chatbats/items.ts",
+      "digest": "sha256:3923aae069e2c7c3f26447bbe992201c4eae7183dd37ffc5d173fb0996d1ea3b",
+      "size": 4166
+    },
+    {
+      "path": "data/mods/chatbats/moves.ts",
+      "digest": "sha256:386be9bfee51922c6017edf26eb4328d28d72eedd7d14e91cc3f33b7d9a20bbc",
+      "size": 54947
+    },
+    {
+      "path": "data/mods/chatbats/pokedex.ts",
+      "digest": "sha256:70392641b93ca013a5385311e4dd8c0ca96e8dd90d432b3b9d550ef9871116b3",
+      "size": 11305
+    },
+    {
+      "path": "data/mods/chatbats/scripts.ts",
+      "digest": "sha256:1a1fc44412b7dd1942f766e77cc94da7aa26a671034ad351bf6fbfabd5f3db06",
+      "size": 16425
+    },
+    {
+      "path": "data/mods/fullpotential/abilities.ts",
+      "digest": "sha256:bebfa03c4fafe3f6269f7d38cecc0be74aa34cc926f23601d17fd7fcf5e32505",
+      "size": 637
+    },
+    {
+      "path": "data/mods/fullpotential/scripts.ts",
+      "digest": "sha256:383ba6fcf4b402c81c3cb156e3bd0942b1c7c0fee21c5e8c097c665adeb601ef",
+      "size": 4550
+    },
+    {
+      "path": "data/mods/gen1/README.md",
+      "digest": "sha256:37791876f9a2041f0122050589fbe1a3e7c673a1129121cb2f52ebcaa8458fcb",
+      "size": 4606
+    },
+    {
+      "path": "data/mods/gen1/conditions.ts",
+      "digest": "sha256:6007e12fc3815ace0ab03847fc73be99139f000ca6446d502c75d69d03c217fd",
+      "size": 9732
+    },
+    {
+      "path": "data/mods/gen1/formats-data.ts",
+      "digest": "sha256:d770c23b41ec573c9f7c1c5707a65b32c4aac736362b3e74458ff6faa8255888",
+      "size": 4758
+    },
+    {
+      "path": "data/mods/gen1/moves.ts",
+      "digest": "sha256:c95e355731cc2790cff2489fb5cc7c0e59c8e8af596705fc675fdf54cb6b5a07",
+      "size": 27100
+    },
+    {
+      "path": "data/mods/gen1/pokedex.ts",
+      "digest": "sha256:ac05fc45df4674aaf4e4fdf70dbc468f6448680c47de85934feba85640548853",
+      "size": 15971
+    },
+    {
+      "path": "data/mods/gen1/rulesets.ts",
+      "digest": "sha256:f92b8d44fb9d7cba79ad20915e422efadc6228a385c10ef4ed74c02f874da806",
+      "size": 2912
+    },
+    {
+      "path": "data/mods/gen1/scripts.ts",
+      "digest": "sha256:4de6689bcff193843102b3ae91a251be670f4a9ba6063168d4c5a8f5d547625b",
+      "size": 39264
+    },
+    {
+      "path": "data/mods/gen1/typechart.ts",
+      "digest": "sha256:dfacb37a1737d449c66a6b037b996862ade659cc6c140055c4ac6750f264e8d2",
+      "size": 1910
+    },
+    {
+      "path": "data/mods/gen1jpn/README.md",
+      "digest": "sha256:feedc9d39b0d0730b3641d4f1f865c7b9a622ab85dcc41c3fb9ddd08e9612888",
+      "size": 1032
+    },
+    {
+      "path": "data/mods/gen1jpn/conditions.ts",
+      "digest": "sha256:115bd6d320f19cfb63d687026e5c260c91132f12bb11f88db34e74bf5edef730",
+      "size": 458
+    },
+    {
+      "path": "data/mods/gen1jpn/moves.ts",
+      "digest": "sha256:95dfe39df4a5ca201457217bfd96e3497266b5eb8487fa71d18c3d634638642a",
+      "size": 2849
+    },
+    {
+      "path": "data/mods/gen1jpn/rulesets.ts",
+      "digest": "sha256:83dbb7734f150f8b4e4e455017b69c2bdb91db47b6875ca51a0db3fe8bbb2eec",
+      "size": 4210
+    },
+    {
+      "path": "data/mods/gen1jpn/scripts.ts",
+      "digest": "sha256:a87789b2c26be2f32c422491103c235b15b2ea437066b6ca0c31147d87a721aa",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen1stadium/README.md",
+      "digest": "sha256:c3b80f90bc0e241aaccf7e822e4b083e7b092701fcb1279d592bcfe0974f9e87",
+      "size": 566
+    },
+    {
+      "path": "data/mods/gen1stadium/conditions.ts",
+      "digest": "sha256:66714b21cb336a1d4adf2a7c0982fb3394a019b710b58d5514a307fe381cc244",
+      "size": 3303
+    },
+    {
+      "path": "data/mods/gen1stadium/formats-data.ts",
+      "digest": "sha256:be19859d65a7900b9c8b9ff4b104f2a3fb93a3c1897b6345c5bc10cd1451d2ef",
+      "size": 4760
+    },
+    {
+      "path": "data/mods/gen1stadium/moves.ts",
+      "digest": "sha256:71afc8cb5f5ffc0865fed58a3819e4aebd6c194d7e0aaeb5a68a5c3eea825e9f",
+      "size": 8403
+    },
+    {
+      "path": "data/mods/gen1stadium/rulesets.ts",
+      "digest": "sha256:25803727e6809dc5dcf87b9e3aebdfe9f4ba3a6f7fcf9df8a8a49a600c5dc4fb",
+      "size": 36438
+    },
+    {
+      "path": "data/mods/gen1stadium/scripts.ts",
+      "digest": "sha256:b10b620bfbcf1bb39bcc4d89908722b523bc5da28a7726c744c42bb2e2f59dff",
+      "size": 27734
+    },
+    {
+      "path": "data/mods/gen2/README.md",
+      "digest": "sha256:138f33f690b696424045e2f262799814468947449d3a9c07fce8704205ce242c",
+      "size": 1846
+    },
+    {
+      "path": "data/mods/gen2/conditions.ts",
+      "digest": "sha256:4202769825ec4a36674f13337139700a341479124e7599efb1c4a07fcf0c43f1",
+      "size": 6831
+    },
+    {
+      "path": "data/mods/gen2/formats-data.ts",
+      "digest": "sha256:f6d662446fcf8d138169f01ab2dd6890c712a503f9cafd054b34a26b0b6d2427",
+      "size": 7768
+    },
+    {
+      "path": "data/mods/gen2/items.ts",
+      "digest": "sha256:7934f7b466cb4ee3cb22fe8887d2d1b891192682a43d094c46c965a19a97b85c",
+      "size": 7646
+    },
+    {
+      "path": "data/mods/gen2/learnsets.ts",
+      "digest": "sha256:1ebfcdea606f3d583dddfafd4cbe3adf688b4188d1541821e4c6201b4db2e054",
+      "size": 281139
+    },
+    {
+      "path": "data/mods/gen2/moves.ts",
+      "digest": "sha256:e55726ef145227ac36db073a9d5956539e03f11e3a4647a290992666d9f05d83",
+      "size": 20570
+    },
+    {
+      "path": "data/mods/gen2/pokedex.ts",
+      "digest": "sha256:93b42665a92f2e2916cd99661cc0343b7d54388d141b41969e194c18f7e10717",
+      "size": 713
+    },
+    {
+      "path": "data/mods/gen2/rulesets.ts",
+      "digest": "sha256:795e842ddcfd0f0ba5ad3be1053baee4aa1c0de681308e0264d0f6ef231254c7",
+      "size": 5217
+    },
+    {
+      "path": "data/mods/gen2/scripts.ts",
+      "digest": "sha256:d624b5294805a5a8f42dade5723f3e20529711ae9e67c0c45cf5904e2f468f24",
+      "size": 25670
+    },
+    {
+      "path": "data/mods/gen2/typechart.ts",
+      "digest": "sha256:fa9f85693fee8edfccc4bbab14134b73fe4f4a6e3a7a02262cba52ab03aea17b",
+      "size": 950
+    },
+    {
+      "path": "data/mods/gen2stadium2/README.md",
+      "digest": "sha256:1b7299127c1effa15247965b6af2623ebd64353340636a80d595fdac9a7ca082",
+      "size": 763
+    },
+    {
+      "path": "data/mods/gen2stadium2/conditions.ts",
+      "digest": "sha256:1e25b9f8400a8bb116a7d65b445c464dcdbdc5572648401d7b063649d1e0726d",
+      "size": 3995
+    },
+    {
+      "path": "data/mods/gen2stadium2/items.ts",
+      "digest": "sha256:15dd29557e3545fd383c653430da0f8e1c27a8bcf4d506137758ac670adc7e64",
+      "size": 392
+    },
+    {
+      "path": "data/mods/gen2stadium2/moves.ts",
+      "digest": "sha256:95b37c1e79bcad9854de02b28d9a83b9f87f309a0101a21d30ead2b2a2d7c623",
+      "size": 2076
+    },
+    {
+      "path": "data/mods/gen2stadium2/rulesets.ts",
+      "digest": "sha256:6a8881eeb254e7e8cb0d2a3cd2f6a6e8e60719d2d05f82d05dca69f9de49d18c",
+      "size": 816
+    },
+    {
+      "path": "data/mods/gen2stadium2/scripts.ts",
+      "digest": "sha256:2b73ff119e45b9befe676258badaf54aa61175e59f060a69208505e81f1f3007",
+      "size": 19550
+    },
+    {
+      "path": "data/mods/gen3/abilities.ts",
+      "digest": "sha256:c07ea62db07751277f6839f1d8baffb7cf6823901b5fa9aa1b54088e8a383fac",
+      "size": 5858
+    },
+    {
+      "path": "data/mods/gen3/conditions.ts",
+      "digest": "sha256:51d1c2c31256efcb354bc7e1d3645a89b64db491bbef86382ed848adf61a29ea",
+      "size": 1571
+    },
+    {
+      "path": "data/mods/gen3/formats-data.ts",
+      "digest": "sha256:045f7ddfc427c7cd62d977d3c70165c476b6368a403f992adbcd69f9faa8ff24",
+      "size": 12096
+    },
+    {
+      "path": "data/mods/gen3/items.ts",
+      "digest": "sha256:9677d5b5a2227264ee493a81ddbe6d73328e758e4322bc81927094d6f9b0ba34",
+      "size": 10697
+    },
+    {
+      "path": "data/mods/gen3/moves.ts",
+      "digest": "sha256:38fdd6f96622d7b922f90e2835db2851b71c1608a40b9829913e9913e00cb392",
+      "size": 16657
+    },
+    {
+      "path": "data/mods/gen3/rulesets.ts",
+      "digest": "sha256:e80804da4125c3d6a48de497ee4b6c6a1c9cd5d75483d38dbc5885bca8c9350f",
+      "size": 1128
+    },
+    {
+      "path": "data/mods/gen3/scripts.ts",
+      "digest": "sha256:bffdc20ff037c45dc1276f1d137dbbee117b8d60e52f7750eb9c339fcb25858d",
+      "size": 16311
+    },
+    {
+      "path": "data/mods/gen3colosseum/moves.ts",
+      "digest": "sha256:9d5e73db6585aa4e6de1fd2d7caf021800637e6fccc4435592ab1b02e22b3b73",
+      "size": 780
+    },
+    {
+      "path": "data/mods/gen3colosseum/scripts.ts",
+      "digest": "sha256:2680c82a92eaee769202e31896ab52f32aba0d768695a2f73f62a8c9b9140649",
+      "size": 710
+    },
+    {
+      "path": "data/mods/gen3frlg/abilities.ts",
+      "digest": "sha256:28e319b530370bb3382ad07f698ecec659913c7429a929eb1de48f8f87c02c96",
+      "size": 1923
+    },
+    {
+      "path": "data/mods/gen3frlg/formats-data.ts",
+      "digest": "sha256:1ae665be6b188854fa63f3c5bd7b80de37dd55d2c070370a47a79f5e40479f6a",
+      "size": 19233
+    },
+    {
+      "path": "data/mods/gen3frlg/items.ts",
+      "digest": "sha256:4e7e12b272550855c9ddcaeeae5485d839571ac0c17727744adb8a82fa069bb2",
+      "size": 2571
+    },
+    {
+      "path": "data/mods/gen3frlg/learnsets.ts",
+      "digest": "sha256:eac3de97a49072a370dda9267f199605c1856258020c8022363da191bed85e59",
+      "size": 191492
+    },
+    {
+      "path": "data/mods/gen3frlg/rulesets.ts",
+      "digest": "sha256:b38fcc0444de495259d94195cf2cfc0b4be825598ce38193bb694777f4ee4ba7",
+      "size": 1693
+    },
+    {
+      "path": "data/mods/gen3frlg/scripts.ts",
+      "digest": "sha256:e20d4063f7502392a583a09a0c4e1cb5f8e139f46a85dd7eb4c2d79b8e6eb1a1",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen3rs/abilities.ts",
+      "digest": "sha256:28e319b530370bb3382ad07f698ecec659913c7429a929eb1de48f8f87c02c96",
+      "size": 1923
+    },
+    {
+      "path": "data/mods/gen3rs/formats-data.ts",
+      "digest": "sha256:248a3ee79f120b6bd18f883cf0cf108882a09143bcef69857c2b6cf98c1e3bba",
+      "size": 19764
+    },
+    {
+      "path": "data/mods/gen3rs/items.ts",
+      "digest": "sha256:0bd8982d8e6a6b0ad85101258e4eb24fac3c04c98f94d801d97d2db699a11ca5",
+      "size": 1039
+    },
+    {
+      "path": "data/mods/gen3rs/learnsets.ts",
+      "digest": "sha256:a1fbcbb38028b3828aadb25741d84fc789d1b5ce7b65cc6f8d35a0a907bfc75d",
+      "size": 154784
+    },
+    {
+      "path": "data/mods/gen3rs/scripts.ts",
+      "digest": "sha256:e20d4063f7502392a583a09a0c4e1cb5f8e139f46a85dd7eb4c2d79b8e6eb1a1",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen4/abilities.ts",
+      "digest": "sha256:1683073654ec41deeae9c0990dc5ba8eee3d1570a49a55f55641470feb33ce0b",
+      "size": 14290
+    },
+    {
+      "path": "data/mods/gen4/conditions.ts",
+      "digest": "sha256:d8f5dedec9e026bad215b78c716e13614aef3a8e101b626c67b6826c36b7c308",
+      "size": 4176
+    },
+    {
+      "path": "data/mods/gen4/formats-data.ts",
+      "digest": "sha256:e15a234e996dc818a571ed13770b68c99e2b8710cf46a3592f95065fd89a04b7",
+      "size": 16052
+    },
+    {
+      "path": "data/mods/gen4/items.ts",
+      "digest": "sha256:a62402e2e5f57cfd63dede29e5593e493ffabdc3e7daab19b04a247cb51fa319",
+      "size": 16132
+    },
+    {
+      "path": "data/mods/gen4/moves.ts",
+      "digest": "sha256:c24bef3eef7ee18df1266024ff3db7b1b9caddc9dc920e4e235920025d293fa6",
+      "size": 38510
+    },
+    {
+      "path": "data/mods/gen4/pokedex.ts",
+      "digest": "sha256:8ee17d63fed6f5255e7ec531032e237a2a539782e013dbe013fc845a86d3d2d6",
+      "size": 515
+    },
+    {
+      "path": "data/mods/gen4/rulesets.ts",
+      "digest": "sha256:3b7e3b7f0919c576ca95fae2d14c8943280fcb26282f4071ab8b2c49f0d97beb",
+      "size": 1241
+    },
+    {
+      "path": "data/mods/gen4/scripts.ts",
+      "digest": "sha256:b7be767f4d1088f9e9136835a3f803e324a9bf746e2f3014f9e24e2b989b0cde",
+      "size": 7911
+    },
+    {
+      "path": "data/mods/gen4pt/formats-data.ts",
+      "digest": "sha256:538a7ca37297ae454f78719a2472acc2c181fc685da17d760eba2bc6e3083d6d",
+      "size": 820
+    },
+    {
+      "path": "data/mods/gen4pt/learnsets.ts",
+      "digest": "sha256:a34d94965db6333d7945f701c473af7d501768f5620d6bb887c82498ae40725c",
+      "size": 798175
+    },
+    {
+      "path": "data/mods/gen4pt/scripts.ts",
+      "digest": "sha256:57dfa54ce3d04d3ca1b94f73ab2719036f8d6688c69073cd18dd6076a30af7b1",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen5/abilities.ts",
+      "digest": "sha256:b0fa8dac88cbbde30d38eb7b8128af37baded1063f4dbec742061c0aee9059bb",
+      "size": 2906
+    },
+    {
+      "path": "data/mods/gen5/conditions.ts",
+      "digest": "sha256:a45e44a9459209e082b2775cc1b4a24fc32ef9067d0909b8f9d75d7137b3a7dc",
+      "size": 1680
+    },
+    {
+      "path": "data/mods/gen5/formats-data.ts",
+      "digest": "sha256:3d565f603d95735f464bfebdf83b18f772fb5e6070b6abdeaf295bbbb3d330bc",
+      "size": 31461
+    },
+    {
+      "path": "data/mods/gen5/items.ts",
+      "digest": "sha256:513d574b63eb7a66c120027e74fd02379b8c746b76dcb0f4148c21ae6aac75cc",
+      "size": 7107
+    },
+    {
+      "path": "data/mods/gen5/moves.ts",
+      "digest": "sha256:b7f2146ad3b81a5f17a05fdb87bc3fb9b19e891ac2a44ec8f7b4ca94252e8010",
+      "size": 21610
+    },
+    {
+      "path": "data/mods/gen5/pokedex.ts",
+      "digest": "sha256:ab262749c0ee90268aee92343a186597765daadb12373796aaebe0ab98d48b6f",
+      "size": 10012
+    },
+    {
+      "path": "data/mods/gen5/rulesets.ts",
+      "digest": "sha256:bafc41ba305c7fc9f6aac5c68a6725808945258fa6e5ecf01e3d9611ae09171e",
+      "size": 1130
+    },
+    {
+      "path": "data/mods/gen5/scripts.ts",
+      "digest": "sha256:09274fa360b0c7bff0696d246291b3d9104f7696581d8bdc89bea0365c153905",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen5/typechart.ts",
+      "digest": "sha256:e97ecc4391101613d626498dd485ef663ed1e7a93c4061bd7053c6eec4f2d138",
+      "size": 1303
+    },
+    {
+      "path": "data/mods/gen5bw1/formats-data.ts",
+      "digest": "sha256:07f7dc3aa15bb6ecbeb0de93e0074953783d9090f146cfb5ef65a909b02a8ec0",
+      "size": 3039
+    },
+    {
+      "path": "data/mods/gen5bw1/items.ts",
+      "digest": "sha256:a0fcade43aea2a924bf4a46766fe8825095eb5de51de273aa959cbaaf0e025f1",
+      "size": 773
+    },
+    {
+      "path": "data/mods/gen5bw1/learnsets.ts",
+      "digest": "sha256:1edb15f2832b740229a1f711aeb368f02fe7aab958034e7ea53deb5332054db6",
+      "size": 1198289
+    },
+    {
+      "path": "data/mods/gen5bw1/pokedex.ts",
+      "digest": "sha256:a9412b0363cbddae117cce06caa60f1998ecfdee310ad97037d25a29b546b072",
+      "size": 9942
+    },
+    {
+      "path": "data/mods/gen5bw1/scripts.ts",
+      "digest": "sha256:6e04306991e023f76fc05bce8b866ead2be409cfc2589b2f0e3110ed5e52a4fb",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen6/abilities.ts",
+      "digest": "sha256:718f99f6a02e1d6817d9b2c08df37857604c7943ff5c82f85329326c6cc360b9",
+      "size": 3476
+    },
+    {
+      "path": "data/mods/gen6/conditions.ts",
+      "digest": "sha256:9cca533633c20fecc0d5cf4cbd0f318ed9e0e5164c7f9ba2d62b45b9eaaf6850",
+      "size": 1171
+    },
+    {
+      "path": "data/mods/gen6/formats-data.ts",
+      "digest": "sha256:9469efebfb1b928ae42378889ce6fda499ca20b1e58cdf5c43a7436985fafa72",
+      "size": 37506
+    },
+    {
+      "path": "data/mods/gen6/items.ts",
+      "digest": "sha256:e0c90477ad51f763bc093632344f8377f3b0c53e8cc3dff18601c79f95841841",
+      "size": 4160
+    },
+    {
+      "path": "data/mods/gen6/learnsets.ts",
+      "digest": "sha256:6dbe0aaa1cae31d4e974b79e0636131e8ead79fe528773161f7a4e28f5595332",
+      "size": 2297
+    },
+    {
+      "path": "data/mods/gen6/moves.ts",
+      "digest": "sha256:2253b9dd1ed8cde982cb5e4c5057a75f6fdebba2053af27c7fe61769979b8adb",
+      "size": 4196
+    },
+    {
+      "path": "data/mods/gen6/pokedex.ts",
+      "digest": "sha256:cf692e61ba60a9affd69e97f12b04b8b6a2d74103bd0ef0df6194bf2c0a19ce5",
+      "size": 9626
+    },
+    {
+      "path": "data/mods/gen6/scripts.ts",
+      "digest": "sha256:4e791ab23b2771b9d7e9b6cd0bde3c5e88d9c5d392e8b6a6022fef2de1cb41c6",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen6/typechart.ts",
+      "digest": "sha256:725556aae95658f988b5690167e281d37c3a5d9eaf2afab0a10739a095c4a172",
+      "size": 375
+    },
+    {
+      "path": "data/mods/gen6xy/formats-data.ts",
+      "digest": "sha256:5ea2e70496c49b8c2f85c3f162c69e56305b92c5e3b42f781318c11dd4a374c4",
+      "size": 2193
+    },
+    {
+      "path": "data/mods/gen6xy/items.ts",
+      "digest": "sha256:52787a47706e36505ee91e597990cbe3a260aa61382c726e4305117b86912d80",
+      "size": 1686
+    },
+    {
+      "path": "data/mods/gen6xy/learnsets.ts",
+      "digest": "sha256:238bc27b9661b39240d88b7f1410a202f25c10e3fa9096105fedd27f92d08d08",
+      "size": 1621326
+    },
+    {
+      "path": "data/mods/gen6xy/moves.ts",
+      "digest": "sha256:4d83172c1adbcdf9a7519b964f0a9f4b01e8e930651daaa9ac0030d99b0b8889",
+      "size": 344
+    },
+    {
+      "path": "data/mods/gen6xy/pokedex.ts",
+      "digest": "sha256:a96757e62c6641cb5c80a8f878fef129544a16a9feb310491c7133959fdb4838",
+      "size": 1207
+    },
+    {
+      "path": "data/mods/gen6xy/scripts.ts",
+      "digest": "sha256:c9ad62dcb68680f1bd9dc292a7c73cd211ded3580998cdfd5fa14a24a252b68b",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen7/abilities.ts",
+      "digest": "sha256:484ab6c9f5f625086b120380195908c50bebbe77f33afa566483ddf8a359e769",
+      "size": 2972
+    },
+    {
+      "path": "data/mods/gen7/formats-data.ts",
+      "digest": "sha256:df62913eb6568ed6ac1e244bef3cf515aeef3c2dacf5e56cadb4df63bf6d83c9",
+      "size": 45228
+    },
+    {
+      "path": "data/mods/gen7/items.ts",
+      "digest": "sha256:bfbaa542ff6316b38466349b188d9f6e50500b1264d6acd3f80396f3c1473fd9",
+      "size": 10187
+    },
+    {
+      "path": "data/mods/gen7/moves.ts",
+      "digest": "sha256:d043fc23b4a812ba8734d3520c8f4d7ee629b42b24d005382a447b050db9f8bc",
+      "size": 21167
+    },
+    {
+      "path": "data/mods/gen7/pokedex.ts",
+      "digest": "sha256:243644f150123187c6941ae89a92f1be3d0ea7e128f22e759d5924b334ce529e",
+      "size": 4804
+    },
+    {
+      "path": "data/mods/gen7/rulesets.ts",
+      "digest": "sha256:9d4d7a6e64c879cf720d988b84150e23f38e230ce71a98f607275d44480b2288",
+      "size": 2022
+    },
+    {
+      "path": "data/mods/gen7/scripts.ts",
+      "digest": "sha256:94b6607d717e61492ab7e8ccf79e1d0580273c41939351e2fda975b6d7cc5f68",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen7letsgo/formats-data.ts",
+      "digest": "sha256:b2a5a69fc98e074be4b470c78d5d8b235a946860f56113b31491222248863969",
+      "size": 8510
+    },
+    {
+      "path": "data/mods/gen7letsgo/learnsets.ts",
+      "digest": "sha256:f8a8223dce591b01810c69188726d840fb4c2c2597770068b2e3e42a69d1dbbe",
+      "size": 113931
+    },
+    {
+      "path": "data/mods/gen7letsgo/moves.ts",
+      "digest": "sha256:2d20094bc7afb59c166d49c46d16a335802823a3b8a4c52252126e60381de0b3",
+      "size": 2135
+    },
+    {
+      "path": "data/mods/gen7letsgo/pokedex.ts",
+      "digest": "sha256:2ee388fba8680281c221621cf25878d366b3540af6341391ef11d8c3d6828616",
+      "size": 2023
+    },
+    {
+      "path": "data/mods/gen7letsgo/rulesets.ts",
+      "digest": "sha256:ca1e579a1159e55d562ad84ba83f04d094dcf9372b1e369822c0e9eb29ac2bb9",
+      "size": 454
+    },
+    {
+      "path": "data/mods/gen7letsgo/scripts.ts",
+      "digest": "sha256:2195a230376f585fad5288f1ac30916e4a6fd75d628f5664b681e70d19f8e631",
+      "size": 2611
+    },
+    {
+      "path": "data/mods/gen7sm/formats-data.ts",
+      "digest": "sha256:f0fb93a3ed66280b09c35b0cf071e0ddb598a5906b24ac7c994654da9d90120a",
+      "size": 1039
+    },
+    {
+      "path": "data/mods/gen7sm/items.ts",
+      "digest": "sha256:45660e04eb46222443b5dc4d2e10e70172adfa69b8682d02a6af180a6a058668",
+      "size": 460
+    },
+    {
+      "path": "data/mods/gen7sm/learnsets.ts",
+      "digest": "sha256:06005911e1c5efab5c3bf32ac9eeec1eb268d0428c7ceb065966df5894b74816",
+      "size": 2105690
+    },
+    {
+      "path": "data/mods/gen7sm/moves.ts",
+      "digest": "sha256:fcc1ad407cf67214fd50a7d2504ea1db3084c1494baa9df5b404c51a294451b6",
+      "size": 271
+    },
+    {
+      "path": "data/mods/gen7sm/pokedex.ts",
+      "digest": "sha256:daa40abd922e31c14fcb4b1e938154b51ad3e72a03860a4f8919245055e6f24f",
+      "size": 745
+    },
+    {
+      "path": "data/mods/gen7sm/scripts.ts",
+      "digest": "sha256:983467bf7a32b972c0c6297722fc299071cc96829a23c3739aecb644959b88b4",
+      "size": 71
+    },
+    {
+      "path": "data/mods/gen8/abilities.ts",
+      "digest": "sha256:da491e974abbc07c10267cd7ddd6713fea035be415c3d1e69c916d44b9f2ad51",
+      "size": 17934
+    },
+    {
+      "path": "data/mods/gen8/formats-data.ts",
+      "digest": "sha256:87c61a3443f028b80ba227d5740cf65f3b5913d39fde04afaa0f33b25bf885d4",
+      "size": 83161
+    },
+    {
+      "path": "data/mods/gen8/items.ts",
+      "digest": "sha256:a25ed92ee7583d2e94694d0c816fbe1f2dd9159ac3dfeeb5b24f3f273a256bcd",
+      "size": 10644
+    },
+    {
+      "path": "data/mods/gen8/learnsets.ts",
+      "digest": "sha256:0449efbed92facdda2cdfc03dbdeee5aeea186bca41600c91f26360f10f5d79e",
+      "size": 148
+    },
+    {
+      "path": "data/mods/gen8/moves.ts",
+      "digest": "sha256:0e67f104eb401b5a5d1c76c32150170054d5a345ce848dbb0fad2c5b0f49f412",
+      "size": 12397
+    },
+    {
+      "path": "data/mods/gen8/pokedex.ts",
+      "digest": "sha256:ef0511011bb28806053e9993f6f466d011933054e7a2ed46c0c8ee2f0771c3a6",
+      "size": 3048
+    },
+    {
+      "path": "data/mods/gen8/rulesets.ts",
+      "digest": "sha256:5213b6337f7c1814fdb09cc64f099468c4c54c32f1196e96aebe29d5e5c73ecf",
+      "size": 5874
+    },
+    {
+      "path": "data/mods/gen8/scripts.ts",
+      "digest": "sha256:485d3e8f42af1ec4e1703f3f953ec21f2adf6e2395eebc26906009135dc0dd99",
+      "size": 62
+    },
+    {
+      "path": "data/mods/gen8/typechart.ts",
+      "digest": "sha256:cce8b487a56b13a05440e070bb7fadba6d7b625a9a78721f127b5139b03c739a",
+      "size": 143
+    },
+    {
+      "path": "data/mods/gen8bdsp/abilities.ts",
+      "digest": "sha256:0a37e5114cdcf3a15721740e3251d52774b3be392f1f482537222bb3b8285fbe",
+      "size": 654
+    },
+    {
+      "path": "data/mods/gen8bdsp/formats-data.ts",
+      "digest": "sha256:fe8efd71c50851983e47992e746b09302575d29b3f9075b8afeaa0e4b876dc85",
+      "size": 22623
+    },
+    {
+      "path": "data/mods/gen8bdsp/items.ts",
+      "digest": "sha256:6bf313209951c69b5a5b8a7ad215eedec457c65742faf312d8f6b7627ee37f76",
+      "size": 12132
+    },
+    {
+      "path": "data/mods/gen8bdsp/learnsets.ts",
+      "digest": "sha256:afb10262f89445592ab7a2cf8dd5e6b7cebeafdce30d28092a1f92110faf54bb",
+      "size": 543075
+    },
+    {
+      "path": "data/mods/gen8bdsp/moves.ts",
+      "digest": "sha256:da8a88be6da5bfd83350433a35665522978f2e551946083042deedb8b4250352",
+      "size": 14696
+    },
+    {
+      "path": "data/mods/gen8bdsp/pokedex.ts",
+      "digest": "sha256:01c5fc272227100963b5e6c3e65130d69bc63d423a258676d7738640d0ee105a",
+      "size": 1886
+    },
+    {
+      "path": "data/mods/gen8bdsp/scripts.ts",
+      "digest": "sha256:cd2df1a0f81b39cf22735a402d8ba633292e2c892c357706e31c5ceeb65a4565",
+      "size": 184
+    },
+    {
+      "path": "data/mods/gen8dlc1/abilities.ts",
+      "digest": "sha256:283b0b1f21465424fe0b65d40fb808b8e249de2f75f74a2c7ecd30a42a400afe",
+      "size": 1501
+    },
+    {
+      "path": "data/mods/gen8dlc1/formats-data.ts",
+      "digest": "sha256:8402ca25f5ef64e8595aea0e245e483eb64fb73a92a13e61b4fe75284afc84ff",
+      "size": 12917
+    },
+    {
+      "path": "data/mods/gen8dlc1/items.ts",
+      "digest": "sha256:d52a7dc70ad1904fba70726dfb2fa257533695526211128299b61a36510d3aa9",
+      "size": 978
+    },
+    {
+      "path": "data/mods/gen8dlc1/learnsets.ts",
+      "digest": "sha256:4371bd94a7afacfdc4d969ea88a6ba8ffdfb59be283a425c3a6996601a35517e",
+      "size": 2815804
+    },
+    {
+      "path": "data/mods/gen8dlc1/moves.ts",
+      "digest": "sha256:3f4c0b71db27d627189916aadd11f3e7b28f7e1f1cd973450f5402c118c834ea",
+      "size": 3827
+    },
+    {
+      "path": "data/mods/gen8dlc1/pokedex.ts",
+      "digest": "sha256:4a6018f2b4f88fde2288c954d6090739dfa74d8943c655f1a8a432d636e9a338",
+      "size": 732
+    },
+    {
+      "path": "data/mods/gen8dlc1/rulesets.ts",
+      "digest": "sha256:11ac044c0ed61b8037a6246ca10cac808ce9361e0058558faadba468da0028e2",
+      "size": 522
+    },
+    {
+      "path": "data/mods/gen8dlc1/scripts.ts",
+      "digest": "sha256:f80df3982008a3b29957ad137f20927ec19b966256cf1e4183b864d95c68b221",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen8legends/formats-data.ts",
+      "digest": "sha256:544ecc302522751b271beaaf1fa3f008dd3d841616379fa1408890e21ff005f2",
+      "size": 38816
+    },
+    {
+      "path": "data/mods/gen8legends/learnsets.ts",
+      "digest": "sha256:44e55f31a229b97d414969ec80cdc93e02031b275a280ba4eb435be399f9bd90",
+      "size": 116190
+    },
+    {
+      "path": "data/mods/gen8legends/pokedex.ts",
+      "digest": "sha256:9f7ff2068264c929715b710d1ffc723809ff5bb13ba31c43f8cdccdd911a7438",
+      "size": 733
+    },
+    {
+      "path": "data/mods/gen8legends/scripts.ts",
+      "digest": "sha256:f80df3982008a3b29957ad137f20927ec19b966256cf1e4183b864d95c68b221",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen9dlc1/abilities.ts",
+      "digest": "sha256:86e7f7656daf2a5897e36f252a0a1a5a2c5e5f65db95896355a2ef63a7f5cd25",
+      "size": 2930
+    },
+    {
+      "path": "data/mods/gen9dlc1/formats-data.ts",
+      "digest": "sha256:85415d582e8d61c0647169b6ce91cd8ae452dc14d83a12e0bc9b16898acd32c0",
+      "size": 88202
+    },
+    {
+      "path": "data/mods/gen9dlc1/items.ts",
+      "digest": "sha256:ad86b3e99218e020a632c10961c4ed818aa5bf289e3d3878a48eab1d37c57944",
+      "size": 1329
+    },
+    {
+      "path": "data/mods/gen9dlc1/learnsets.ts",
+      "digest": "sha256:7a2c7649c4fcc6a95f4aad2d4080f2d366f1325928ff746467baa04fe4a80f69",
+      "size": 3563760
+    },
+    {
+      "path": "data/mods/gen9dlc1/moves.ts",
+      "digest": "sha256:0f8b51f94a708c529cca0b12a5f6754d50bebd81fbec4b259c9c95640d2ff2e6",
+      "size": 3316
+    },
+    {
+      "path": "data/mods/gen9dlc1/pokedex.ts",
+      "digest": "sha256:d60106e824c67a635c61de3a98db04d78e7101a8e684637ef88402955b288af9",
+      "size": 277
+    },
+    {
+      "path": "data/mods/gen9dlc1/scripts.ts",
+      "digest": "sha256:f25c7aa166ca23ef4540d5c1eab1934d863a97645f8617b5c0753e30ec8643e1",
+      "size": 6227
+    },
+    {
+      "path": "data/mods/gen9dlc1/typechart.ts",
+      "digest": "sha256:cce8b487a56b13a05440e070bb7fadba6d7b625a9a78721f127b5139b03c739a",
+      "size": 143
+    },
+    {
+      "path": "data/mods/gen9legends/formats-data.ts",
+      "digest": "sha256:35a604463cd4acbd7e86bc79393d487537940fef1bb8cdf15b50171559916de2",
+      "size": 46205
+    },
+    {
+      "path": "data/mods/gen9legends/learnsets.ts",
+      "digest": "sha256:da28ffeb8b2218e8b02d0543a0a063151fe73176cd45d72cf5b4db73115ce888",
+      "size": 361220
+    },
+    {
+      "path": "data/mods/gen9legends/pokedex.ts",
+      "digest": "sha256:c54238bc10b5f9e5839942b527695236d0133a83886b621e9fec6364d2abcb09",
+      "size": 417
+    },
+    {
+      "path": "data/mods/gen9legends/scripts.ts",
+      "digest": "sha256:af15b3edab448225161ebe4ccc0425059daaeeea8e63f22785ef015a86c4fa6a",
+      "size": 80
+    },
+    {
+      "path": "data/mods/gen9mnmlimitedsupply/scripts.ts",
+      "digest": "sha256:8452a3b461d827f671bbb7c7dfd797ed16ab81e2fca12b6fc044737ba7f465d6",
+      "size": 86
+    },
+    {
+      "path": "data/mods/gen9predlc/abilities.ts",
+      "digest": "sha256:85d9944af3d9d3b845039476336f2e6e7950c8f48dbefe52f010c620c4143a30",
+      "size": 1348
+    },
+    {
+      "path": "data/mods/gen9predlc/formats-data.ts",
+      "digest": "sha256:612265636ef661dd65beab2244e39db3783b7afd362624aec86c142b96fa3318",
+      "size": 91102
+    },
+    {
+      "path": "data/mods/gen9predlc/items.ts",
+      "digest": "sha256:d194292cdd93bd2795bb1f0204c61907e1bfecb3d1c43e751ce027752e0cec82",
+      "size": 813
+    },
+    {
+      "path": "data/mods/gen9predlc/learnsets.ts",
+      "digest": "sha256:0cf3c3230b0b6042b317e12a94348557c12e6758906e6cb20be1abf4f39ab92d",
+      "size": 3278067
+    },
+    {
+      "path": "data/mods/gen9predlc/moves.ts",
+      "digest": "sha256:c4c9b9517d3c302da97af2374ae3b484c4a3c08bbf640efe6fbb42b8ee25f5d5",
+      "size": 1124
+    },
+    {
+      "path": "data/mods/gen9predlc/pokedex.ts",
+      "digest": "sha256:047c9967fdd6fdab3bcfa972a6e6b26edaeb3f8256a2647f8569627cfce670b3",
+      "size": 424
+    },
+    {
+      "path": "data/mods/gen9predlc/scripts.ts",
+      "digest": "sha256:a541ddf9b5a028725f8620e8c870024494fb6aae3395e50b578cec6e2d298594",
+      "size": 84
+    },
+    {
+      "path": "data/mods/gen9ssb/abilities.ts",
+      "digest": "sha256:edf9d599792fea8e51ee24c492e209b6f5be43fd9859ab70d76303ea961e56b4",
+      "size": 103061
+    },
+    {
+      "path": "data/mods/gen9ssb/conditions.ts",
+      "digest": "sha256:40e51dc3741fd33b3d6725fd45a8855fb0e8922500651b900f097a863e23c68d",
+      "size": 103257
+    },
+    {
+      "path": "data/mods/gen9ssb/items.ts",
+      "digest": "sha256:113851014a397140a743277d644ba841ce44417739dd9ccc364bf8419ae1d636",
+      "size": 4291
+    },
+    {
+      "path": "data/mods/gen9ssb/moves.ts",
+      "digest": "sha256:6d10eee300177924262e8efd1987b146fa07be36a400e40c5c91c376d4da5295",
+      "size": 220842
+    },
+    {
+      "path": "data/mods/gen9ssb/pokedex.ts",
+      "digest": "sha256:67d1bc0cfa2e7cfdbd69761f5eb4335466a40c1763d4f4f45307c4c454c37205",
+      "size": 20544
+    },
+    {
+      "path": "data/mods/gen9ssb/random-teams.ts",
+      "digest": "sha256:e36c9ef6689fc3fbcb8a7c575f96aec2391dbee5af72af2fba33799eeff12779",
+      "size": 54793
+    },
+    {
+      "path": "data/mods/gen9ssb/rulesets.ts",
+      "digest": "sha256:2ff9c4c316d698b723ac5d70a0a5d4ac13c7736fbd8f34cfa965f5ef2def3bc4",
+      "size": 775
+    },
+    {
+      "path": "data/mods/gen9ssb/scripts.ts",
+      "digest": "sha256:95d12b2f33386aa63f2b903371a54403639ec78cec6125b21982d3a11d239907",
+      "size": 68848
+    },
+    {
+      "path": "data/mods/gen9ssb/typechart.ts",
+      "digest": "sha256:e76a748fc7e6276af04a749738b366fd71e8e3b5052186e5fd83baa4eb9a4c1f",
+      "size": 1143
+    },
+    {
+      "path": "data/mods/linked/conditions.ts",
+      "digest": "sha256:a7bc39e01b02a5e2c665c2e8141116fcd1672768ba53c23b53db77a99b020696",
+      "size": 2877
+    },
+    {
+      "path": "data/mods/linked/moves.ts",
+      "digest": "sha256:d30759e7cef6a1d8bd212bb3f32d526ee8a0c5c267a1c3cd741562a8e7fc0076",
+      "size": 9375
+    },
+    {
+      "path": "data/mods/linked/scripts.ts",
+      "digest": "sha256:5d815c834bb0683c29b074969819e5b894a101f63720b10b6f215ad151f5f0a1",
+      "size": 26150
+    },
+    {
+      "path": "data/mods/mixandmega/items.ts",
+      "digest": "sha256:c522f796acf9dd222d89213a5450f26361647b875daf540cacee83bfabb1ea59",
+      "size": 6249
+    },
+    {
+      "path": "data/mods/mixandmega/scripts.ts",
+      "digest": "sha256:213690efd43f769ceacba79bc55ff8b35f86c55b6601329efaceabccfdfc8985",
+      "size": 21232
+    },
+    {
+      "path": "data/mods/monkeyspaw/abilities.ts",
+      "digest": "sha256:9d9555120f18df854c349b57ec34a7702afadb8eab2ea1bdfbb3c8943019e2fa",
+      "size": 731
+    },
+    {
+      "path": "data/mods/monkeyspaw/conditions.ts",
+      "digest": "sha256:7f0fd62c0f478dd4eaecd5c0113874a39e6e2e92f340f8f8f475236cbe0d99ed",
+      "size": 1506
+    },
+    {
+      "path": "data/mods/monkeyspaw/scripts.ts",
+      "digest": "sha256:7de6a3d09ad8cafb830201e6bd2cc0ef054bee59e4515213d8e9539945b3b7d9",
+      "size": 21654
+    },
+    {
+      "path": "data/mods/partnersincrime/abilities.ts",
+      "digest": "sha256:c157c30405def72831c51b6c19657d18a3e9c091d74c84defb7e32937c5ef6a2",
+      "size": 2780
+    },
+    {
+      "path": "data/mods/partnersincrime/items.ts",
+      "digest": "sha256:f7f79b01de8b730f393264f6c39ca193a701df6ef4faba2188a28bac7ac78a47",
+      "size": 632
+    },
+    {
+      "path": "data/mods/partnersincrime/moves.ts",
+      "digest": "sha256:da58b842d7af8695ccf3b900f9a19c0a073faaee9eba117eaf908af5b0401ecf",
+      "size": 6204
+    },
+    {
+      "path": "data/mods/partnersincrime/scripts.ts",
+      "digest": "sha256:766ae79e0d67deb4a314bd4f5b9eecb6d721f03610076c95549104fe5e3a3726",
+      "size": 20039
+    },
+    {
+      "path": "data/mods/passiveaggressive/abilities.ts",
+      "digest": "sha256:07de57ee83f6ad20e6d3220f2a81cc40a91841480ae3b830a4cd5569c1b5467f",
+      "size": 2140
+    },
+    {
+      "path": "data/mods/passiveaggressive/conditions.ts",
+      "digest": "sha256:969c3603667b8c9bd37dc5ce6b04eec61d1d247c80091b78659fb26bfca6fbb9",
+      "size": 1895
+    },
+    {
+      "path": "data/mods/passiveaggressive/items.ts",
+      "digest": "sha256:6851308de4549b2bb07546a24fbbce1624757eb267055720802291de0c25e069",
+      "size": 2237
+    },
+    {
+      "path": "data/mods/passiveaggressive/moves.ts",
+      "digest": "sha256:141ae252a8a55d83af8612cbbde47854d83a854c382d0e2b68b913b12f2e8f7d",
+      "size": 9125
+    },
+    {
+      "path": "data/mods/passiveaggressive/scripts.ts",
+      "digest": "sha256:7ab77328f6705a8f6fc58efd59a6eb65b5ceea4f07d0a0a9ac00eebc23004917",
+      "size": 7922
+    },
+    {
+      "path": "data/mods/pokebilities/abilities.ts",
+      "digest": "sha256:bbf93db2a5c0fc5910cb711cfd6034b9ba1430fe02af59e83578b79934b82627",
+      "size": 10027
+    },
+    {
+      "path": "data/mods/pokebilities/moves.ts",
+      "digest": "sha256:4168083dc3d40879808bbdbab3c25c064bff0b2f15a55ded9ad77ec4922bddaf",
+      "size": 535
+    },
+    {
+      "path": "data/mods/pokebilities/scripts.ts",
+      "digest": "sha256:8abf690a78275fc12bf6b40e0b45b4c8223de208ce37f53f78f71edda35c77d2",
+      "size": 8443
+    },
+    {
+      "path": "data/mods/pokemoves/abilities.ts",
+      "digest": "sha256:4cb6df7a972d987871cc2133da723046794852f1681e4b29f3e087c7b64e018a",
+      "size": 2876
+    },
+    {
+      "path": "data/mods/pokemoves/moves.ts",
+      "digest": "sha256:a8d96fb10fc93f35990b73afba8381f8ad3b0eafecea808ac36b44da9e2b7580",
+      "size": 971
+    },
+    {
+      "path": "data/mods/pokemoves/scripts.ts",
+      "digest": "sha256:e6a40cbe63b2e8ad6dd35349548b08fa63de3a905141566106ceb874fb67054f",
+      "size": 1608
+    },
+    {
+      "path": "data/mods/randomroulette/scripts.ts",
+      "digest": "sha256:da58a38d85e287ef7119d41b7e68be490a90cf190169a76eb65241ebc7d9d2cc",
+      "size": 4132
+    },
+    {
+      "path": "data/mods/sharedpower/abilities.ts",
+      "digest": "sha256:0615aa11e8116bd7ab3613a7c2eff4b29c58286e2f19ba69c6601fb1c6628935",
+      "size": 2876
+    },
+    {
+      "path": "data/mods/sharedpower/moves.ts",
+      "digest": "sha256:2e2a88960719f6ae5c7fbfa03a56a192c58e31ebf4783030b03552b016aacb95",
+      "size": 587
+    },
+    {
+      "path": "data/mods/sharedpower/scripts.ts",
+      "digest": "sha256:6af1e125f9ada39023d23b012d663c7a4ca638fec48803ee74a658bfedccd24f",
+      "size": 1596
+    },
+    {
+      "path": "data/mods/sharingiscaring/conditions.ts",
+      "digest": "sha256:1cd3f3bf654fcd4b24fac0124d63a0c4b1e6b1a2dbd31ddd4131e5b6c42fd972",
+      "size": 1441
+    },
+    {
+      "path": "data/mods/sharingiscaring/items.ts",
+      "digest": "sha256:88c717c545fc11afe7b691a87666d0949ad99f6524d50a70006d14dee3c86453",
+      "size": 1098
+    },
+    {
+      "path": "data/mods/sharingiscaring/moves.ts",
+      "digest": "sha256:1458499c289f0770c24918cb050e7f2a57b6722587b12fbf9b64eb3e3c12094a",
+      "size": 253
+    },
+    {
+      "path": "data/mods/sharingiscaring/scripts.ts",
+      "digest": "sha256:7057acc03d404a39a58a43b7c2626be626e799377fb4488b08f76ffff2531669",
+      "size": 5826
+    },
+    {
+      "path": "data/mods/teraoverride/abilities.ts",
+      "digest": "sha256:951df3ba4c48bb8611bc9f0de3729f22a7db77d4d16c9115713fe2a4ae37be6e",
+      "size": 17966
+    },
+    {
+      "path": "data/mods/teraoverride/conditions.ts",
+      "digest": "sha256:0285db5508a9ff6e46bc9d2aa60766f6dd468e6150d6dfe1f517cc93099d9d29",
+      "size": 2856
+    },
+    {
+      "path": "data/mods/teraoverride/items.ts",
+      "digest": "sha256:9b4fa63c9b3380279e9112fb04bafba3c67c05ccd562796e08a8a03a965c8345",
+      "size": 23244
+    },
+    {
+      "path": "data/mods/teraoverride/moves.ts",
+      "digest": "sha256:e1f458c90a170d90cde422e1f00f7b7862ae8f897e3c949aabfec0988a4b2f9b",
+      "size": 23769
+    },
+    {
+      "path": "data/mods/teraoverride/scripts.ts",
+      "digest": "sha256:ac5aa4d113cbcaa41b7456af98c3f51d05780abd05d023ce4e174222c88685d1",
+      "size": 2644
+    },
+    {
+      "path": "data/mods/thecardgame/abilities.ts",
+      "digest": "sha256:956fb3e9818838c61a9abc201ef60598ac01cbb004cc8782528098ff1201c41d",
+      "size": 5459
+    },
+    {
+      "path": "data/mods/thecardgame/conditions.ts",
+      "digest": "sha256:f22c0fd21eb92a18e4499eb34d51dec910bfa5df4ec2d14851cb78ffd6bb682e",
+      "size": 1511
+    },
+    {
+      "path": "data/mods/thecardgame/items.ts",
+      "digest": "sha256:dd78915ec818400fce9bd058bd45ecb0e8100d3904365580581a6f46824db1a0",
+      "size": 9750
+    },
+    {
+      "path": "data/mods/thecardgame/moves.ts",
+      "digest": "sha256:283189baca6bf08a6c8da5d1965547485d4a70f9b98639c42b4acc6b3c507d31",
+      "size": 3263
+    },
+    {
+      "path": "data/mods/thecardgame/scripts.ts",
+      "digest": "sha256:36279e534644a84430af36970364b861a0016e24c333c84fdc6676c3de21e745",
+      "size": 4797
+    },
+    {
+      "path": "data/mods/thecardgame/typechart.ts",
+      "digest": "sha256:6d11b60fe6fd5263221efd23e7b8a82a5b6b74aba044ce40de33424db132377d",
+      "size": 1353
+    },
+    {
+      "path": "data/mods/trademarked/scripts.ts",
+      "digest": "sha256:eee7451908af2aac80b3a5e4fafcc426d3e1afce7914c382ab1d97fb2b9e746e",
+      "size": 12353
+    },
+    {
+      "path": "data/moves.ts",
+      "digest": "sha256:f541faead2379951830576787fd2a9a22f82467df2464a819f10feea228b3095",
+      "size": 484593
+    },
+    {
+      "path": "data/natures.ts",
+      "digest": "sha256:5cfefee4c23dd19f629deb9a67f75361226bd24fe34cefe9a13d30d985428416",
+      "size": 1490
+    },
+    {
+      "path": "data/pokedex.ts",
+      "digest": "sha256:0aba8712ababae8e356bdd9d6c6ffa73a5169d39a3ac831a853ae88fe653e6bc",
+      "size": 537894
+    },
+    {
+      "path": "data/pokemongo.ts",
+      "digest": "sha256:182ba1083390e7c6627f1bbfe5a68173623d3c68f75f04ca2adeb72460675e78",
+      "size": 43442
+    },
+    {
+      "path": "data/random-battles/ccapm2025/random-sets.json",
+      "digest": "sha256:12b4695bd9d98d7db08db929afe034ce83b08d1b6bf90d3045a811674b194d1f",
+      "size": 25152
+    },
+    {
+      "path": "data/random-battles/ccapm2025/teams.ts",
+      "digest": "sha256:cb269f585f1ab92dd8761dfb2d29506e859aeda57c163331ab426985f202753f",
+      "size": 47162
+    },
+    {
+      "path": "data/random-battles/champions/doubles-sets.json",
+      "digest": "sha256:851114e68805aafbecbed0aaee7994164d199d890deed78bafc2beaf3c2221d8",
+      "size": 118891
+    },
+    {
+      "path": "data/random-battles/champions/sets.json",
+      "digest": "sha256:7b189d6de33367aca7191e484069b74757097fc34fed0402b52bb6fa41447421",
+      "size": 121416
+    },
+    {
+      "path": "data/random-battles/champions/teams.ts",
+      "digest": "sha256:caf4a6c018ecddc0a492fe4a28d5ca745ff76ed25fb29dd857e3ad35411502e0",
+      "size": 45780
+    },
+    {
+      "path": "data/random-battles/chatbats/random-sets.json",
+      "digest": "sha256:3fe362f55f254f257a2d6e82c9b140f73d5e5e4e0c85ac568e7e608c9d0cb2c2",
+      "size": 38177
+    },
+    {
+      "path": "data/random-battles/chatbats/teams.ts",
+      "digest": "sha256:cf7561d4d651877123995d7e1f315cced1e32bcdcf0fa90e77383baea9c46e03",
+      "size": 49095
+    },
+    {
+      "path": "data/random-battles/gen1/data.json",
+      "digest": "sha256:85fc2743d9dba5a0dc996f8991be5ec07bcba4818555c3466d4da75eafe5380f",
+      "size": 24970
+    },
+    {
+      "path": "data/random-battles/gen1/teams.ts",
+      "digest": "sha256:277d5a375213b7b0e06f58a34058fb0576dc90d8a5e41eecf54d7339ea07c059",
+      "size": 13441
+    },
+    {
+      "path": "data/random-battles/gen2/sets.json",
+      "digest": "sha256:be442044adf340ef394bd2e7a391543520abeae8758a79766182153bf88c9860",
+      "size": 51119
+    },
+    {
+      "path": "data/random-battles/gen2/teams.ts",
+      "digest": "sha256:a3cb570c2bd64eadfd2e6769f8680b556601fdcbfe7d69814272fcece2bc286c",
+      "size": 18564
+    },
+    {
+      "path": "data/random-battles/gen3/sets.json",
+      "digest": "sha256:c08b2fe5832e8c0f4615915565ac96365208a38ba65c878fab334d15e892ac4d",
+      "size": 102432
+    },
+    {
+      "path": "data/random-battles/gen3/teams.ts",
+      "digest": "sha256:5359bf051793df2b2b58ebdcc4747e6be61fbf6920802e584bb4e5a281fd45fb",
+      "size": 29178
+    },
+    {
+      "path": "data/random-battles/gen4/sets.json",
+      "digest": "sha256:f6b06803546144ebc778e2195e60a94b746582de1b4b4c4dab83192b026ac467",
+      "size": 121404
+    },
+    {
+      "path": "data/random-battles/gen4/teams.ts",
+      "digest": "sha256:436b801b5d4675920f1d0f43756d4f8a7fb47dbc5f9d16bd1aea9a0618370f8e",
+      "size": 28889
+    },
+    {
+      "path": "data/random-battles/gen5/sets.json",
+      "digest": "sha256:a145fe1db219392a20945e7c3ae0111803ed2d2c305ccedfc19d412fc369ee9f",
+      "size": 158625
+    },
+    {
+      "path": "data/random-battles/gen5/teams.ts",
+      "digest": "sha256:ba49792e58293d7d5579e48fbf05a3574d68b0b1945b94fcadf32fe183e00cfa",
+      "size": 37887
+    },
+    {
+      "path": "data/random-battles/gen6/factory-sets.json",
+      "digest": "sha256:bcb69ded4c797e77fa07bdbd7a2d93c002dbd4d212a582dddc7715219ec3fd43",
+      "size": 355569
+    },
+    {
+      "path": "data/random-battles/gen6/sets.json",
+      "digest": "sha256:8479512df60fd507c120419d1a8ddb2e282d943eea15b7c5e3efbb2ca3f56aa6",
+      "size": 192811
+    },
+    {
+      "path": "data/random-battles/gen6/teams.ts",
+      "digest": "sha256:e42eca350cce01b7f733bb39f92dabfc4a5ec5598601fe9659845aab2920fb1d",
+      "size": 44879
+    },
+    {
+      "path": "data/random-battles/gen7/bss-factory-sets.json",
+      "digest": "sha256:7d4b010f47856cea4a6eb718e1d4770442e68582a126e6f4ea3332c1cc32b76c",
+      "size": 114198
+    },
+    {
+      "path": "data/random-battles/gen7/factory-sets.json",
+      "digest": "sha256:8b8c38c2a48c1aa592c6fe116fe74f5c0d38ac57c0e0cd21fc2d3bed4c7e82e2",
+      "size": 460569
+    },
+    {
+      "path": "data/random-battles/gen7/sets.json",
+      "digest": "sha256:bc0865a106b732147d347445c64a820c096a1e2adfbee84fb25446a2a361d79e",
+      "size": 249063
+    },
+    {
+      "path": "data/random-battles/gen7/teams.ts",
+      "digest": "sha256:fe33ab989fba81310086e8969be5778a2b4c130463763df086e4a94b7207782a",
+      "size": 71015
+    },
+    {
+      "path": "data/random-battles/gen7letsgo/data.json",
+      "digest": "sha256:27479de12954230ff2c7f466cd4d193aeb641c58f29ee330451ba646b03f4aa0",
+      "size": 69528
+    },
+    {
+      "path": "data/random-battles/gen7letsgo/teams.ts",
+      "digest": "sha256:d5e05b80dc8032ad435418caa67816c35b7704766d7a4e63c0069b4b4b65439f",
+      "size": 10581
+    },
+    {
+      "path": "data/random-battles/gen8/bss-factory-sets.json",
+      "digest": "sha256:4d5b9c3d808b3f4912076db65c537268c1c4d0af2aed39545ecc86f9b273cb4e",
+      "size": 84433
+    },
+    {
+      "path": "data/random-battles/gen8/cap-1v1-sets.json",
+      "digest": "sha256:2ec40da162cf613220241e622074de658a7894864d8a448793c9b6f08bc10f85",
+      "size": 12044
+    },
+    {
+      "path": "data/random-battles/gen8/factory-sets.json",
+      "digest": "sha256:6527054c42f8b7cc2955ad2112df480e19ccd8d2e2cf13edf7b3e5b1bc7e8f9a",
+      "size": 169701
+    },
+    {
+      "path": "data/random-battles/gen8/sets.json",
+      "digest": "sha256:c1239522dd932d7331e15af02faa4ce24a3b7d30a14f2ea2f98e5c05a7fbf983",
+      "size": 186986
+    },
+    {
+      "path": "data/random-battles/gen8/teams.ts",
+      "digest": "sha256:2d131ac82bae0a030375753e6eaca4ec7878576690262766e49ed26464766c04",
+      "size": 64928
+    },
+    {
+      "path": "data/random-battles/gen8bdsp/data.json",
+      "digest": "sha256:e8448ef3edb43b83c482fe99a6153b1bd3b939475622fe0b969ce550def95fb5",
+      "size": 31848
+    },
+    {
+      "path": "data/random-battles/gen8bdsp/teams.ts",
+      "digest": "sha256:7554d28db896d60d739b4eb72ec77ea65d99c2601a474eed194ab3ca3f69b821",
+      "size": 68150
+    },
+    {
+      "path": "data/random-battles/gen9/1v1-factory-sets.json",
+      "digest": "sha256:9d8e8b671591ab6bb3f139ba41d0348d5566509f0aaf34b00ec28c3b0882bbd3",
+      "size": 72890
+    },
+    {
+      "path": "data/random-battles/gen9/bss-factory-sets.json",
+      "digest": "sha256:2a64f212df1bc9ea1cbb75878bc92c812e0b76fc50441efa31a21167cca64d58",
+      "size": 199931
+    },
+    {
+      "path": "data/random-battles/gen9/doubles-sets.json",
+      "digest": "sha256:323e83026c32d9876bc295bc0e3481c834308d62b99ae8ec6362e4278f2ad000",
+      "size": 244265
+    },
+    {
+      "path": "data/random-battles/gen9/draft-factory-matchups.json",
+      "digest": "sha256:ff921f92d12dc48421f91199b7d5d1907786d24186562658e013e5a8994313ab",
+      "size": 920906
+    },
+    {
+      "path": "data/random-battles/gen9/factory-sets.json",
+      "digest": "sha256:301fe3c3c532d402aeb37ba930029dde513af0a0487fb76e9d842664f283b7d7",
+      "size": 218043
+    },
+    {
+      "path": "data/random-battles/gen9/sets.json",
+      "digest": "sha256:d18992314222060dda9a2a9bea09331478991d469babd95662517668099669f9",
+      "size": 267527
+    },
+    {
+      "path": "data/random-battles/gen9/teams.ts",
+      "digest": "sha256:71faeaf5f94ead62e26940d08fc23b2ed9dea32ad72c43d1e3be74ee5daaefa3",
+      "size": 123418
+    },
+    {
+      "path": "data/random-battles/gen9baby/sets.json",
+      "digest": "sha256:d2403642518aeb562e02fa3b025e2f37cf03373eff953b70d3ce87b41b0755b4",
+      "size": 112671
+    },
+    {
+      "path": "data/random-battles/gen9baby/teams.ts",
+      "digest": "sha256:3e87f4ed0c681b85c26e8faaae11473524643a8e89b0c638f67190858491aff3",
+      "size": 30442
+    },
+    {
+      "path": "data/random-battles/gen9cap/sets.json",
+      "digest": "sha256:cdaba1cc89312b32d4c878dba95c7fafa345b30a4454ca3b5bdcd379ff38bc8a",
+      "size": 22338
+    },
+    {
+      "path": "data/random-battles/gen9cap/teams.ts",
+      "digest": "sha256:c0a496cac36ebedc1557160aade25cfc999c3fde18a97bf2c1a86f428b309a5d",
+      "size": 14782
+    },
+    {
+      "path": "data/random-battles/gen9ffa/sets.json",
+      "digest": "sha256:d3aac6c6f51a85e0584dc5894662d00725dbc825f45e187ea29cb86c1e97d34d",
+      "size": 269883
+    },
+    {
+      "path": "data/random-battles/gen9ffa/teams.ts",
+      "digest": "sha256:d20cc5ce9aa161c93be673ed4daa97b3823d554dbcc55a19d681d5e2dc19e39c",
+      "size": 42743
+    },
+    {
+      "path": "data/random-battles/gen9mnmlimitedsupply/sets.json",
+      "digest": "sha256:e54dc91f27772b22ea7600ceb901a96fbfe86272b7de87b3822b05b1bb283082",
+      "size": 9513
+    },
+    {
+      "path": "data/random-battles/gen9mnmlimitedsupply/teams.ts",
+      "digest": "sha256:9cd868f695ef27e753da87be6a163e2f6634c12ce0dce54656138c278e986a29",
+      "size": 10994
+    },
+    {
+      "path": "data/random-battles/partnersincrime/teams.ts",
+      "digest": "sha256:ff6a023b8855cc8d4e55d48f175546a61d2c0d1a4bbacff955fe5e5d623afb4c",
+      "size": 149
+    },
+    {
+      "path": "data/random-battles/randomroulette/teams.ts",
+      "digest": "sha256:95f8dfae768d76450e104d1828204469e6c3db799053c697098cf0f1d2c44b61",
+      "size": 147
+    },
+    {
+      "path": "data/random-battles/sharedpower/teams.ts",
+      "digest": "sha256:873086bba49e8d66818060d95bfe4f5faeb5ca0ad587cf276b57a3b421478340",
+      "size": 141
+    },
+    {
+      "path": "data/rulesets.ts",
+      "digest": "sha256:89a487f8e5949c438b232010570cf467e0b60cb109ec836abeaad8553e8e885a",
+      "size": 180733
+    },
+    {
+      "path": "data/scripts.ts",
+      "digest": "sha256:54c7522b3d5d05f6a020d78b129589e7b2e57fbb9d095800c78c33a64a8ff383",
+      "size": 56
+    },
+    {
+      "path": "data/tags.ts",
+      "digest": "sha256:7433a57eb90d0ce1b1943905dac7716785aaf77af36167695920faf94f1fc886",
+      "size": 10436
+    },
+    {
+      "path": "data/text/abilities.ts",
+      "digest": "sha256:856b324b0f515bbe8db27b6f64f4f80ef19157fc3305a3a20b79886e45e1288e",
+      "size": 150697
+    },
+    {
+      "path": "data/text/default.ts",
+      "digest": "sha256:ded3b8a316f9e3ffad852a29b80de9f82c77adef89527bd29fd621ff461b6c07",
+      "size": 13658
+    },
+    {
+      "path": "data/text/items.ts",
+      "digest": "sha256:be31956641c0a5d93a1547d790a15790810aa4994e776104040784775da892f0",
+      "size": 82540
+    },
+    {
+      "path": "data/text/moves.ts",
+      "digest": "sha256:26d6f16907364261cbb08870e98dfadb8917311f5320952525bf24370add395c",
+      "size": 548801
+    },
+    {
+      "path": "data/text/pokedex.ts",
+      "digest": "sha256:49bfe8315270a75296ee1ddeac7aba830e4a9eafead5f7044506a6e9010d5874",
+      "size": 48862
+    },
+    {
+      "path": "data/typechart.ts",
+      "digest": "sha256:7b0eae126bdcf98edfd71cbe75af00b763f5f0d5db36024b6f3e7c5e4aea95ac",
+      "size": 6745
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v2.sql",
+      "digest": "sha256:40551313951964e9dee67cd6106ec51dbea988ec456c488ea6c2d70cbf6f2943",
+      "size": 2446
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v3.sql",
+      "digest": "sha256:3ac794fdf5b2143ce9213c248ffa83e1d0cd92db46f805e1ffb5585d75d65613",
+      "size": 634
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v4.sql",
+      "digest": "sha256:fcc694c1f34455029406071aa471262e7f02cc3a6b9aac2a8f649ef8cfd79230",
+      "size": 253
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v5.sql",
+      "digest": "sha256:70267c5ba6f3001e2c98190ebffe7d3cd8efb645888064c2a9ed9829ed92099d",
+      "size": 384
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v6.sql",
+      "digest": "sha256:93191873c8fa605e44034f3a421feac1be7bf3b6b6eb73a946b7805991e79d17",
+      "size": 368
+    },
+    {
+      "path": "databases/migrations/chat-plugins/v7.sql",
+      "digest": "sha256:93c2c76e76dad9facc714e89ae0768bdcb40384bca608f470b3155f8fe178397",
+      "size": 309
+    },
+    {
+      "path": "databases/migrations/modlog/v2.sql",
+      "digest": "sha256:4683b188b7986e17d6313b45e0b9b5ab5ef2323d57e880723c14910462766ed3",
+      "size": 1898
+    },
+    {
+      "path": "databases/migrations/storedbattles/v2.sql",
+      "digest": "sha256:3ba012fba35031d8d2118d5f15a09f7c4d192455d3a71ba17d0e7561c45f17d6",
+      "size": 296
+    },
+    {
+      "path": "databases/schemas/chat-plugins.sql",
+      "digest": "sha256:8e14a7612878616f2a0a1dd3360a50b58ee501fd2a1f8ac66911e60b944c93e5",
+      "size": 332
+    },
+    {
+      "path": "databases/schemas/friends-startup.sql",
+      "digest": "sha256:9ac2fed677e49f7de83558ba34299233bba6ad604942a4141030a4c0da9a2a47",
+      "size": 247
+    },
+    {
+      "path": "databases/schemas/friends.sql",
+      "digest": "sha256:e4eec6d5d534394840e73c53bc1cac3aca9ad224a8ba5f9ef31f4282f21b4971",
+      "size": 781
+    },
+    {
+      "path": "databases/schemas/modlog.sql",
+      "digest": "sha256:1163d8fe57d57684a8993eeb056b08c98527c5e3809d1d9e88ffe5aff0e25c98",
+      "size": 2152
+    },
+    {
+      "path": "databases/schemas/pms.sql",
+      "digest": "sha256:b77b301043843ef4c17e9c99f1256a2e59e5d65d97793740ab71891fdd2aadaa",
+      "size": 677
+    },
+    {
+      "path": "databases/schemas/roomlogs.sql",
+      "digest": "sha256:5d37b1033b030137b9051f54150196100e5da3805635c89a4f3693d737d05059",
+      "size": 595
+    },
+    {
+      "path": "databases/schemas/stored-battles.sql",
+      "digest": "sha256:8e9925c6e5dc2738dc51bc0f921a3fdd540c0c90485d732c498307f3810883cc",
+      "size": 184
+    },
+    {
+      "path": "databases/schemas/teams.sql",
+      "digest": "sha256:3e16b2a84deb583e400558aba28f62400f60e72db89a5afa8c3b53d1a57efe19",
+      "size": 337
+    },
+    {
+      "path": "eslint-ps-standard.mjs",
+      "digest": "sha256:71aa9da96aa2214680f608eb35c9e36bd3dc8f94e8e0dee7b3c9f0faa05403bd",
+      "size": 15247
+    },
+    {
+      "path": "eslint.config.mjs",
+      "digest": "sha256:50cae0c47c5eaa33c316ed27e4aea14215a17c330cd5bbb3d15c106fd2bc17c4",
+      "size": 4070
+    },
+    {
+      "path": "lib/DASHYCODE.md",
+      "digest": "sha256:2be504269b44eaed550d8097cebb89c80db27756b8ca6904c397703b93dc34f8",
+      "size": 3856
+    },
+    {
+      "path": "lib/STREAMS.md",
+      "digest": "sha256:1f0691e4f1f62b5bfa2078149a5002590f3f6093fb83570df81edbc9d59d5946",
+      "size": 9713
+    },
+    {
+      "path": "lib/crashlogger.ts",
+      "digest": "sha256:f61604e0721d004cdaaa00de91d0ad374a956675675e909fe193646db14a2d90",
+      "size": 2804
+    },
+    {
+      "path": "lib/dashycode.ts",
+      "digest": "sha256:b27348408217a4287f79f3bb3f84690cafa11df5d9c3aa285e9962184b86b568",
+      "size": 9282
+    },
+    {
+      "path": "lib/database.ts",
+      "digest": "sha256:2c37d8c217f55df1252e5383fd40ad3daa9b1b791b17cac708203c62dab391d7",
+      "size": 16526
+    },
+    {
+      "path": "lib/fs.ts",
+      "digest": "sha256:cbf61e5054b106e5c1df28b263f9b7f7e9692e69cc8b8cdfdcfbdd607a0a3840",
+      "size": 14494
+    },
+    {
+      "path": "lib/index.ts",
+      "digest": "sha256:b28b052afd954e212f84d22810f0f89addf3e62236be98ec20ccd43949826325",
+      "size": 328
+    },
+    {
+      "path": "lib/net.ts",
+      "digest": "sha256:d794c3c3494f88ebdd962338e6bd755fff9d9af4abc229eb6e25c27a48b6f9eb",
+      "size": 6752
+    },
+    {
+      "path": "lib/process-manager.ts",
+      "digest": "sha256:aaaee43c0aa2837c8e1794471db86067d83cba36490cc83696273dd77a49cb4c",
+      "size": 23252
+    },
+    {
+      "path": "lib/repl.ts",
+      "digest": "sha256:874ab2c3ba6c77fc6ce2d8f34c91141e366da04dcd9956bea57c94d9cd368d9b",
+      "size": 5631
+    },
+    {
+      "path": "lib/sql.ts",
+      "digest": "sha256:17df86a6e9d1882aa90c35392ed742a3c5b3f368a3fee4d6c779e48b1006617c",
+      "size": 13825
+    },
+    {
+      "path": "lib/static-server.ts",
+      "digest": "sha256:223aa68b023b9e8dba0237c3cddfc3d9fa262624f92ad4c7e847eab95d513246",
+      "size": 14146
+    },
+    {
+      "path": "lib/streams.ts",
+      "digest": "sha256:722d93026ae18477385b93097bfa729d53238cf3ee5b37024d2c52bc7cddbf54",
+      "size": 25649
+    },
+    {
+      "path": "lib/utils.ts",
+      "digest": "sha256:99244a2d968d65442a2a58ae856fbec0f15cfc1ff84d4604130489ef8d42555c",
+      "size": 14763
+    },
+    {
+      "path": "logs/chat/README.md",
+      "digest": "sha256:9f7fcb5938a25cbe9bb8fa6808a533741ddcb88bf8eb1b1cced737ae78ac467c",
+      "size": 73
+    },
+    {
+      "path": "logs/logging.md",
+      "digest": "sha256:e2bb0cb7d1709da852ded97166fa50a5b8755fe782fd6368468d3e91d0713b04",
+      "size": 1079
+    },
+    {
+      "path": "logs/modlog/README.md",
+      "digest": "sha256:811e0e1527165d65cc165303cbb79c79ce3dfca4a49df7f8df2ea33d62fde4a1",
+      "size": 57
+    },
+    {
+      "path": "logs/repl/README.md",
+      "digest": "sha256:f8db897ee40a3d2709da099e3a834ca8b60e4a25b660202ad9e1e0db6388c7d5",
+      "size": 461
+    },
+    {
+      "path": "logs/tickets/README.md",
+      "digest": "sha256:6082b15b174e42aea21860036fed7e99610bf9b8c48fca5c863283513125386e",
+      "size": 51
+    },
+    {
+      "path": "old-simulator-doc.txt",
+      "digest": "sha256:1d5f7d40742bd871fba31619ef82f3cd996f669eb66cf18fa4ceb2effecd528c",
+      "size": 11818
+    },
+    {
+      "path": "package-lock.json",
+      "digest": "sha256:f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a",
+      "size": 299234
+    },
+    {
+      "path": "package.json",
+      "digest": "sha256:561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9",
+      "size": 2815
+    },
+    {
+      "path": "pokemon-showdown",
+      "digest": "sha256:419f8122870af5aa41ca8a6eff6d2ac3f97745e247d855810d969a1314c0dbc3",
+      "size": 7984
+    },
+    {
+      "path": "server/README.md",
+      "digest": "sha256:0eb5b4fbaa1aea62316539a0b34633b296124067bb470b1e176579d0a8912d49",
+      "size": 4775
+    },
+    {
+      "path": "server/artemis/README.md",
+      "digest": "sha256:53f9278b35e9d6db7df44f3e4c0a54f5d81b5ec30bcca4fcf9b2822609811a71",
+      "size": 422
+    },
+    {
+      "path": "server/artemis/index.ts",
+      "digest": "sha256:fcea777eb0a65b3e5bdf2c0a9cc5adf3dd4a7485be24cf75413a4a4b827f9c1a",
+      "size": 466
+    },
+    {
+      "path": "server/artemis/install",
+      "digest": "sha256:7030dc5efe8b3a6af19d8805983333f6b7785476e36b3a5acb62d75892d1dab8",
+      "size": 302
+    },
+    {
+      "path": "server/artemis/local.ts",
+      "digest": "sha256:2cc3a13b81b794f3b258a15420717dbb1507aa8127b7b56e2e1fff077ec339a7",
+      "size": 5220
+    },
+    {
+      "path": "server/artemis/model.py",
+      "digest": "sha256:b5d3327825482396d21ead2f230d7a521eed4740ae9df4acf4637976ef7000bb",
+      "size": 1109
+    },
+    {
+      "path": "server/artemis/remote.ts",
+      "digest": "sha256:415a67a013ffb6ca82db1aa180d0ad3078c29b56c2023862b35268d6611bcde8",
+      "size": 4896
+    },
+    {
+      "path": "server/artemis/requirements.txt",
+      "digest": "sha256:acbecf29339f12586828c398c598055e1a63d2f1ebda7192bbe1bedfacc64290",
+      "size": 9
+    },
+    {
+      "path": "server/chat-commands/admin.ts",
+      "digest": "sha256:e200af5092089fbab493b827348cae30443c88a5ab92df4ce31d0106eaf8a28a",
+      "size": 63955
+    },
+    {
+      "path": "server/chat-commands/avatars.tsx",
+      "digest": "sha256:3d40bcbfac078e8360edb994728876c20a5db919b5793051466a3b6b45f48e16",
+      "size": 46131
+    },
+    {
+      "path": "server/chat-commands/core.ts",
+      "digest": "sha256:64dc58eebc7b5d268f295931d4b74e1ed11df8ea8dfeaf567b84498e8b4edc7f",
+      "size": 73189
+    },
+    {
+      "path": "server/chat-commands/info.ts",
+      "digest": "sha256:db78ad66d9f0e54df5d6c0fe181888d6bf198568f7bb1a40ee79c217eb8b1535",
+      "size": 139943
+    },
+    {
+      "path": "server/chat-commands/moderation.ts",
+      "digest": "sha256:54361e692e3b213ea40fee4beb79490bb0a095dd20a4a8d674dfb6698baca670",
+      "size": 104108
+    },
+    {
+      "path": "server/chat-commands/room-settings.ts",
+      "digest": "sha256:d0408d952195c9d69167459f3b000bddd7cbeefa792a66982da3981e9b7bf280",
+      "size": 74948
+    },
+    {
+      "path": "server/chat-db.ts",
+      "digest": "sha256:3229cba39e17dd13dbe59e2f62e70e859c50c21398f07a42fe9c3b30687cfa77",
+      "size": 897
+    },
+    {
+      "path": "server/chat-formatter.ts",
+      "digest": "sha256:9aa8be1caf2bd4da7bb0ba72628a568cd06a45cb6682572dce118b471714724d",
+      "size": 20331
+    },
+    {
+      "path": "server/chat-jsx.tsx",
+      "digest": "sha256:a56044b7871abd054aae4f95e276a9dd65cc26944c470dd1cd06a6186cff287d",
+      "size": 1660
+    },
+    {
+      "path": "server/chat-plugins/COMMANDS.md",
+      "digest": "sha256:724bf1c15043f677299a2103de553fbb4f0cb0a4a3911b895e7340c82bf88db1",
+      "size": 9645
+    },
+    {
+      "path": "server/chat-plugins/abuse-monitor.ts",
+      "digest": "sha256:88fd00c7dcd37a43f3916fa8457eb7ac5b56290653ee245109a89b5f457ace79",
+      "size": 93892
+    },
+    {
+      "path": "server/chat-plugins/announcements.ts",
+      "digest": "sha256:18134e852012730b62734518f94076d5038e8ab407fa209b3a923f4102903768",
+      "size": 7889
+    },
+    {
+      "path": "server/chat-plugins/auction.ts",
+      "digest": "sha256:025feb0046ee88eb6bc88018ddd08101a3830e57414d43ac1270867c21487323",
+      "size": 46180
+    },
+    {
+      "path": "server/chat-plugins/battlesearch.ts",
+      "digest": "sha256:e685d8e4a26d644c32f59302acc9320926c2f3733d24a3f133fcc9d70d18bbe6",
+      "size": 19792
+    },
+    {
+      "path": "server/chat-plugins/calculator.ts",
+      "digest": "sha256:afd9f11e7979a2e6c7bb5262606dc152d0d3f5496328eb544d5a38438face991",
+      "size": 6619
+    },
+    {
+      "path": "server/chat-plugins/chat-monitor.ts",
+      "digest": "sha256:e749446219ede3fb2202cec038da908acd050a74cefa557992f3a7468d831aeb",
+      "size": 35563
+    },
+    {
+      "path": "server/chat-plugins/chatlog.ts",
+      "digest": "sha256:ffc7158c8de43a009ff72d75eb300cd352e6218dc47474336080eed1c7890be8",
+      "size": 51635
+    },
+    {
+      "path": "server/chat-plugins/daily-spotlight.ts",
+      "digest": "sha256:a51606c3beb5344df771493f3e6871fd9d328be8ea6c588d8c52b8c139d93529",
+      "size": 13998
+    },
+    {
+      "path": "server/chat-plugins/datasearch.ts",
+      "digest": "sha256:52dd773b9b25c1c5916ee9aaa92a2dba0f602f7cd4d036348d5fe58d24156fd0",
+      "size": 122162
+    },
+    {
+      "path": "server/chat-plugins/friends.ts",
+      "digest": "sha256:367a25ec68a87a0ad9966ce646b4723e3ef0b3c407b03bdf076d1876182568e7",
+      "size": 30127
+    },
+    {
+      "path": "server/chat-plugins/github.ts",
+      "digest": "sha256:0fade0921764d8cbbce1003d7ad12c89409dcc12bcdb020e10b153bb0495c6dd",
+      "size": 10263
+    },
+    {
+      "path": "server/chat-plugins/hangman.ts",
+      "digest": "sha256:248c8e0743fcaa3a057685634310f3dc30f454ef3a09d40c05aad98d21589349",
+      "size": 22390
+    },
+    {
+      "path": "server/chat-plugins/helptickets-auto.ts",
+      "digest": "sha256:799e38951937322eb8438e377edcd710246266fe4ab4fdf9132ca834ae8ef14e",
+      "size": 30032
+    },
+    {
+      "path": "server/chat-plugins/helptickets.ts",
+      "digest": "sha256:042c9fe3448dd91438289aa889bdd7cbe9c294cfd23f373889e62e43d2ae799e",
+      "size": 129463
+    },
+    {
+      "path": "server/chat-plugins/hosts.ts",
+      "digest": "sha256:4f5dfb1da3bcd950ce9ef3d109d3c5bef4f66710e780ce7be86a46cf4d5894dd",
+      "size": 23259
+    },
+    {
+      "path": "server/chat-plugins/laddertours.ts",
+      "digest": "sha256:f18f4adb4d5f179614654d2e30f0a957b9ed4ad592b26ea32bfbb6235c280db3",
+      "size": 22825
+    },
+    {
+      "path": "server/chat-plugins/mafia.ts",
+      "digest": "sha256:d7a068d4df816da87160a605a5cecbf75fbe70bff4288fb6eec3ee6f7a982fa0",
+      "size": 187563
+    },
+    {
+      "path": "server/chat-plugins/modlog-viewer.ts",
+      "digest": "sha256:b04a7177975e981050863003480acd5cec5b28cc65db043405a1730f2ba8d697",
+      "size": 17287
+    },
+    {
+      "path": "server/chat-plugins/othermetas.ts",
+      "digest": "sha256:c1076dd38813d3bb62daebeac2e2b0ba94bd8a8e2e1270937614efbeb6d2cb38",
+      "size": 40319
+    },
+    {
+      "path": "server/chat-plugins/permalocks.ts",
+      "digest": "sha256:fb2c58a17cad44cc47c560cafd4ecb5f3d02687c929390ce6f3683b549924c9e",
+      "size": 20564
+    },
+    {
+      "path": "server/chat-plugins/poll.ts",
+      "digest": "sha256:a98ffe95eb4a74c50a037a348c118aa8bd0b598102eaf0a6c8a150a30f482f9a",
+      "size": 27702
+    },
+    {
+      "path": "server/chat-plugins/quotes.ts",
+      "digest": "sha256:1ab4ad71c9f3c5452e418b221ad11e90026bc9d76771b381d78baa81d2c306d2",
+      "size": 7248
+    },
+    {
+      "path": "server/chat-plugins/randombattles/index.ts",
+      "digest": "sha256:d7e42ef7f4d0cec7d5f4bf38bb85ceeb4d3c2d8a1a5ef733095cd5dd71708f45",
+      "size": 35788
+    },
+    {
+      "path": "server/chat-plugins/randombattles/ssb.tsx",
+      "digest": "sha256:c5d21be768a2f215464cf0bfebe767ba2c895f7a0c49faee91cadc39081e7f69",
+      "size": 18401
+    },
+    {
+      "path": "server/chat-plugins/randombattles/winrates.tsx",
+      "digest": "sha256:6e7a6f6f91ad86b5335c8b577d7129f1f988aa152d9be19ae0c2be241ced0604",
+      "size": 12045
+    },
+    {
+      "path": "server/chat-plugins/repeats.ts",
+      "digest": "sha256:b82c5c626f0fdef2ae8c2662a08fc7cfc18a0f0b4822bb9a18a9d6158556b1b3",
+      "size": 11363
+    },
+    {
+      "path": "server/chat-plugins/responder.ts",
+      "digest": "sha256:3f82eede9904dc986cc99b2928b6ad345fa00a75d0633f9126bbd4990701c1ee",
+      "size": 20089
+    },
+    {
+      "path": "server/chat-plugins/room-events.ts",
+      "digest": "sha256:8864973a7358d5750274ee5748ce0a02a376fad1d3fc649349ff805f390af95d",
+      "size": 25067
+    },
+    {
+      "path": "server/chat-plugins/room-faqs.ts",
+      "digest": "sha256:82141271c7d18db27b9c51f804b7e3f1977887889215732034548420fdd8723e",
+      "size": 9942
+    },
+    {
+      "path": "server/chat-plugins/sample-teams.ts",
+      "digest": "sha256:26a4e1df24fb8287735314af4f1ac7d6cc9a37fe8075bf7d0f19e4b2c2d7e63b",
+      "size": 17873
+    },
+    {
+      "path": "server/chat-plugins/scavenger-games.ts",
+      "digest": "sha256:9740e7d945c5fc33c682bc30c6e04c846d28b2eebfd537bcf3997af441d4a464",
+      "size": 35733
+    },
+    {
+      "path": "server/chat-plugins/scavengers.ts",
+      "digest": "sha256:14c8c20680bc2b4eafd6abea181dbb5274311f1ae1efd9dd6125abbc0d7ead56",
+      "size": 106648
+    },
+    {
+      "path": "server/chat-plugins/seasons.ts",
+      "digest": "sha256:1857cc794349fb9659dd60d92365b3e6e227ce209cb20bc88e498d46adae5b94",
+      "size": 12942
+    },
+    {
+      "path": "server/chat-plugins/smogtours.ts",
+      "digest": "sha256:6dd00c9a188f017ea142aa56f4c59a071cc7675f547ed0dc2a2de2f8dd70c07c",
+      "size": 23193
+    },
+    {
+      "path": "server/chat-plugins/suspect-tests.ts",
+      "digest": "sha256:d98e77a6247c1965e9201120e4cfda46f509e09c07fb7db4e52b5c036792dd59",
+      "size": 10206
+    },
+    {
+      "path": "server/chat-plugins/teams.ts",
+      "digest": "sha256:982610c75489f2814365b8724f3c5f973aa45b61918073b53f8b956d37ee7d7c",
+      "size": 31266
+    },
+    {
+      "path": "server/chat-plugins/the-studio.ts",
+      "digest": "sha256:a501d85a8f8e16c5dbc123660a1ac0556e736a1c29ffd4445d07bae4ee3c5d40",
+      "size": 28916
+    },
+    {
+      "path": "server/chat-plugins/thing-of-the-day.ts",
+      "digest": "sha256:2e7d64ac5833169019fb6e6d5c727246a601d9b415a37cc4e568389173caf6df",
+      "size": 35974
+    },
+    {
+      "path": "server/chat-plugins/trivia/database.ts",
+      "digest": "sha256:bb87e64432344227b70536349237828a3e21693c0b3743606f36652988445b7f",
+      "size": 29210
+    },
+    {
+      "path": "server/chat-plugins/trivia/transactions.ts",
+      "digest": "sha256:aa8c25daa79860167bda364e612d469219e1b2abb347818aa017a2e4bcf10bf1",
+      "size": 2849
+    },
+    {
+      "path": "server/chat-plugins/trivia/trivia.ts",
+      "digest": "sha256:5630f566cb9e59497c998df735be8a00d28565e965b97929d90d1da4ae9a0acb",
+      "size": 103101
+    },
+    {
+      "path": "server/chat-plugins/uno.ts",
+      "digest": "sha256:be02c1759f76b920a9d8dcf7e7ef16c2dd595d51719b3c29c8a2830ea57dd90c",
+      "size": 35164
+    },
+    {
+      "path": "server/chat-plugins/username-prefixes.ts",
+      "digest": "sha256:f8acaceb4a36e8108f93aefd2c949aed827be84aca6d6f07ee028fb39df7398e",
+      "size": 4931
+    },
+    {
+      "path": "server/chat-plugins/usersearch.tsx",
+      "digest": "sha256:8a3cc67bc9483046e7b013cc0e9b651984cbe1a972418d586853b8abc242213f",
+      "size": 8485
+    },
+    {
+      "path": "server/chat-plugins/wifi.tsx",
+      "digest": "sha256:2c8fe233504e6367c96d153f165691f007dbda752a5b231e5f6bcad49c06136c",
+      "size": 83265
+    },
+    {
+      "path": "server/chat-plugins/youtube.ts",
+      "digest": "sha256:3e39fee961a763f0f9a272aa091203f9dd15e3f164224bbd23fd016d1fbae4e5",
+      "size": 33253
+    },
+    {
+      "path": "server/chat.ts",
+      "digest": "sha256:ab2b3f9065e5a003c650184706ab66de891d105a96b6fa8a4780653f75727ab9",
+      "size": 101893
+    },
+    {
+      "path": "server/config-loader.ts",
+      "digest": "sha256:40cb7c99f2f58af8fe13ff6ef86dfe4f0c70dda16f1a6fbe06c3ede5b07ad2d8",
+      "size": 8309
+    },
+    {
+      "path": "server/friends.ts",
+      "digest": "sha256:3e9399706e767d34678cc9d4a999d0e42c204857732d08f7535272ccbd3a2657",
+      "size": 17198
+    },
+    {
+      "path": "server/global-types.ts",
+      "digest": "sha256:a5574062d40715479e9989d021de831012833a0a511fe654a269f98dad015023",
+      "size": 3194
+    },
+    {
+      "path": "server/global-variables.d.ts",
+      "digest": "sha256:ddd8c2e2bf8a3654d68986a89c2109e04234ea89d8f0fcb1979e108442cccc16",
+      "size": 1863
+    },
+    {
+      "path": "server/index.ts",
+      "digest": "sha256:f8826866e757732c0c49ef4a858f51544ea1ac679bdc140b9aa12d3652d11c5e",
+      "size": 5845
+    },
+    {
+      "path": "server/ip-tools.ts",
+      "digest": "sha256:b5d16c9d2d28b9f141d8bfa060aad4ac46a754d0e0ae7a858bc0c723da15fde2",
+      "size": 19795
+    },
+    {
+      "path": "server/ladders-challenges.ts",
+      "digest": "sha256:541b0b8ac08511c0fb22aeab6abaa5a8a34e0e1f588e06bf7f82b7b5dab8e831",
+      "size": 8698
+    },
+    {
+      "path": "server/ladders-local.ts",
+      "digest": "sha256:57498cbbe75335f3901fea3f81c1b28936fc3a2697210c17fce9bd5c945d486c",
+      "size": 10345
+    },
+    {
+      "path": "server/ladders-remote.ts",
+      "digest": "sha256:28006e5400ec71fc0b7bf56469904cd47235984b74e4a881b470f15833d82c03",
+      "size": 6083
+    },
+    {
+      "path": "server/ladders.ts",
+      "digest": "sha256:3aadcb91d49d1924d1ff05082589a8d24bc8eb55a07dc49da285a2e193394f07",
+      "size": 16649
+    },
+    {
+      "path": "server/loginserver.ts",
+      "digest": "sha256:68492e741dfc8e49eebd56eb6fa3323beadf80d3aa9ad15cab146e956eebf57d",
+      "size": 5154
+    },
+    {
+      "path": "server/modlog/index.ts",
+      "digest": "sha256:30b808c7bba01f4782d061452665fa1f84d196bd5fee9a837ef7bb335cff2cb1",
+      "size": 16409
+    },
+    {
+      "path": "server/modlog/transactions.ts",
+      "digest": "sha256:33d4c8ea07081d75e4665ccb54d9978b94617cd79be6dd97a7fafc8b440591b6",
+      "size": 1088
+    },
+    {
+      "path": "server/monitor.ts",
+      "digest": "sha256:11fbeb986269d38f740bb0547d309b40d843863eec3139ead96c810cfabb8a86",
+      "size": 10618
+    },
+    {
+      "path": "server/private-messages/database.ts",
+      "digest": "sha256:951bef41e2609a5736c9b74e5da915fe47b754af3453b1c207dd598b28f2a170",
+      "size": 3116
+    },
+    {
+      "path": "server/private-messages/index.ts",
+      "digest": "sha256:110a539baec94fde418da8c9b98f9008fb8fe1c60c671b006f0c67fcc611fc9e",
+      "size": 9328
+    },
+    {
+      "path": "server/punishments.ts",
+      "digest": "sha256:cacf240a4dfbe9ddbc462c43b1da87436b3637cb66b53540008ac35b1453ce70",
+      "size": 71342
+    },
+    {
+      "path": "server/replays.ts",
+      "digest": "sha256:52556b62733c8afd240e3d68f524a6913e0592dd0a8a3a801963d31c673ffe41",
+      "size": 7703
+    },
+    {
+      "path": "server/room-battle-bestof.ts",
+      "digest": "sha256:7c2c1a952fe1ab9e59a139bf760cffc5338e9e8c90e3f6647a9018ea1aa4d766",
+      "size": 17122
+    },
+    {
+      "path": "server/room-battle.ts",
+      "digest": "sha256:fecd90976289a2a0b9599afd33a1f056300b0c9f8ce7332b86318bcb48a90063",
+      "size": 46942
+    },
+    {
+      "path": "server/room-game.ts",
+      "digest": "sha256:785b6565588ab293d91af541ab2453b6857a4c39782e03009c04f874a0fbc278",
+      "size": 13032
+    },
+    {
+      "path": "server/room-minor-activity.ts",
+      "digest": "sha256:52145edcb1496a60e2128df6b2308c2319833160986c207ca90cee034d653845",
+      "size": 3394
+    },
+    {
+      "path": "server/roomlogs.ts",
+      "digest": "sha256:9f43d30cde463594320526d419a7be1d657030433e304b677ba6d35102e99ed9",
+      "size": 12004
+    },
+    {
+      "path": "server/rooms.ts",
+      "digest": "sha256:69f317dcd2137e53323e3067a3cb714452d6372379967722a394eacbd160b1d7",
+      "size": 73783
+    },
+    {
+      "path": "server/sockets.ts",
+      "digest": "sha256:6c2d1e4238360b3b5051c85b28952f45d4f15dd58c28a7db4717b4477c4e2046",
+      "size": 17830
+    },
+    {
+      "path": "server/static/404.html",
+      "digest": "sha256:6c82a5f38da18ee3c2df2c306adfcfbb50e6c3896fac49b12b9bc2acea426b77",
+      "size": 205
+    },
+    {
+      "path": "server/static/index.html",
+      "digest": "sha256:838ce4545b917e169092f2e5093cbd2741bb1fd8f6d0b056fdf947425ea40cc1",
+      "size": 858
+    },
+    {
+      "path": "server/team-validator-async.ts",
+      "digest": "sha256:761fac9492617788ffc450c31a4db76b79d5299c3b157706769d552b716f2e55",
+      "size": 3317
+    },
+    {
+      "path": "server/tournaments/generator-elimination.ts",
+      "digest": "sha256:0fadbd3a17880ef09535616c6ec2987c81c6f288b88e793f437042d2fc5b8caa",
+      "size": 13703
+    },
+    {
+      "path": "server/tournaments/generator-round-robin.ts",
+      "digest": "sha256:af82d3dc28665a46f78d10cc8be5cadf370e3db5bbbaeaf632c08e6b4c874eb4",
+      "size": 5773
+    },
+    {
+      "path": "server/tournaments/index.ts",
+      "digest": "sha256:5df012385d9a9ebba94d6c8e0062115d045fb23b2a2b5d4b14aadd0e9df26dc7",
+      "size": 95638
+    },
+    {
+      "path": "server/user-groups.ts",
+      "digest": "sha256:2d32cd490136dabffe0836efa476f23e2c399daa9a59396fb324c0471f561536",
+      "size": 15247
+    },
+    {
+      "path": "server/users.ts",
+      "digest": "sha256:cea45eb18f6055c7879f18727200f38e65e129523d781f47edcf4572e79d48b6",
+      "size": 56176
+    },
+    {
+      "path": "server/verifier.ts",
+      "digest": "sha256:c1ed70bdd81b626da4b0c47e5a0120ad522a75dfe4af0ae36e360bc3ad0d4df1",
+      "size": 1467
+    },
+    {
+      "path": "sim/DEX.md",
+      "digest": "sha256:26c605ffecaa2d2bf8a0ae6fd87a1a5434fc121999bec4b2ff36b478f52891d0",
+      "size": 3754
+    },
+    {
+      "path": "sim/NONSTANDARD.md",
+      "digest": "sha256:0e1a917df210af0370cf56f396410612d1f1c61e56d20f9968f9c228478201a3",
+      "size": 6829
+    },
+    {
+      "path": "sim/README.md",
+      "digest": "sha256:e5634d15f8684164a07fc7814115828f77d2b3697f3990b9b421b820acc67c6a",
+      "size": 1194
+    },
+    {
+      "path": "sim/SIM-PROTOCOL.md",
+      "digest": "sha256:d4fea2abe286651a92aeecac54d9ac31b75ae6c2f0d5c667808e93e50a682f56",
+      "size": 29535
+    },
+    {
+      "path": "sim/SIMULATOR.md",
+      "digest": "sha256:58c146e86b867a5fb859276c158450c66a47cca7d6cc76d7ea47a38dff5561dc",
+      "size": 5664
+    },
+    {
+      "path": "sim/TEAMS.md",
+      "digest": "sha256:786bb9bff23afc3288383839bb63738389dae56d59445acfb46cdacfaa28a094",
+      "size": 9983
+    },
+    {
+      "path": "sim/battle-actions.ts",
+      "digest": "sha256:a30408e2f9a53a43333bf4a865366d6adbe26d3d91a836ba51042accce4d9437",
+      "size": 73067
+    },
+    {
+      "path": "sim/battle-queue.ts",
+      "digest": "sha256:cf462e9d63fa1e910608329e11fb4e5ed8a8f8215392aee48ef541518b670590",
+      "size": 11843
+    },
+    {
+      "path": "sim/battle-stream.ts",
+      "digest": "sha256:d7f4d566c807f2e79c837a17fefbfde946ac3825a351f9866d198990b4b73a48",
+      "size": 15579
+    },
+    {
+      "path": "sim/battle.ts",
+      "digest": "sha256:106adb3b70634fa9e7756401fe94302962edecdca7de7a8b6ed557cbf52c74af",
+      "size": 116269
+    },
+    {
+      "path": "sim/dex-abilities.ts",
+      "digest": "sha256:4b69906d7f1fb574f3c056e6834d519694c713ea0615f2037be23ca78da7100d",
+      "size": 4250
+    },
+    {
+      "path": "sim/dex-conditions.ts",
+      "digest": "sha256:12bd41756c3ebf6155e3e958d7a11d93216570b1b1c2a057237f157249af2627",
+      "size": 41361
+    },
+    {
+      "path": "sim/dex-data.ts",
+      "digest": "sha256:bbf6cd096fabb82fbbd4bf129df65302dcc639274a0301a552ea891cc03c2edc",
+      "size": 12239
+    },
+    {
+      "path": "sim/dex-formats.ts",
+      "digest": "sha256:335e63e2cdf0fcdea14e44d0f1d2c2658dbca9b4f797ea65bd730ed25f6633f3",
+      "size": 46780
+    },
+    {
+      "path": "sim/dex-items.ts",
+      "digest": "sha256:a8020445bbc56bc8b487f7e5fe492d016734c53806e248c4636cbd33b4dc1e16",
+      "size": 7203
+    },
+    {
+      "path": "sim/dex-moves.ts",
+      "digest": "sha256:b66af84cb5f0b8ddcfe6078f618945ce3deeb280ddf9989d62d7474401e3a515",
+      "size": 24608
+    },
+    {
+      "path": "sim/dex-species.ts",
+      "digest": "sha256:f929315924f9554689afe547a9a49df888213121339a6e1f0987bff3d5050a53",
+      "size": 30472
+    },
+    {
+      "path": "sim/dex.ts",
+      "digest": "sha256:eb6805e112ee386562a7882e34ac4d3af36f392b0bc31aa16de536d886a9471f",
+      "size": 24969
+    },
+    {
+      "path": "sim/examples/battle-stream-example.ts",
+      "digest": "sha256:289b9478af0ffdf6a0eb710fcbb66c9becb3ee4e529b5a545c0bd7cf3f85d445",
+      "size": 1311
+    },
+    {
+      "path": "sim/field.ts",
+      "digest": "sha256:3c46a9923736a9a0aaa35791e99d491308c255934553c9d104a0cc2ea453aa79",
+      "size": 7644
+    },
+    {
+      "path": "sim/global-types.ts",
+      "digest": "sha256:ec113b6703328bf78e56a24fed99370a33fc1071674de75902521dc888f0bb2e",
+      "size": 23299
+    },
+    {
+      "path": "sim/index.ts",
+      "digest": "sha256:1c74770bd13d999dcbf25cac80ef9e0c895c3716bc733e23ef09583b0d0cc761",
+      "size": 627
+    },
+    {
+      "path": "sim/pokemon.ts",
+      "digest": "sha256:96170cb4f8c0f5f9562bbcc24704ca63e91c929f5ab946ad7b2472fd66c2065c",
+      "size": 76761
+    },
+    {
+      "path": "sim/prng.ts",
+      "digest": "sha256:faff50532b3fde14de1a544f759acf466649279f6640e1a3fd0f7dff6fa538bc",
+      "size": 10369
+    },
+    {
+      "path": "sim/side.ts",
+      "digest": "sha256:a18946aefe31018162956b1c708a9cce27bb33fe0f098cb58c44d8521d53b1f1",
+      "size": 47122
+    },
+    {
+      "path": "sim/state.ts",
+      "digest": "sha256:076068f4824b92de1ecc3db3404706e97ea90d3036e79f3e8e3282b9bdbe3a3d",
+      "size": 18707
+    },
+    {
+      "path": "sim/team-validator.ts",
+      "digest": "sha256:fcee5bb982afe460add09c5d79d6d84a92d64df47d4a746bd1935a31d45f73ca",
+      "size": 115523
+    },
+    {
+      "path": "sim/teams.ts",
+      "digest": "sha256:58b78336904801fcec5cd003c1a7af7718adbd31ddd1155bff72913663c9b2cd",
+      "size": 18806
+    },
+    {
+      "path": "sim/tools/exhaustive-runner.ts",
+      "digest": "sha256:7eeb5e45ca394e7689fddd66160525f6e9a364d3481fbd0d0790708be2b350f2",
+      "size": 15757
+    },
+    {
+      "path": "sim/tools/multi-random-runner.ts",
+      "digest": "sha256:143875a87f8947d524b88e15f4f4c727ea251d5248b5579b1abb4c54eaaf21df",
+      "size": 2869
+    },
+    {
+      "path": "sim/tools/random-player-ai.ts",
+      "digest": "sha256:607d74e54296a8ea697e54800a8fae281f2a3567fb638a168aea63ad80c397c1",
+      "size": 7233
+    },
+    {
+      "path": "sim/tools/runner.ts",
+      "digest": "sha256:d8214dacca5a2bf8b8d31fa009387b8c3456a08361fdf36b808d42035a5e8d74",
+      "size": 6975
+    },
+    {
+      "path": "sim/tsconfig.json",
+      "digest": "sha256:b28715060acdce095e0621ac66807fa21b6b4a106f360c848ebe0a54f8466736",
+      "size": 405
+    },
+    {
+      "path": "simulator-doc.txt",
+      "digest": "sha256:9f81a5412e6320076e7d3d2abdaf9316e9c19d4115edfe76e71c106b4cccad66",
+      "size": 4013
+    },
+    {
+      "path": "test/TESTS.md",
+      "digest": "sha256:74c04fc991fdb7018f46778094ab9dc95a4207bf969de5e286919a8385240848",
+      "size": 4845
+    },
+    {
+      "path": "test/assert.js",
+      "digest": "sha256:1067f474f255469f923c6267a408d72496bddf93249097933546e52539a147d5",
+      "size": 8259
+    },
+    {
+      "path": "test/common.js",
+      "digest": "sha256:a2f012c35932b91f4300653e19121d6bcf9774a6d5cc0232f1a88129b2f8927f",
+      "size": 4850
+    },
+    {
+      "path": "test/lib/dashycode.js",
+      "digest": "sha256:44d04c8446a95a20a977a470c16eb802cd6aa0bbc1e70c5010fe397fda2553bc",
+      "size": 2734
+    },
+    {
+      "path": "test/lib/postgres.js",
+      "digest": "sha256:99aa55a5612dedbe850a7fd48fc3725856a9c4b3229531cf1546b7c2de877f40",
+      "size": 2091
+    },
+    {
+      "path": "test/lib/sql.js",
+      "digest": "sha256:ea647897922a22c1e84593ca43f9570a03e467f138d2af7aa628706d7794b96a",
+      "size": 1475
+    },
+    {
+      "path": "test/main.js",
+      "digest": "sha256:61d822277ee4a93dc855aec52009e618a81084355ac715b9284403065ba9b735",
+      "size": 2254
+    },
+    {
+      "path": "test/random-battles/all-gens.js",
+      "digest": "sha256:88a120e6e8e0c59dbef894bf5e8e6ab06b3248b140c514798fa2021da77e39de",
+      "size": 27382
+    },
+    {
+      "path": "test/random-battles/gen1.js",
+      "digest": "sha256:94191a02506da4d9467ecffd71b16340ed2bc94770262fa20944720094ef56c3",
+      "size": 517
+    },
+    {
+      "path": "test/random-battles/gen5.js",
+      "digest": "sha256:60fc3b2b214b29d616848b9a7ef03b1942ef5c6213bdd8e98607ec97afa111b4",
+      "size": 526
+    },
+    {
+      "path": "test/random-battles/gen6.js",
+      "digest": "sha256:1eaf09ddb8c52de0f2ccae405a2e68a1ff87b0001aa555cf44a812112390ca99",
+      "size": 1043
+    },
+    {
+      "path": "test/random-battles/gen7.js",
+      "digest": "sha256:4611ab38ba08fbd635bcb96726395c6535b3b786ad8c007fe2e8352b7f9e5743",
+      "size": 629
+    },
+    {
+      "path": "test/random-battles/gen9.js",
+      "digest": "sha256:84b9fc6f2372ab2b722ba48ead901fffbf2832cca29fb8d5d4611da072164140",
+      "size": 1495
+    },
+    {
+      "path": "test/random-battles/tools.js",
+      "digest": "sha256:de3e5e131341b359e4c5b0b51bc58b2fad6543b6f5c87ebff27bb17e3817256a",
+      "size": 7226
+    },
+    {
+      "path": "test/replays/README.md",
+      "digest": "sha256:e315f97ea0e4f965e20dd25313d7847e64a28e5d981bad1a4ebab2ea1775da2d",
+      "size": 103
+    },
+    {
+      "path": "test/server/chat-commands/moderation.js",
+      "digest": "sha256:45f4e6d2d07a3c6e28a94e237f68c0afb3576e8e89b9cc3a52f403472b8be3d8",
+      "size": 2334
+    },
+    {
+      "path": "test/server/chat-plugins/chat-monitor.js",
+      "digest": "sha256:3856773b354aa789fa4580c5853c4eaf2298eb1fb163e5f925153f8051c3b6ae",
+      "size": 3789
+    },
+    {
+      "path": "test/server/chat-plugins/datasearch.js",
+      "digest": "sha256:cb47179d812e1bac19c83794296530ffd7898d87085bfddb858e3589c2fd9538",
+      "size": 6795
+    },
+    {
+      "path": "test/server/chat-plugins/friends.js",
+      "digest": "sha256:941624b37d1da9668c4df64982d8a649eb03ef690fdb68f552b014070304116f",
+      "size": 447
+    },
+    {
+      "path": "test/server/chat-plugins/hangman.js",
+      "digest": "sha256:6e6b9cbf86e23401856dd874d1390723a28b78f244cae6e1d6ba85851cfe149f",
+      "size": 1446
+    },
+    {
+      "path": "test/server/chat-plugins/hosts.js",
+      "digest": "sha256:694b39fa30955c037b775fd42cbd8d48154370f676b48bfc1c135e144728d14d",
+      "size": 468
+    },
+    {
+      "path": "test/server/chat-plugins/repeats.js",
+      "digest": "sha256:fd4981ca5e556ea2a47804f11a6582743e124c7de494b46657cee9ea7fd82f5d",
+      "size": 1658
+    },
+    {
+      "path": "test/server/chat-plugins/responder.js",
+      "digest": "sha256:d9bf4e061f6c29dac3eb29514eb1c70bad527609c82783a7cfa914a5db171cb9",
+      "size": 1383
+    },
+    {
+      "path": "test/server/chat-plugins/trivia.js",
+      "digest": "sha256:753b94ba99681e6b14c57795ac79cf69c61e9c4d2af57ca398969d2e38775264",
+      "size": 15041
+    },
+    {
+      "path": "test/server/chat-plugins/username-prefixes.js",
+      "digest": "sha256:f07755c0b6b2f30786e65bcd206a57fb8ce9f7db96f7d71f373bd459636d7e58",
+      "size": 1903
+    },
+    {
+      "path": "test/server/chat-plugins/youtube.js",
+      "digest": "sha256:e77cb680e9acabc3408e49d9d6cc18719fa53d5ef56c9769ba233f5259824d17",
+      "size": 1619
+    },
+    {
+      "path": "test/server/chat.js",
+      "digest": "sha256:2374962df654fc6081724b09ed97102edaf1de140f0d96f7fe81eb2d0e8cfbd7",
+      "size": 5030
+    },
+    {
+      "path": "test/server/ip-tools.js",
+      "digest": "sha256:93a2277eebca290e4e61bfaccd573c303a8a63eb283a3a8ce5f9db79b9948fb6",
+      "size": 6671
+    },
+    {
+      "path": "test/server/ladders.js",
+      "digest": "sha256:f9621db8465a8f5a8ca1a4343bafb6a59f93cca7f3de84a2520053200a077c7f",
+      "size": 4362
+    },
+    {
+      "path": "test/server/modlog.js",
+      "digest": "sha256:aec6ed7449bc8a1e8e98963f89fe8ebfb710cb783be5d521c5624de6937c12e0",
+      "size": 8993
+    },
+    {
+      "path": "test/server/punishments.js",
+      "digest": "sha256:bec864c7e36006267996e2b808d50ad6872c3ac25489178ab4197576e737357e",
+      "size": 10085
+    },
+    {
+      "path": "test/server/room-battle.js",
+      "digest": "sha256:9981987c8f7ca47fdfdf6aafe23715964c81e87a2fd7914008b642f0e4b0d985",
+      "size": 2990
+    },
+    {
+      "path": "test/server/rooms.js",
+      "digest": "sha256:f87928de6d4b0d974fa85a536faa4caf1cb1b72c36786af88e381e7859bcda96",
+      "size": 5453
+    },
+    {
+      "path": "test/server/sockets.js",
+      "digest": "sha256:b6bbee22ea5cc45a9de0dc0db3f2fb88ebe928ff81303c9500a743ecdae49e2f",
+      "size": 16140
+    },
+    {
+      "path": "test/server/users.js",
+      "digest": "sha256:58e952e408a189032ae33fc7d6f2544ee454c1160aba8206f49501ba82710310",
+      "size": 5813
+    },
+    {
+      "path": "test/sim/abilities/aftermath.js",
+      "digest": "sha256:42fbc41c4cf2f86841e86f7c5c5652f8cefcb97424c02ec1d876c75b124e827a",
+      "size": 607
+    },
+    {
+      "path": "test/sim/abilities/angerpoint.js",
+      "digest": "sha256:8a7400e81cc7768af7fd03aff557bedd772d36f89a605cfc4ae85c38e70fdb2b",
+      "size": 2008
+    },
+    {
+      "path": "test/sim/abilities/arenatrap.js",
+      "digest": "sha256:748bf57a415758d88247485e9178c9ae14687bab9a00d2f16a9c3d66a44d0010",
+      "size": 2120
+    },
+    {
+      "path": "test/sim/abilities/asone.js",
+      "digest": "sha256:f8d78ee33d9bf49b7d9778da2d2e58a30eaa44693cc8d13473a4489890618b76",
+      "size": 896
+    },
+    {
+      "path": "test/sim/abilities/battlearmor.js",
+      "digest": "sha256:d2866d2f0f248dedeb91cd599873e4273f55c47534d9d0167e47251583f90104",
+      "size": 1460
+    },
+    {
+      "path": "test/sim/abilities/berserk.js",
+      "digest": "sha256:4029e49f5e4f948d27c23e32b1fe4c788d6fa47ceef589bdbc49e424938dafeb",
+      "size": 1747
+    },
+    {
+      "path": "test/sim/abilities/cheekpouch.js",
+      "digest": "sha256:2d8a59e75d2ffa7d47f40e70c3f14769609d4ddab2888dd62564add65ecb63ec",
+      "size": 873
+    },
+    {
+      "path": "test/sim/abilities/clearbody.js",
+      "digest": "sha256:1ccdccee8a8d47eeef71208328216563aabde4aec90c449b24853dabc7658391",
+      "size": 3422
+    },
+    {
+      "path": "test/sim/abilities/cloudnine.js",
+      "digest": "sha256:0a5183b0672ca48a1b9b39b86c2c9ea5891147161345211815d4d4e8d0d26304",
+      "size": 5600
+    },
+    {
+      "path": "test/sim/abilities/colorchange.js",
+      "digest": "sha256:8c8542cff4ba37ca94ef5ea25b0485d9895b67c40264545c33d8a7c53a62d98b",
+      "size": 1017
+    },
+    {
+      "path": "test/sim/abilities/comatose.js",
+      "digest": "sha256:24efc5aca41da0815476bc73bdd4d0616a178f4cd24b61ade8bcb122efc08090",
+      "size": 3269
+    },
+    {
+      "path": "test/sim/abilities/commander.js",
+      "digest": "sha256:01e49934383e2ef52d7b34bb71a84f61c99ec269146ea48786caee230a5e3f34",
+      "size": 10671
+    },
+    {
+      "path": "test/sim/abilities/contrary.js",
+      "digest": "sha256:78122015d7ce21467f95ba9f425fdf561362d76c9c311658ca199068185c6204",
+      "size": 1846
+    },
+    {
+      "path": "test/sim/abilities/costar.js",
+      "digest": "sha256:ccbc1978e03f8c23cf5ab8baf2a55d78a484554c53e18c82f831d8ccbd4c7abb",
+      "size": 3336
+    },
+    {
+      "path": "test/sim/abilities/cudchew.js",
+      "digest": "sha256:b7ed8edd0b8f61acdb5a2b5390824f9ff55a2e0bffa793dc515082fa1c591f61",
+      "size": 3497
+    },
+    {
+      "path": "test/sim/abilities/cursedbody.js",
+      "digest": "sha256:65f201fc2d924fed438b9ca44b077a7c1d3374b1dfede42723945b1df346c672",
+      "size": 661
+    },
+    {
+      "path": "test/sim/abilities/damp.js",
+      "digest": "sha256:aa99c31ff65958d7a88e7aeb0d26ef4bdbb966ebc68ad72dab867210b1e17bf6",
+      "size": 1506
+    },
+    {
+      "path": "test/sim/abilities/dancer.js",
+      "digest": "sha256:473f4002828065f9516427167f2ad576dc8c7db558f9953e9ce7fe7653aec3ec",
+      "size": 8242
+    },
+    {
+      "path": "test/sim/abilities/dazzling.js",
+      "digest": "sha256:2b1d2ea719635502880b4607bd808bc1a12cc4420ae21b23ce23a7731c103a57",
+      "size": 1103
+    },
+    {
+      "path": "test/sim/abilities/defiant.js",
+      "digest": "sha256:a607ab51b9057f7886006e0a23b8fa78b91458a6f17fa64ca2eb521a420826d5",
+      "size": 1351
+    },
+    {
+      "path": "test/sim/abilities/deltastream.js",
+      "digest": "sha256:8d71e2d28563f867b14c5639ed7e18fb1b288d57f479313781e4938f58d76ebb",
+      "size": 5389
+    },
+    {
+      "path": "test/sim/abilities/desolateland.js",
+      "digest": "sha256:e8a4503c8c7fd0a319e5d51a44c11749b8aec59ae90ce5c292fe738ad04f3d3e",
+      "size": 7409
+    },
+    {
+      "path": "test/sim/abilities/disguise.js",
+      "digest": "sha256:93dc7d95b905a680e3a4732fb31f475113841ef92c62f2431aa3d52463961785",
+      "size": 4065
+    },
+    {
+      "path": "test/sim/abilities/download.js",
+      "digest": "sha256:b157c88a4dec886bdf597947c5f9c4302a7f5dbeb0565ae1a546b85bc930d3af",
+      "size": 3843
+    },
+    {
+      "path": "test/sim/abilities/dryskin.js",
+      "digest": "sha256:35bbff3d7261fe838aa7982031cf5af1b001e17f97647b2cf9abb32ee1094a1d",
+      "size": 2408
+    },
+    {
+      "path": "test/sim/abilities/emergencyexit.js",
+      "digest": "sha256:b0b0e70ebdd42dca4b92411aea2f9cc43238f289f184bf477174ad78f348285b",
+      "size": 18069
+    },
+    {
+      "path": "test/sim/abilities/fairyaura.js",
+      "digest": "sha256:cfe09032b7c844acb590f18593190074e8e9c3d19c5380205ff49fd1bb5dce30",
+      "size": 991
+    },
+    {
+      "path": "test/sim/abilities/flashfire.js",
+      "digest": "sha256:b37b41750cf474fe763351c8e60a1d5dbc4eb7f6daf24a2ba1e34e84658647ba",
+      "size": 3106
+    },
+    {
+      "path": "test/sim/abilities/flowergift.js",
+      "digest": "sha256:01ead756d37c4239d67a39511f0f7b2591200e43bae1a1a91d0ace2e233ae4da",
+      "size": 3333
+    },
+    {
+      "path": "test/sim/abilities/flowerveil.js",
+      "digest": "sha256:59b80b393e6e15db66f2ce24418a16a0047ea04c64aeb3387f55ced5148af229",
+      "size": 2380
+    },
+    {
+      "path": "test/sim/abilities/frisk.js",
+      "digest": "sha256:5191df6039a15f731afae291eb07341015e53b5dfd383511df33f5ae747c2130",
+      "size": 1593
+    },
+    {
+      "path": "test/sim/abilities/gluttony.js",
+      "digest": "sha256:b0f68153375bb46e48e6d231d450a5a03b82a492dc9674b04b60b235681d1836",
+      "size": 1532
+    },
+    {
+      "path": "test/sim/abilities/guarddog.js",
+      "digest": "sha256:7639f05474d0207c8f00c4d33d27554834589643806a8dcddbaeb0595161ca63",
+      "size": 1242
+    },
+    {
+      "path": "test/sim/abilities/gulpmissile.js",
+      "digest": "sha256:4448ddc078f13d4e27bacc61cae74a6e08f67855c5e4bcddb10db2c945de5848",
+      "size": 2912
+    },
+    {
+      "path": "test/sim/abilities/hospitality.js",
+      "digest": "sha256:0bb28da783e91cdfb936f5b3c0c5583c846499c3fde6994c9625d269a93aed58",
+      "size": 804
+    },
+    {
+      "path": "test/sim/abilities/hungerswitch.js",
+      "digest": "sha256:1c3a356f4723cb7d7a3e456ed38a8f09a10958c5b5fc2b86f8d0f6349046c0e3",
+      "size": 2442
+    },
+    {
+      "path": "test/sim/abilities/iceface.js",
+      "digest": "sha256:d64daedd54cb2f74613c438dc4a3322a1efc0590c4ef75f13a8502bf87f16b68",
+      "size": 3219
+    },
+    {
+      "path": "test/sim/abilities/illusion.js",
+      "digest": "sha256:8d95769c0ffc9d157ddbb0b8c147f6153996e22f9c4f9d4d2a1461fdd16cc736",
+      "size": 2844
+    },
+    {
+      "path": "test/sim/abilities/immunity.js",
+      "digest": "sha256:31dfe583aa0f5a5dea537da529bb4ab82a814b6d11fff6b0ea37ed47285525c5",
+      "size": 1548
+    },
+    {
+      "path": "test/sim/abilities/imposter.js",
+      "digest": "sha256:7e1310e9b8dbb81c932657d306f0bc84ea0160f9de5ab4cf5ad83c273a12787b",
+      "size": 1472
+    },
+    {
+      "path": "test/sim/abilities/innardsout.js",
+      "digest": "sha256:56ea40b5bd5cfd470631bd64686b3e4da24cfe73466f7bf7f2a8c69209ef0172",
+      "size": 1497
+    },
+    {
+      "path": "test/sim/abilities/intimidate.js",
+      "digest": "sha256:507cf405299af4da8eaabf6b6414f8b1c90e04bbaa57f3be6b92d6909e110dcd",
+      "size": 6113
+    },
+    {
+      "path": "test/sim/abilities/intrepidsword.js",
+      "digest": "sha256:9085b702f8bbf88dea0629df7dcfec10e0c50bd6f2e5eae4b2bbdd5be6e7bea6",
+      "size": 2459
+    },
+    {
+      "path": "test/sim/abilities/klutz.js",
+      "digest": "sha256:9f887f64f6484af70a64689a34861b98c9b106462ced6774b26dfc5c6f07ca0f",
+      "size": 3504
+    },
+    {
+      "path": "test/sim/abilities/levitate.js",
+      "digest": "sha256:776c0c139963585799b36d1f800192d94dc62d564aaac7d5ba9ac76cd7a47a38",
+      "size": 3644
+    },
+    {
+      "path": "test/sim/abilities/lightningrod.js",
+      "digest": "sha256:05c8a213a921005faf8e81c8ffc4005c359d425b7d41f0c3e30a6bbbc4074975",
+      "size": 5766
+    },
+    {
+      "path": "test/sim/abilities/liquidooze.js",
+      "digest": "sha256:023e930f729ebc495e5ffa5ca213a055c7e806563590c4ce9db32ce95b5fc2cf",
+      "size": 2039
+    },
+    {
+      "path": "test/sim/abilities/magicbounce.js",
+      "digest": "sha256:0addb47b3a7dd6a06e7f19d2b2205a84a123cfed12817195b4e94297612e65d1",
+      "size": 4727
+    },
+    {
+      "path": "test/sim/abilities/magicguard.js",
+      "digest": "sha256:1db445ac22bca2f70b44d582a08786a8dc31ed2d2a7ab9c28fe1a53530ff0448",
+      "size": 1773
+    },
+    {
+      "path": "test/sim/abilities/magician.js",
+      "digest": "sha256:3f7322647d02083b787f3e4de967d9fd9ca34415fbd9e2201c9818c7d6742c65",
+      "size": 3523
+    },
+    {
+      "path": "test/sim/abilities/magnetpull.js",
+      "digest": "sha256:d7ba82ea4b61c948ba97c34f3afffa3b89f9bfd88c39a09c8e3b2032d96fe0f1",
+      "size": 2563
+    },
+    {
+      "path": "test/sim/abilities/megasol.js",
+      "digest": "sha256:9a72585907ec54f4738a49b6c6f9b9d30a6daeacf10bc437450452a1f1c963ec",
+      "size": 1030
+    },
+    {
+      "path": "test/sim/abilities/mirrorarmor.js",
+      "digest": "sha256:461654e7f90c93d21924d5e18730862c4ba6dfc133f79861e5f99701cc5117f5",
+      "size": 1980
+    },
+    {
+      "path": "test/sim/abilities/moxie.js",
+      "digest": "sha256:4e369ca96f21c79df212f4939a5551b74c8a3cd7aa40287e10485d759a8ce9af",
+      "size": 1445
+    },
+    {
+      "path": "test/sim/abilities/multiscale.js",
+      "digest": "sha256:c334e3461ae62e203c2e9e96700ff436100f8c75cec0a3f5fa6f227bb88ef0f5",
+      "size": 1152
+    },
+    {
+      "path": "test/sim/abilities/mummy.js",
+      "digest": "sha256:3f18e9d61c0a8423eef9d9d8e5b8795baf3ae9f059fe1b4f3808b5f7143a5511",
+      "size": 1434
+    },
+    {
+      "path": "test/sim/abilities/myceliummight.js",
+      "digest": "sha256:b0baaa5337ce55d4fe2a9cdff43b93856499d68aa3aaebc34a7f5634d4718205",
+      "size": 1312
+    },
+    {
+      "path": "test/sim/abilities/naturalcure.js",
+      "digest": "sha256:525b41fb29924ffd1936f6b8d04ca75583fb2eb3900c7c465b9b520986148744",
+      "size": 644
+    },
+    {
+      "path": "test/sim/abilities/neutralizinggas.js",
+      "digest": "sha256:27ab784372f76f078c2bd684361fffa36166206dc70769a969a696cca541ec5d",
+      "size": 17679
+    },
+    {
+      "path": "test/sim/abilities/normalize.js",
+      "digest": "sha256:5dc1189f84f8b7e518243b034bd5b41ec193ea8d57a70fb0ff029b3deb58ebf5",
+      "size": 4300
+    },
+    {
+      "path": "test/sim/abilities/opportunist.js",
+      "digest": "sha256:49af795c6759cef4d310dc6055a7db0f7c673adae88cbc77877a9ffb2fd28c53",
+      "size": 1414
+    },
+    {
+      "path": "test/sim/abilities/owntempo.js",
+      "digest": "sha256:e4641ad886a41f6696e07cef00c0686023883e0a2026032b0a21a89f5513b8fb",
+      "size": 552
+    },
+    {
+      "path": "test/sim/abilities/parentalbond.js",
+      "digest": "sha256:682220370e6bfb90562bdd0f83113c4989b6bcbfaf6e676570572734b16d90e8",
+      "size": 2200
+    },
+    {
+      "path": "test/sim/abilities/pastelveil.js",
+      "digest": "sha256:78e6f7a3951477ac4cb8288551bf890993c96e290f0bbf7c6fa22228d40993b4",
+      "size": 3821
+    },
+    {
+      "path": "test/sim/abilities/pickpocket.js",
+      "digest": "sha256:97e2d71e4f9d598b247d518deb5af0b2277ff887ee4d88ffc552cd8cfc50d1f1",
+      "size": 1816
+    },
+    {
+      "path": "test/sim/abilities/pickup.js",
+      "digest": "sha256:c6bdd69b132f5c7d7aaddfde7cdf2390d972ba9ee6e14a425a00230d5084bce4",
+      "size": 5031
+    },
+    {
+      "path": "test/sim/abilities/poisontouch.js",
+      "digest": "sha256:d8826b987c2ab091b74eeb6e3eadafc795b08c1e082e2b48e63981333f503dd6",
+      "size": 3384
+    },
+    {
+      "path": "test/sim/abilities/prankster.js",
+      "digest": "sha256:e4c384dc5687e2681fe5f0cabc6fa664cdd4e2df349a2ec76f5d3bb33811476b",
+      "size": 4229
+    },
+    {
+      "path": "test/sim/abilities/pressure.js",
+      "digest": "sha256:d9134ba1ecd5b4a19234ef110e80b68ccd4d003ee9fd3ee375b658a1489757a9",
+      "size": 11453
+    },
+    {
+      "path": "test/sim/abilities/primordialsea.js",
+      "digest": "sha256:07e3c7bdd40d1a96f117f711e15fd184cd28db569043bc8a0dbcb6db9f3dd4e3",
+      "size": 6673
+    },
+    {
+      "path": "test/sim/abilities/protean.js",
+      "digest": "sha256:7883e94184f7f472cf85dcae2769b870832c4b5f573361afb037eb25bfc327e9",
+      "size": 7747
+    },
+    {
+      "path": "test/sim/abilities/protosynthesis.js",
+      "digest": "sha256:db95e2a5aff79137f6c6354ac51a5a9fa40f5aa5927595eac87848b6395368d9",
+      "size": 6329
+    },
+    {
+      "path": "test/sim/abilities/rattled.js",
+      "digest": "sha256:79105f51b06be01b18416115319fd615a794a050e78d75fd5f9a265e68380bb4",
+      "size": 965
+    },
+    {
+      "path": "test/sim/abilities/receiver.js",
+      "digest": "sha256:cb8c3496516f36c565448ff1939e445aef664ade511aa3bb7b5754fea0243165",
+      "size": 1353
+    },
+    {
+      "path": "test/sim/abilities/ripen.js",
+      "digest": "sha256:8f655d827c4960f6bbec440d61fd27644aca55dfbdebd263ccee2188dfcf251e",
+      "size": 3272
+    },
+    {
+      "path": "test/sim/abilities/rockhead.js",
+      "digest": "sha256:b30c6832411212ee87db96a0c3ccc5d28ac6f2c1c83594b4268021be99fab6b8",
+      "size": 2601
+    },
+    {
+      "path": "test/sim/abilities/roughskin.js",
+      "digest": "sha256:7e5362b233fd4fa61feb5c391973ed1ce9514cc03f5adfd2dd299b8af718549e",
+      "size": 652
+    },
+    {
+      "path": "test/sim/abilities/sapsipper.js",
+      "digest": "sha256:263acb558b1919f9ddc0903fe4f06bef1b99839aa8864d2bd40b68261afc89ed",
+      "size": 631
+    },
+    {
+      "path": "test/sim/abilities/screencleaner.js",
+      "digest": "sha256:ba961bfd49d31f7dc124cfe2aaafe6625ea81e40f82bcf5da824dc20e1b8b77d",
+      "size": 756
+    },
+    {
+      "path": "test/sim/abilities/serenegrace.js",
+      "digest": "sha256:4f4c67234410c746f7094c06bf963ff4ad58a3525f2d974330be4b98b1501a84",
+      "size": 3031
+    },
+    {
+      "path": "test/sim/abilities/shadowtag.js",
+      "digest": "sha256:8d40867ff18884dbe7ff51f6029578a46d94cbf71c8047dd278623249dc29841",
+      "size": 1884
+    },
+    {
+      "path": "test/sim/abilities/sheerforce.js",
+      "digest": "sha256:64bd33ae4432a9303cf95da29d422bd79a4c72b6f7b8aea9aabaa643783261f2",
+      "size": 3039
+    },
+    {
+      "path": "test/sim/abilities/shellarmor.js",
+      "digest": "sha256:e1aa2b1c4ac674909bf203d6e05277ec02e28f96c5bc3e1032598b5e3b635253",
+      "size": 1400
+    },
+    {
+      "path": "test/sim/abilities/shielddust.js",
+      "digest": "sha256:f4e8a5603b7946fd090465ea4391bd30cbb6774789a24edacaf1700e34dfaf33",
+      "size": 4047
+    },
+    {
+      "path": "test/sim/abilities/shieldsdown.js",
+      "digest": "sha256:5ebb3640b0f4b06bbe399ff2043a1bd346b13e1cd72c99ee214b101831e94400",
+      "size": 1335
+    },
+    {
+      "path": "test/sim/abilities/simple.js",
+      "digest": "sha256:394f93a7865ba9dc43ee1df2a60500aeddc972eeff8bc09391e7fe7a9ed1fcb1",
+      "size": 2200
+    },
+    {
+      "path": "test/sim/abilities/slowstart.js",
+      "digest": "sha256:75a00e9e1b0288e030a7923b3637e277d758f27e177101cf65d6cb5d3992797e",
+      "size": 2097
+    },
+    {
+      "path": "test/sim/abilities/soulheart.js",
+      "digest": "sha256:beaf4f95cd91bfc1ef66a450ca1251ac3bbcd597f9033e7368ebbd0e68b6cb6f",
+      "size": 2259
+    },
+    {
+      "path": "test/sim/abilities/stancechange.js",
+      "digest": "sha256:a2e606418e0f17665c1b3c68b8c5e09937315afe67093652a1ad716523a61f46",
+      "size": 542
+    },
+    {
+      "path": "test/sim/abilities/steelyspirit.js",
+      "digest": "sha256:b19632dc3105197ccd7e5ccaac4fe2fa2d96362316af6f76dc58e48f9bb046c2",
+      "size": 1628
+    },
+    {
+      "path": "test/sim/abilities/stickyhold.js",
+      "digest": "sha256:55ece21bd7f438aa3323f1868135250850c0cfa26c1dc03a42ece48852feb620",
+      "size": 1403
+    },
+    {
+      "path": "test/sim/abilities/stormdrain.js",
+      "digest": "sha256:c213b5f970044b5082472451bc83b7f9f2827e48f8c8933fb67f48fe8c51250c",
+      "size": 4174
+    },
+    {
+      "path": "test/sim/abilities/sturdy.js",
+      "digest": "sha256:c0ee874f27e1d9980ebdc117010f7e352cab0bd7a6be624ac85ff3fc0c25bb38",
+      "size": 3477
+    },
+    {
+      "path": "test/sim/abilities/suctioncups.js",
+      "digest": "sha256:e1e3c6565f19f7b723dd9017fdd5960afc5c437490302f00f19c84fe863371a0",
+      "size": 1443
+    },
+    {
+      "path": "test/sim/abilities/swordofruin.js",
+      "digest": "sha256:f1480ac078225f1df7e10934fbf8e3c72b602c04cfb64113fd5c0d163ce49236",
+      "size": 1062
+    },
+    {
+      "path": "test/sim/abilities/symbiosis.js",
+      "digest": "sha256:f328d6b64356a23cca2963962d81d5a2117f6d3273fb2de96dc87ddcf0d6fab8",
+      "size": 5321
+    },
+    {
+      "path": "test/sim/abilities/synchronize.js",
+      "digest": "sha256:60e0a8f89e2f9a565ad38f808aa541b09abb913e51213d1bfd8d2b9ad8dca003",
+      "size": 887
+    },
+    {
+      "path": "test/sim/abilities/technician.js",
+      "digest": "sha256:ad085af450ca54dc2d93ffb9cf08272a4a2f031f8583cfef84096b38ff051305",
+      "size": 2717
+    },
+    {
+      "path": "test/sim/abilities/terashell.js",
+      "digest": "sha256:55579c1dbd7434e294d34c8578419da34d5ef20bdb8e0371801273b07b5aa7f1",
+      "size": 8049
+    },
+    {
+      "path": "test/sim/abilities/thickfat.js",
+      "digest": "sha256:ad8df548cc1043c3f8b0f2a70a1d6fba36045557ba3dc7c3bd5f28dfcc61b299",
+      "size": 1817
+    },
+    {
+      "path": "test/sim/abilities/trace.js",
+      "digest": "sha256:80067b0639af46e4ab237f1f0fbc48befd053be3481528cb0a96714771b66c0b",
+      "size": 3651
+    },
+    {
+      "path": "test/sim/abilities/truant.js",
+      "digest": "sha256:c26e5eb17c04c3900a4903806569bec3209099f878eaa808261725520dd66152",
+      "size": 3354
+    },
+    {
+      "path": "test/sim/abilities/unaware.js",
+      "digest": "sha256:118e168e89c16b627c619ca8999c112b6c5aca215519ed8d0e6bb6a5db0d462b",
+      "size": 3699
+    },
+    {
+      "path": "test/sim/abilities/unburden.js",
+      "digest": "sha256:1697bded8d56a23ff3f2bb1b3c83daf3e9858df8312907b4fc6e39e5e59827a2",
+      "size": 3518
+    },
+    {
+      "path": "test/sim/abilities/unnerve.js",
+      "digest": "sha256:7eca7110aba470ed1b37f8e34ce7e204cf07c5f4ffe3c5d77657121cd8eda471",
+      "size": 3826
+    },
+    {
+      "path": "test/sim/abilities/victorystar.js",
+      "digest": "sha256:a9eda0e304f512fa665f3502f6300a94d49aed25fe32a51f885f149944235a1c",
+      "size": 1776
+    },
+    {
+      "path": "test/sim/abilities/wanderingspirit.js",
+      "digest": "sha256:5be5616c9e865106666fa745919ca260159842ec5e2f11f2528df2c94c161479",
+      "size": 1449
+    },
+    {
+      "path": "test/sim/abilities/windrider.js",
+      "digest": "sha256:ae1183a76cf46588ffd40ccad27292e3f2da10edba28aefd0ddefb66cb1591e8",
+      "size": 2224
+    },
+    {
+      "path": "test/sim/abilities/wonderguard.js",
+      "digest": "sha256:a766d92dfbd0dba3f50e60bb0fe2b62e4e591b6fb2c544616d86dcd7d20c7f77",
+      "size": 3809
+    },
+    {
+      "path": "test/sim/abilities/zenmode.js",
+      "digest": "sha256:192a38d2085854d330a70e3b5d77243a08370ad69c16bf561ca5e098b2a2b907",
+      "size": 1205
+    },
+    {
+      "path": "test/sim/choice-parser.js",
+      "digest": "sha256:84777d6a6ba862e44ccbece8485dd6062dcfba601fac25bede4fdaa3b8499579",
+      "size": 17575
+    },
+    {
+      "path": "test/sim/data.js",
+      "digest": "sha256:fcde3e60b97458f44aa8027faf13db5f8451857a486ce0aa735f64edf5e1dd32",
+      "size": 23677
+    },
+    {
+      "path": "test/sim/decisions.js",
+      "digest": "sha256:cb3a9667dc9f9621f9c898854727d3b550e1ae9e8ea712b0cec41f0eb12c32f5",
+      "size": 61046
+    },
+    {
+      "path": "test/sim/dex.js",
+      "digest": "sha256:cc8442d0b2ee9c5c557a14a52f671ba5a0e0bff2a89344ea2f9ab05238a8bf56",
+      "size": 5046
+    },
+    {
+      "path": "test/sim/events.js",
+      "digest": "sha256:0cfe0943083a4fe3eef966e49a40cc4e73f6f4c0c1a916963d622b508a84b341",
+      "size": 1972
+    },
+    {
+      "path": "test/sim/items/abilityshield.js",
+      "digest": "sha256:5cde102e5faa2dca1f720092b3080f834ff72ac412d38c291abf5e7400d5221a",
+      "size": 10024
+    },
+    {
+      "path": "test/sim/items/adrenalineorb.js",
+      "digest": "sha256:e09e77854b03c3016e47fc3f0a862105f700bec5e7ea451aaa4cc75bc26674ac",
+      "size": 4190
+    },
+    {
+      "path": "test/sim/items/assaultvest.js",
+      "digest": "sha256:caafd034c70f6e9c9e0c0ca7a667af2012069561c3f1758790232e9cb01954bc",
+      "size": 998
+    },
+    {
+      "path": "test/sim/items/boosterenergy.js",
+      "digest": "sha256:e9f9545953066c81025bb661fa19afb116af3b5c180a342fb8304fd67559f577",
+      "size": 833
+    },
+    {
+      "path": "test/sim/items/choiceitem.js",
+      "digest": "sha256:d8a745c36ac8de7f7a199d53d4c3fca4ee6434c61493faecbc8908f295690fad",
+      "size": 723
+    },
+    {
+      "path": "test/sim/items/custapberry.js",
+      "digest": "sha256:ad3ce37e3d44c8d5e1f5bbc51c9a37361bae42ad2b1836e0354d4ed0529638bc",
+      "size": 1721
+    },
+    {
+      "path": "test/sim/items/drives.js",
+      "digest": "sha256:fff808e5ffd18206ada4a0b33cc6271f84bfc0f1500d0ffdc2f1faadcc0abbe6",
+      "size": 2228
+    },
+    {
+      "path": "test/sim/items/ejectpack.js",
+      "digest": "sha256:06d9909e27dfb6a01231892da57cb3123689ba952c8adb95ea7edaf3f85a0e4d",
+      "size": 7185
+    },
+    {
+      "path": "test/sim/items/eviolite.js",
+      "digest": "sha256:59e7376d9b723eca3c064c65d87526960b569c751262d5cf8dcbad6a93ad2c3f",
+      "size": 1683
+    },
+    {
+      "path": "test/sim/items/flameorb.js",
+      "digest": "sha256:b0fb3d526a16ed3a1cc949a74bd2237e5bcc6709262cb6a19f1d8c37f1d16f96",
+      "size": 1081
+    },
+    {
+      "path": "test/sim/items/focussash.js",
+      "digest": "sha256:a64df6014c382a37d1ac6075c332b66cf2b847ba7f48f090dbbf1c9346b3a856",
+      "size": 2024
+    },
+    {
+      "path": "test/sim/items/griseousorb.js",
+      "digest": "sha256:324020c868a3671e32bf106bf86a3159d5859b12a34479e3800053173acea91f",
+      "size": 569
+    },
+    {
+      "path": "test/sim/items/heavydutyboots.js",
+      "digest": "sha256:1fa4ef86c402c7b83b7927da64a607799027baf73e3ff357da4f363c34ec7869",
+      "size": 798
+    },
+    {
+      "path": "test/sim/items/ironball.js",
+      "digest": "sha256:93c12929187db679054f456bc4020d135241d4fb51579f93d0850ea0ba13f3bb",
+      "size": 3757
+    },
+    {
+      "path": "test/sim/items/jabocaberry.js",
+      "digest": "sha256:b0505b821f6a406572ffa7fca39ff0f21bd829f8783a7d88f0f91209b711f328",
+      "size": 1401
+    },
+    {
+      "path": "test/sim/items/keeberry.js",
+      "digest": "sha256:c3afc5e36100a555c42e4166120d779ce6db00724d32ab7696934b7c97e83366",
+      "size": 642
+    },
+    {
+      "path": "test/sim/items/lansatberry.js",
+      "digest": "sha256:29186972ee1844d42c623c3b911401bbe1eb5e61b74874dee303fca09cccb0bc",
+      "size": 1394
+    },
+    {
+      "path": "test/sim/items/leftovers.js",
+      "digest": "sha256:48f7778f8ca9cfbe3b18b738f81c95419c7b3065b4bc45a4e7dee73c10c26678",
+      "size": 729
+    },
+    {
+      "path": "test/sim/items/leppaberry.js",
+      "digest": "sha256:b827eb74875c05edd9e94b2c635761cffda571853fafc405cbd4cd84dd72c4fb",
+      "size": 791
+    },
+    {
+      "path": "test/sim/items/lifeorb.js",
+      "digest": "sha256:1a762b6ce28d28cc62b30c33867c22ba61cb074aef728778fc80abb2eead7ca5",
+      "size": 626
+    },
+    {
+      "path": "test/sim/items/lumberry.js",
+      "digest": "sha256:89918a2f71eb569891c0b6f17d56ad2f8875579558892230026a8e6d4bb5079d",
+      "size": 2438
+    },
+    {
+      "path": "test/sim/items/mail.js",
+      "digest": "sha256:4b588ecb529d9f88fbd761d954d796cdce7ca7638f2e03dd384619ce78d7bc2e",
+      "size": 2217
+    },
+    {
+      "path": "test/sim/items/metronome.js",
+      "digest": "sha256:0799f0799a53b3c29e0dbba0edb50c5985b1b4e04bc83c3e0857775ccd763af0",
+      "size": 4628
+    },
+    {
+      "path": "test/sim/items/mirrorherb.js",
+      "digest": "sha256:7152189cf0d3cd49532ca9d98eece3945f5809e06b23087d6495390488979bd1",
+      "size": 2740
+    },
+    {
+      "path": "test/sim/items/plates.js",
+      "digest": "sha256:3175a53fbf99e8737903e602dece1ba152a329548eea9408294eb97dcfaeb2c9",
+      "size": 2421
+    },
+    {
+      "path": "test/sim/items/protectivepads.js",
+      "digest": "sha256:c1c2f10720e4b9d6ed63f1f7723bfd9d6a784db18716c505bdd916e87cb365e2",
+      "size": 5616
+    },
+    {
+      "path": "test/sim/items/punchingglove.js",
+      "digest": "sha256:c74dfa08be710376f21d7caabb6c1703f1e2c914def56764b35ba5bd521abfca",
+      "size": 2827
+    },
+    {
+      "path": "test/sim/items/quickclaw.js",
+      "digest": "sha256:b4ac4e4ac1dce09e56f0524f98ac603a0aa15f86d33c26a1c384cf0476ae918c",
+      "size": 1563
+    },
+    {
+      "path": "test/sim/items/redcard.js",
+      "digest": "sha256:43a0539114f957592661a32ca877c6b13656540b650d6a949d2c626021583b8a",
+      "size": 1514
+    },
+    {
+      "path": "test/sim/items/ringtarget.js",
+      "digest": "sha256:8592406fbdf62c1ffcb6ede9234e5708cea0ccc1ac3012da866a7a0fe0e862a6",
+      "size": 2271
+    },
+    {
+      "path": "test/sim/items/rockyhelmet.js",
+      "digest": "sha256:97a6877383af0fbdf16318dcd121dbbd6a5c96af9fd118716ed32377be52cfec",
+      "size": 638
+    },
+    {
+      "path": "test/sim/items/roomservice.js",
+      "digest": "sha256:a7eefd5900786ae06a066272a5af301c7dedc2399782777fa332c172d1af2401",
+      "size": 1423
+    },
+    {
+      "path": "test/sim/items/safetygoggles.js",
+      "digest": "sha256:1637a46163adec876a2545938d9d775c6523419b9c53aa5967a999ff68a57687",
+      "size": 929
+    },
+    {
+      "path": "test/sim/items/seeds.js",
+      "digest": "sha256:e2d53bf2dd37f9d3ea3cb52fc9d144d6a959afe8524fa471c051b82fe82e783a",
+      "size": 2560
+    },
+    {
+      "path": "test/sim/items/shedshell.js",
+      "digest": "sha256:88237ad5c20c710264bcca30201133b184a3afe9167592d4ee808dfdb50945ac",
+      "size": 1681
+    },
+    {
+      "path": "test/sim/items/shellbell.js",
+      "digest": "sha256:52a5b55640997fd93c8781ff2b338480c29b88feadceadde0c1ef27ca2b3854f",
+      "size": 1548
+    },
+    {
+      "path": "test/sim/items/sitrusberry.js",
+      "digest": "sha256:2457ba220cd2c4b24a203fd4f86b21326cc19357bfe73e9683856c5bcc7fa757",
+      "size": 3040
+    },
+    {
+      "path": "test/sim/items/weaknesspolicy.js",
+      "digest": "sha256:eb9b46363c9d140d8d7f4174fb1058be9692712e6248d9fd048976072c7a0439",
+      "size": 3421
+    },
+    {
+      "path": "test/sim/items/whiteherb.js",
+      "digest": "sha256:5ddb3117871bd577dc16463900e1ee73d0ce7a23c5013e5f2ef0ca2d78fcde3b",
+      "size": 3671
+    },
+    {
+      "path": "test/sim/misc/accuracy.js",
+      "digest": "sha256:af0ba7ee02a6a0eac3086e6d430bf13b3e441e70fc39353d1a66b4df0b6c748d",
+      "size": 3194
+    },
+    {
+      "path": "test/sim/misc/arceus.js",
+      "digest": "sha256:eeb43d2a78f7fb2bf6990dd26821b8aa5e82d9944a377fc6eb10f843750a0941",
+      "size": 2355
+    },
+    {
+      "path": "test/sim/misc/ateabilities.js",
+      "digest": "sha256:29ec9f511b3643e9c51f41c456930f1d041bed198626249bb3f95c1a989bc067",
+      "size": 1012
+    },
+    {
+      "path": "test/sim/misc/confusion.js",
+      "digest": "sha256:52af47fddc0619356f4711fa3508861eb3bb3032559628aa107f7396c2f3dd16",
+      "size": 662
+    },
+    {
+      "path": "test/sim/misc/critical.js",
+      "digest": "sha256:f752c9972bce49a1001a51c8734052ff8aafa4df02338751295e11031bdfc050",
+      "size": 659
+    },
+    {
+      "path": "test/sim/misc/dynamax.js",
+      "digest": "sha256:d37ad8fbcf4da87c1acac60926bcb60fe7c86aeb8d23f6858c19b3f2dbcd56b3",
+      "size": 10185
+    },
+    {
+      "path": "test/sim/misc/faint-order.js",
+      "digest": "sha256:14aab52d809404c728c5ab1299d4a9cfd9cb30fdd1a05ed8cc88e062259caa11",
+      "size": 5969
+    },
+    {
+      "path": "test/sim/misc/fainted-forme-regression.js",
+      "digest": "sha256:1fed7660b9fb8ca707e88d3043cd2297fbc8c7ad0eb6be4695fe3585aae7b4b6",
+      "size": 8703
+    },
+    {
+      "path": "test/sim/misc/fusion-combo.js",
+      "digest": "sha256:ba4ef33b74e0ba55ee6c3b75e1dee67a4d25c45b13bfea77e8b420402d4b9c67",
+      "size": 3123
+    },
+    {
+      "path": "test/sim/misc/hazards.js",
+      "digest": "sha256:3b1c222960999724830e7f15884cbf7a96ab0b00d27006159b283687202291e3",
+      "size": 6263
+    },
+    {
+      "path": "test/sim/misc/megaevolution.js",
+      "digest": "sha256:7e6044a9b4324d9af1a1d1c7c5a8681b6bec2dfcdbc9345e176d66efaeaa2f0a",
+      "size": 5460
+    },
+    {
+      "path": "test/sim/misc/multi-battle.js",
+      "digest": "sha256:83447a134630d11bcc2673635bbbf02dee366303baba4731d4afc1f48216a7bc",
+      "size": 805
+    },
+    {
+      "path": "test/sim/misc/ogerpon.js",
+      "digest": "sha256:93d022715ebba8ab3def9e8ee6ec54f2c481be27cda8773cfda4bcc83f8471b9",
+      "size": 6668
+    },
+    {
+      "path": "test/sim/misc/ohko.js",
+      "digest": "sha256:b1cd475c07eef640f497e7300cf78f2efefb3262d4e513188bb4b88058a00d0a",
+      "size": 3577
+    },
+    {
+      "path": "test/sim/misc/pledgemoves.js",
+      "digest": "sha256:47641ad54ef81255a017772caf0dc333cb1c403fd9139b15783c40b3abc69076",
+      "size": 2157
+    },
+    {
+      "path": "test/sim/misc/prng.js",
+      "digest": "sha256:ff061ed7ec90f9db7d1b13917f2d26e8239bce976837da2870452ced5ff1af14",
+      "size": 5080
+    },
+    {
+      "path": "test/sim/misc/recoil.js",
+      "digest": "sha256:4947ebff07c8c3b13e5db5ea9f58cc21a156f4621a56949e95085832af0231ba",
+      "size": 1267
+    },
+    {
+      "path": "test/sim/misc/silvally.js",
+      "digest": "sha256:2677beaed67d8c669947c033d11d0200874e9e41f7070fd76f78c41d75ea4959",
+      "size": 1547
+    },
+    {
+      "path": "test/sim/misc/speed.js",
+      "digest": "sha256:3587f4700a54222902dfc3ab34ee0c3a1edc93e852bb6b34ca91188b62343750",
+      "size": 871
+    },
+    {
+      "path": "test/sim/misc/statdownoverflow.js",
+      "digest": "sha256:66f942c3a14d5386732e9cd26aa7a77c01f4968621b4cdd1802dc79aaddae27b",
+      "size": 1690
+    },
+    {
+      "path": "test/sim/misc/state.js",
+      "digest": "sha256:9aea869abae8d69bb8f36d7e0df7e0757cfd6d3fb602a799c7c90eafb371e72e",
+      "size": 2310
+    },
+    {
+      "path": "test/sim/misc/statuses.js",
+      "digest": "sha256:e9766882fa165245691552437c190640b9bf8be6d187d5e9cb64561537f75075",
+      "size": 18798
+    },
+    {
+      "path": "test/sim/misc/statusmoves.js",
+      "digest": "sha256:a80c8375772465e9e9aabd18b12291d767a1be6fe3f17920a1e783453a5bf90a",
+      "size": 3629
+    },
+    {
+      "path": "test/sim/misc/target-resolution.js",
+      "digest": "sha256:438b026d6fe5b8a118c639282ffa9649797bd7c4db4385f4c093d8eaa2fca2af",
+      "size": 16820
+    },
+    {
+      "path": "test/sim/misc/teampreview.js",
+      "digest": "sha256:613e9d7b0b833bcab7e702d5f2d8eb5f995351532057de9437c4222fb0bd4ff6",
+      "size": 2103
+    },
+    {
+      "path": "test/sim/misc/terapagos.js",
+      "digest": "sha256:9c8567dda426ffe85974f6d207aba817c23801c43d7d3c384c8361ceb91d5b93",
+      "size": 824
+    },
+    {
+      "path": "test/sim/misc/terastal.js",
+      "digest": "sha256:d012bb69feb41d62eacf9c9f92e060d1deeba0417f51706604928e1f0039afc4",
+      "size": 10799
+    },
+    {
+      "path": "test/sim/misc/terastellar.js",
+      "digest": "sha256:e79451039c6914a7f0878a54748d48bebd37410bac970a4248246e0b023ff2d1",
+      "size": 6973
+    },
+    {
+      "path": "test/sim/misc/trapmoves.js",
+      "digest": "sha256:e31d598500c69654c2c20f4ecc85583e1c2ec8401564d796ef9580bb0817a080",
+      "size": 16501
+    },
+    {
+      "path": "test/sim/misc/turn-order.js",
+      "digest": "sha256:45c2c95559593f8e62da64f85269f4ad52b81ea5b72fc41ef7b414445f022e64",
+      "size": 9066
+    },
+    {
+      "path": "test/sim/misc/twoturnmoves.js",
+      "digest": "sha256:8a7e82d1c529fb8383a966de2676083f1e7a4891663fac526fd0896bb65d2581",
+      "size": 5490
+    },
+    {
+      "path": "test/sim/misc/typechange.js",
+      "digest": "sha256:772b12483ca20d6eb34f9824eb41830adc87d937a6f0694a187f791d3abccb49",
+      "size": 3018
+    },
+    {
+      "path": "test/sim/misc/weather.js",
+      "digest": "sha256:7e53665506b088879615475541ed6c33bd33f726127c0aa7000d849f7335be39",
+      "size": 3734
+    },
+    {
+      "path": "test/sim/misc/weight.js",
+      "digest": "sha256:25740c8d1adbc5a5666e05e525bdbd47d10549f5439f5cacee13c59f71b6fbf5",
+      "size": 4758
+    },
+    {
+      "path": "test/sim/misc/zmoves.js",
+      "digest": "sha256:2e55b2cf536cb1968588a5512025a5982720da418b84562b501f77e4770184c2",
+      "size": 2185
+    },
+    {
+      "path": "test/sim/moves/acupressure.js",
+      "digest": "sha256:4414d9c7bb2033966b0029cd5dc4e5f90641f6a9d53f006d9f4e808a9e46bc09",
+      "size": 2541
+    },
+    {
+      "path": "test/sim/moves/afteryou.js",
+      "digest": "sha256:2cd6c11eefe28607cc7f9f4f413e663f6145c791f9b0bcb2ee0ec6a6715cc8a6",
+      "size": 2590
+    },
+    {
+      "path": "test/sim/moves/allyswitch.js",
+      "digest": "sha256:bbf8132b345ee893f5f9b7b97a1ed21ff4f59665ea7f819b7154e4c5c68926d5",
+      "size": 4669
+    },
+    {
+      "path": "test/sim/moves/assist.js",
+      "digest": "sha256:a744164b1cd12eefd37a9e677008b3e278f7bd2e6e0ed5a16168a7647716700b",
+      "size": 1631
+    },
+    {
+      "path": "test/sim/moves/assurance.js",
+      "digest": "sha256:89449b3b2503988b4fda341d0a7ea4e2638656630fbb5e9843004a9e4a4fb44c",
+      "size": 1887
+    },
+    {
+      "path": "test/sim/moves/aurawheel.js",
+      "digest": "sha256:5bbc949e4f4e53727911de757f3b7a99405fb62e2ab1e2d5dfcf0460b9a5f73a",
+      "size": 655
+    },
+    {
+      "path": "test/sim/moves/batonpass.js",
+      "digest": "sha256:f4fbc5b5f57fe3c2bb0a5356fef830987610351e48e0cf14f546cf0fefdb677c",
+      "size": 1571
+    },
+    {
+      "path": "test/sim/moves/belch.js",
+      "digest": "sha256:145e6572b8bff10028f70dc3b53c88e836679d12c6bf1802d5ee10d7775117c2",
+      "size": 2251
+    },
+    {
+      "path": "test/sim/moves/bellydrum.js",
+      "digest": "sha256:61616a59bb12a755bef72c5a42788e4e4898cfdf2664e06186c72180121cd6c3",
+      "size": 2191
+    },
+    {
+      "path": "test/sim/moves/bide.js",
+      "digest": "sha256:2aeb939c2660610d05665b7068c4d08c49ab5c035cc7b9b28307256816fa425f",
+      "size": 4861
+    },
+    {
+      "path": "test/sim/moves/boomburst.js",
+      "digest": "sha256:9c6475d11964856c8a46941d9ec412e1a40d2bc7c77a8a1cd5b9f53404c1a804",
+      "size": 671
+    },
+    {
+      "path": "test/sim/moves/brickbreak.js",
+      "digest": "sha256:753b0d5038c5f53d3ba21699b5d0571b660eae297e7fbe7665681765a2fb2888",
+      "size": 3606
+    },
+    {
+      "path": "test/sim/moves/bugbuzz.js",
+      "digest": "sha256:bb92e89474b3058619cc89ae3011f2c24fae31a9d0cdfe55661359724357719d",
+      "size": 1248
+    },
+    {
+      "path": "test/sim/moves/burningbulwark.js",
+      "digest": "sha256:45d8b08b9dfa813b6ecee998e13ad8b15ce95457354f34819e800454ee3f1216",
+      "size": 1440
+    },
+    {
+      "path": "test/sim/moves/burningjealousy.js",
+      "digest": "sha256:44565002277e80e40021f8aa44642f04e4ca72f0d4dd3091381b8de2f6f47d19",
+      "size": 1958
+    },
+    {
+      "path": "test/sim/moves/burnup.js",
+      "digest": "sha256:acfb96ee41cb5af2d5a160f68b19fb618af4d8037baa8ab7c569e6cbc75930ed",
+      "size": 710
+    },
+    {
+      "path": "test/sim/moves/camouflage.js",
+      "digest": "sha256:c9f0e85e8e63adb97e4f9404d1f1031e284f9e78b36b980107ed53c31377e870",
+      "size": 2847
+    },
+    {
+      "path": "test/sim/moves/ceaselessedge.js",
+      "digest": "sha256:1253daeeb2dce468dbf42657c6bb3289c25c5fc543c6851f1a580ffa47af51dc",
+      "size": 3274
+    },
+    {
+      "path": "test/sim/moves/charge.js",
+      "digest": "sha256:c1b161f0312ea0591428a5bf8012e5aa7962470470608678ee3ed0a4c7026493",
+      "size": 2413
+    },
+    {
+      "path": "test/sim/moves/chatter.js",
+      "digest": "sha256:bd6fbdece99beedf128ac619fabd35bb086eacbd7189b4d7f40a198234ea809b",
+      "size": 1564
+    },
+    {
+      "path": "test/sim/moves/chloroblast.js",
+      "digest": "sha256:4df55ae1418c2863f4d62541242341fb47a69f975f8756e8dd8a5908bc075d5f",
+      "size": 2233
+    },
+    {
+      "path": "test/sim/moves/clangoroussoulblaze.js",
+      "digest": "sha256:3263fd846a7de6e12de1e8c841cd5d10eee753dbe1a94301e2a2cd4c55f4f891",
+      "size": 1653
+    },
+    {
+      "path": "test/sim/moves/clearsmog.js",
+      "digest": "sha256:ab52af90b315115a67e8580880b6241c4819a14a2ef2cd9909bfd0a1edcecc8e",
+      "size": 2600
+    },
+    {
+      "path": "test/sim/moves/conversion2.js",
+      "digest": "sha256:4ea4670e7862b4bbfe28926168b1536133d4972e94665c117cc92918f85466b3",
+      "size": 3636
+    },
+    {
+      "path": "test/sim/moves/copycat.js",
+      "digest": "sha256:d59f453112d8c59317e9e6146fc604c98b418b0141cad0beac6794e080a1717a",
+      "size": 923
+    },
+    {
+      "path": "test/sim/moves/counter.js",
+      "digest": "sha256:0e3008f1930e210009588534e8c83d146ebc454efd17758e88eff928f0120f32",
+      "size": 13688
+    },
+    {
+      "path": "test/sim/moves/courtchange.js",
+      "digest": "sha256:48deb46f1f8daccff92344b9be151314ac27703eebf59aedd1f46f0a06d0907c",
+      "size": 2075
+    },
+    {
+      "path": "test/sim/moves/curse.js",
+      "digest": "sha256:42e99b255d42fead3c7b3e22a8ca6a1a54e51168972eea34b4c5c9e3b42d0932",
+      "size": 8737
+    },
+    {
+      "path": "test/sim/moves/destinybond.js",
+      "digest": "sha256:981ab0688f323f283767d6db34a7df5aef8d102658fe44523a0df21831a1a4ca",
+      "size": 5941
+    },
+    {
+      "path": "test/sim/moves/disable.js",
+      "digest": "sha256:d4a8f4be50d7f9dfe944eb480b3f33181ad12ef4f9cec992ff7b898b592cf4f8",
+      "size": 5311
+    },
+    {
+      "path": "test/sim/moves/doodle.js",
+      "digest": "sha256:0955efecbd5eddab4a16af77273b2a585cfcb295bdd3b14b7722cfc145628bc6",
+      "size": 2085
+    },
+    {
+      "path": "test/sim/moves/dragoncheer.js",
+      "digest": "sha256:956b46a55ed21e50c3128ed0f35442c4fe4e8484be3de16d272c4c8e76205b4f",
+      "size": 5359
+    },
+    {
+      "path": "test/sim/moves/dragondarts.js",
+      "digest": "sha256:2bfd05a6d7b1cc29336a960b3571bb4b78ff720bd98472ef6069ef55e7516be8",
+      "size": 9103
+    },
+    {
+      "path": "test/sim/moves/echoedvoice.js",
+      "digest": "sha256:8ee2fbc3518627eabe922d12b0050176d199b0cc3fb01046e2506d4cecf0ded7",
+      "size": 1791
+    },
+    {
+      "path": "test/sim/moves/electricterrain.js",
+      "digest": "sha256:02ca4c9c4391e4f3c6639c6c0017cfc821af7d3616a8d664c520a46452fbf582",
+      "size": 5166
+    },
+    {
+      "path": "test/sim/moves/embargo.js",
+      "digest": "sha256:8014fa60cc41e348be2ca873c454a774b15720a4694210b19448023f53e52cb7",
+      "size": 2319
+    },
+    {
+      "path": "test/sim/moves/encore.js",
+      "digest": "sha256:0bcd0a1bea1050eab46be8ed00020292f3879aa5e2f29c9d940a9d02527ab773",
+      "size": 9309
+    },
+    {
+      "path": "test/sim/moves/explosion.js",
+      "digest": "sha256:9b720efab9110923fadbaf6de1f011c70e0f4fe96abc22d9a4b7046052278851",
+      "size": 2472
+    },
+    {
+      "path": "test/sim/moves/fakeout.js",
+      "digest": "sha256:c3cc086865bb990968aef70a7e956202b8d39ec17bb08f81da5bf248613429dc",
+      "size": 2552
+    },
+    {
+      "path": "test/sim/moves/fellstinger.js",
+      "digest": "sha256:612784c00941f98539082093c48fa00cc7fc8c88537a93fce4cc0ea46121b8cc",
+      "size": 693
+    },
+    {
+      "path": "test/sim/moves/fling.js",
+      "digest": "sha256:b5031815502655feb3c5319497022b701b44b34d4106dfff052fd2dde44c8e65",
+      "size": 2173
+    },
+    {
+      "path": "test/sim/moves/focuspunch.js",
+      "digest": "sha256:5c079a44a455f598977c05eccc0438a7898497523de9e1ab7b284ba1456de68c",
+      "size": 5576
+    },
+    {
+      "path": "test/sim/moves/followme.js",
+      "digest": "sha256:dddf214c0c716d7f34fd944dcf9adef7e086a05b8002f6a6f36f7b990625c860",
+      "size": 3939
+    },
+    {
+      "path": "test/sim/moves/foresight.js",
+      "digest": "sha256:ffed76c25843b8b93a42cbdb2e05eb61823f2ad07b94a1800af5ec3444faf2f0",
+      "size": 1907
+    },
+    {
+      "path": "test/sim/moves/furycutter.js",
+      "digest": "sha256:fc3268353c6c5bbc2dc3cd32bb14ec68b0968e7c231579a9f3cfa6842c155c0f",
+      "size": 1499
+    },
+    {
+      "path": "test/sim/moves/futuresight.js",
+      "digest": "sha256:d0fd4b9691fdd093cafd0206233a1a56b36ac00b794cf7c83afef2a26b20767f",
+      "size": 15349
+    },
+    {
+      "path": "test/sim/moves/gearup.js",
+      "digest": "sha256:d093e5e39a82c2b320b78b7adcc7789ec69bf607426007f85c388aeca3b65bf3",
+      "size": 1074
+    },
+    {
+      "path": "test/sim/moves/gigatonhammer.js",
+      "digest": "sha256:f71d61916e7669a7f379d1d0a2a80643069ee6ebc6a0fa4733ae06c95a8646a2",
+      "size": 1134
+    },
+    {
+      "path": "test/sim/moves/glaiverush.js",
+      "digest": "sha256:ec59604129d0b453aab231cb2acc68e84e0a2041f132156c4e8780ca41766648",
+      "size": 1640
+    },
+    {
+      "path": "test/sim/moves/glare.js",
+      "digest": "sha256:1127db2883fbec583d3693f71cfc5e691a0d9a9a3b52b10a540d8c1e991da166",
+      "size": 948
+    },
+    {
+      "path": "test/sim/moves/gmaxchistrike.js",
+      "digest": "sha256:d93e5d9c584047936dd64eec23792d9047d3f8e74b315c9a2a4b061eb29ee263",
+      "size": 3018
+    },
+    {
+      "path": "test/sim/moves/gmaxsteelsurge.js",
+      "digest": "sha256:4f211b17a5ddc221765df5733603e74e00d0593b15c6337d58c97b71411cddf2",
+      "size": 1185
+    },
+    {
+      "path": "test/sim/moves/gmaxvolcalith.js",
+      "digest": "sha256:fbed77258ac430dc6ed4150f05de5ac9a426976d7b10ef15b19bfb38a176d8c2",
+      "size": 4908
+    },
+    {
+      "path": "test/sim/moves/gmaxwildfire.js",
+      "digest": "sha256:9558bf2d72f4202a53fc7d29a61da82f426a16711afa055261b0638eec6a82ae",
+      "size": 1538
+    },
+    {
+      "path": "test/sim/moves/grassyterrain.js",
+      "digest": "sha256:1d973376e082de3c9bd133fe5821f3adab3d00b8932f2bd95a820024644ceadc",
+      "size": 6104
+    },
+    {
+      "path": "test/sim/moves/gravity.js",
+      "digest": "sha256:d61d258510eb92fccb20dd0475b0bc3f639a817096b459dae82d276c79e2a9fc",
+      "size": 2053
+    },
+    {
+      "path": "test/sim/moves/haze.js",
+      "digest": "sha256:449190fa0b5340e3cf31aa224be9fcf4e9685f230fd050ffb8655cf02f6b74c5",
+      "size": 7165
+    },
+    {
+      "path": "test/sim/moves/healbell.js",
+      "digest": "sha256:73c97b119662267813fa1ca7aceb7b012f6057a5b28b260b848c9bdf059ab140",
+      "size": 4060
+    },
+    {
+      "path": "test/sim/moves/healblock.js",
+      "digest": "sha256:0e3bb45156b88dcf1250618061a3dbe0e952be4cee118b4d58d5f9bf95d993d5",
+      "size": 10834
+    },
+    {
+      "path": "test/sim/moves/healingwish.js",
+      "digest": "sha256:274d83d1b0c8a9e176d06ff88733da376a5244be551b6b174aab283df3cf1b96",
+      "size": 5829
+    },
+    {
+      "path": "test/sim/moves/highjumpkick.js",
+      "digest": "sha256:a673ddbd6d26c24e3894f42a6f9467adadc0d66f82011e579d7532797062205a",
+      "size": 926
+    },
+    {
+      "path": "test/sim/moves/hydrosteam.js",
+      "digest": "sha256:fc7a2727bb1d80897b205a383c8a5808186093172aab2d8e0dd46205a91768e8",
+      "size": 1968
+    },
+    {
+      "path": "test/sim/moves/hyperbeam.js",
+      "digest": "sha256:20fb2e43254f3f5ed159f7196e966e3e6f24c378b1d993bffebacc27ebf0a542",
+      "size": 7551
+    },
+    {
+      "path": "test/sim/moves/hypervoice.js",
+      "digest": "sha256:62e675dd4db5d1ce024f8f08e4922fb42c85124c8ff61464023a30f473c4be0d",
+      "size": 1266
+    },
+    {
+      "path": "test/sim/moves/icespinner.js",
+      "digest": "sha256:f9a0a545ccf323c4ba29857c8200c2312f4291860fa1b03ac610ae5a5db246a4",
+      "size": 1750
+    },
+    {
+      "path": "test/sim/moves/imprison.js",
+      "digest": "sha256:25cdfadba6e059b64f0a48a6aed9dd113add968703893c6faa84c5d287357371",
+      "size": 12948
+    },
+    {
+      "path": "test/sim/moves/ingrain.js",
+      "digest": "sha256:198416ac8d028f2536c85c2f51717cf29dd3c30b5d8eeb2a2717db56ef1f8749",
+      "size": 2504
+    },
+    {
+      "path": "test/sim/moves/instruct.js",
+      "digest": "sha256:fb24bd743dac7e16f35588fb2117a25c0edb9faecfd9a91b6987e8aa8e8e3f32",
+      "size": 868
+    },
+    {
+      "path": "test/sim/moves/judgment.js",
+      "digest": "sha256:403a34ab7fd7f339bb5c56dbe3612722765ceead2083364a0142cb0fbebfde73",
+      "size": 929
+    },
+    {
+      "path": "test/sim/moves/kingsshield.js",
+      "digest": "sha256:b664163c68821a1a178760ba94ab803a63a95277acfc2ae818d643e3afe344aa",
+      "size": 1852
+    },
+    {
+      "path": "test/sim/moves/knockoff.js",
+      "digest": "sha256:dbbb18d84f1a8a21974c59029100357baa863ee8625698be7f2bdd56bf9e0903",
+      "size": 5333
+    },
+    {
+      "path": "test/sim/moves/lashout.js",
+      "digest": "sha256:36e0ca06d70c5fb9a8d746fe5f502fde393910799eda12fe3c8aa96037318a0f",
+      "size": 2880
+    },
+    {
+      "path": "test/sim/moves/leechseed.js",
+      "digest": "sha256:7a72e11f3738dca3871cf5b37dc65063f8866e7288ee2c6a865407677d7c25ed",
+      "size": 905
+    },
+    {
+      "path": "test/sim/moves/lockon.js",
+      "digest": "sha256:94fbd285b1f84e4de6ce339037e8fff2c6096d0ab7dea9f2aafa51e30c4e518a",
+      "size": 633
+    },
+    {
+      "path": "test/sim/moves/magicroom.js",
+      "digest": "sha256:b619e30e8d09dc25bab72da11fa081fd80e7d7b20144471a0bb55e503ee87865",
+      "size": 2267
+    },
+    {
+      "path": "test/sim/moves/magneticflux.js",
+      "digest": "sha256:4ac263fb071f51cb02707dd1686384e82a32b6eaeda85b606b6e9fe474193a0d",
+      "size": 1106
+    },
+    {
+      "path": "test/sim/moves/maxguard.js",
+      "digest": "sha256:682208b43c28df51b6bce5726247471c254a4cb5e8cecc703317afe18aa0a858",
+      "size": 2393
+    },
+    {
+      "path": "test/sim/moves/mefirst.js",
+      "digest": "sha256:c790ae73cf242e3b410bb551dd730b7b7154045138f82d07ee6585684a891204",
+      "size": 1211
+    },
+    {
+      "path": "test/sim/moves/memento.js",
+      "digest": "sha256:3df018075612b5265e3d7913ab99fd5b0d2032c6a6b5af642a6d27da2f171b6a",
+      "size": 2090
+    },
+    {
+      "path": "test/sim/moves/metalburst.js",
+      "digest": "sha256:6de6fe99704f5dd36b69ceb2f0d83d95d06e067b17e735d0b25b9b6b9ce55375",
+      "size": 2739
+    },
+    {
+      "path": "test/sim/moves/mightycleave.js",
+      "digest": "sha256:d8d5e0ca5589bf64b82e147e4985faa09f3f60e4eb4fa56ebabef4b3be1d027e",
+      "size": 579
+    },
+    {
+      "path": "test/sim/moves/mindblown.js",
+      "digest": "sha256:622be9e112bdcdce43165060b46894cf35490c230dfd0d3a2d6fb48dbf267d1a",
+      "size": 1329
+    },
+    {
+      "path": "test/sim/moves/miracleeye.js",
+      "digest": "sha256:ef1eab85cba83e3b351727abb11949a38105d3c580948dbb572277201ad4c7b0",
+      "size": 1891
+    },
+    {
+      "path": "test/sim/moves/mirrormove.js",
+      "digest": "sha256:f8e2810d8a9987e9ee531c76390ee0b6598b15b653d4fd26992454e048625fa0",
+      "size": 3573
+    },
+    {
+      "path": "test/sim/moves/mistyterrain.js",
+      "digest": "sha256:cb72109fc5e1768f2d9b3781e13950b45c9a4828c02bdb03450696a4155510b7",
+      "size": 4692
+    },
+    {
+      "path": "test/sim/moves/nightmare.js",
+      "digest": "sha256:6524949a1e6e14d947c5997f103eacf8aab4be93ebd23b90d2a25278b4c00c69",
+      "size": 1239
+    },
+    {
+      "path": "test/sim/moves/noretreat.js",
+      "digest": "sha256:c29fb6972ded43514324bf1408c6f576056701ab07d4b5d646160d984ba5bf0a",
+      "size": 913
+    },
+    {
+      "path": "test/sim/moves/orderup.js",
+      "digest": "sha256:e5b81051f2b527b37e34a9a4f1151467728166c27df6b71d7f4ebbdcb6fd7391",
+      "size": 876
+    },
+    {
+      "path": "test/sim/moves/painsplit.js",
+      "digest": "sha256:b75dc193247c7604d0ae53612eab43466da41f4a19a1485fda12542ccd6fdccb",
+      "size": 1327
+    },
+    {
+      "path": "test/sim/moves/partingshot.js",
+      "digest": "sha256:f4ab848b581168d440fc9c9826f9b0a31d148ca09c0a06312250e67566bfe6a8",
+      "size": 2634
+    },
+    {
+      "path": "test/sim/moves/perishsong.js",
+      "digest": "sha256:74a832c758bf9f9734f2a4309760fd3b8268c788edf389161d6f0b214114b29c",
+      "size": 2257
+    },
+    {
+      "path": "test/sim/moves/photongeyser.js",
+      "digest": "sha256:a6321dc16e4a09df812ac2b778097307841b6088cf831670b5f40cf495b81c32",
+      "size": 3935
+    },
+    {
+      "path": "test/sim/moves/pledge.js",
+      "digest": "sha256:77bf81de5b2ffe980b7b732f62cbee54909ec854d7a548ccae23079e378739d8",
+      "size": 875
+    },
+    {
+      "path": "test/sim/moves/pollenpuff.js",
+      "digest": "sha256:4ea5654fabb51671de35d553d5485aa627bf20bf6eefda20f4be5974d553572e",
+      "size": 4669
+    },
+    {
+      "path": "test/sim/moves/psyblade.js",
+      "digest": "sha256:087c6b4718e1a03b463721d9bfe21fcd119fbeb9d87b32669890eb6503db6912",
+      "size": 1084
+    },
+    {
+      "path": "test/sim/moves/psychicnoise.js",
+      "digest": "sha256:9449da8a714556dff289a53d87c352d919491125689e1ef84dab634cfb85683c",
+      "size": 1365
+    },
+    {
+      "path": "test/sim/moves/psychup.js",
+      "digest": "sha256:81166814a27f3d0934e3b369233f437bdb2b3905eba984e6360c2207d61492f6",
+      "size": 4198
+    },
+    {
+      "path": "test/sim/moves/pursuit.js",
+      "digest": "sha256:f6b4813e71b7e2851d1747a95dce36695b5620061abaa0d5bae38d4163981ee5",
+      "size": 16666
+    },
+    {
+      "path": "test/sim/moves/quash.js",
+      "digest": "sha256:c23f8598c5dc8dcba82943e5b40c5dd7f0497dc286f31f4f39185ad75ce372ec",
+      "size": 1654
+    },
+    {
+      "path": "test/sim/moves/rage.js",
+      "digest": "sha256:499aedb443acd066acf8b6ed29036ef0e944009cf1669ba2083ee0b778164ad5",
+      "size": 687
+    },
+    {
+      "path": "test/sim/moves/ragefist.js",
+      "digest": "sha256:4186759712dc1cafe1d936498ef98d04cf49daa69947abeabd3ed7d09abc8381",
+      "size": 4188
+    },
+    {
+      "path": "test/sim/moves/ragepowder.js",
+      "digest": "sha256:d70841ee960c71b6da5b8e66fd5db9bc0e591f0e0a3b677cfe287e3145d976de",
+      "size": 3946
+    },
+    {
+      "path": "test/sim/moves/rapidspin.js",
+      "digest": "sha256:6fb910a03eec2020d257d1e6a1fac060a32b5f0b458fce838653852168b4ce19",
+      "size": 2112
+    },
+    {
+      "path": "test/sim/moves/recycle.js",
+      "digest": "sha256:dcd167144c10854d6914ee1519fdcefd5379fa170ec40744e9195d50f6a4c9b5",
+      "size": 1293
+    },
+    {
+      "path": "test/sim/moves/reflecttype.js",
+      "digest": "sha256:9fb5320aac45ed2f50fe3d12b75e67164587a926d82e44c01897d8da988ad10e",
+      "size": 1813
+    },
+    {
+      "path": "test/sim/moves/relicsong.js",
+      "digest": "sha256:586734e569a377902a72b1f40651b6b9a2aff60ca750f9f34edf504de2a47600",
+      "size": 2466
+    },
+    {
+      "path": "test/sim/moves/revivalblessing.js",
+      "digest": "sha256:31d07a022be585fe7a842ae08d303f36a598f0f87728ed7dd9afcf4b2f3561c7",
+      "size": 3536
+    },
+    {
+      "path": "test/sim/moves/rollout.js",
+      "digest": "sha256:79ce78b2df539f4f63d0edb39e9c2aa0e55d4c3ad4bcdc7aa826a3da98c4f797",
+      "size": 7449
+    },
+    {
+      "path": "test/sim/moves/roost.js",
+      "digest": "sha256:edb67ed5b4de049719424421d4fd6a68e52c5c2bb426e0d1109bd51ff893ac83",
+      "size": 4884
+    },
+    {
+      "path": "test/sim/moves/round.js",
+      "digest": "sha256:e52dca4c2946064d685735d6c00eca2957798b386eb94d1c4be7e9f409291a4e",
+      "size": 1235
+    },
+    {
+      "path": "test/sim/moves/shedtail.js",
+      "digest": "sha256:aac73849307bbb5eedceff314fb0049dacc087daed10a5f02fa856ecbee248e5",
+      "size": 1042
+    },
+    {
+      "path": "test/sim/moves/sheercold.js",
+      "digest": "sha256:b45ba019a6b869a65f88e54cad99e1527f80cf3c4ab3cb726e57bbf885bf8723",
+      "size": 1027
+    },
+    {
+      "path": "test/sim/moves/shelltrap.js",
+      "digest": "sha256:3c7bf2dfb4de8b86979e6ac9632d0d301d3e8e3707c10c8d62217134ed2d7e90",
+      "size": 1803
+    },
+    {
+      "path": "test/sim/moves/skillswap.js",
+      "digest": "sha256:87b6d43bc0d48a96653591bfef8707a4d508f5d78658d3486be76ac770789f8e",
+      "size": 2267
+    },
+    {
+      "path": "test/sim/moves/skydrop.js",
+      "digest": "sha256:3fd4790861f367b4658c0e6e4a57dd694110bccabf5d96c7f67d45776e1233b0",
+      "size": 12177
+    },
+    {
+      "path": "test/sim/moves/sleeptalk.js",
+      "digest": "sha256:90839b33286aa4bed3730a218650ed83bbf2bab0e73c79aedc5c349f00f7f662",
+      "size": 1510
+    },
+    {
+      "path": "test/sim/moves/smellingsalts.js",
+      "digest": "sha256:2c54f1634fb4ccaba5442bf0a7c3b198635cecb4d6f619b902408e9d84c7ee2f",
+      "size": 627
+    },
+    {
+      "path": "test/sim/moves/snarl.js",
+      "digest": "sha256:ee2147c4e448e695fc6ba4f15a2d4effe5e5d357cb88f6266ba0c8dac49030b2",
+      "size": 1238
+    },
+    {
+      "path": "test/sim/moves/snatch.js",
+      "digest": "sha256:cf1a5bc35aa139fcf28938bed0579355f35489745ef096151f5bfffc10a38cba",
+      "size": 5432
+    },
+    {
+      "path": "test/sim/moves/sparklingaria.js",
+      "digest": "sha256:1769394a9c0df0a42d27546e0586809d6e8f0c7146a81f23f4f63199c72eaabe",
+      "size": 1133
+    },
+    {
+      "path": "test/sim/moves/spectralthief.js",
+      "digest": "sha256:7d45dcaf30d42244359123e5ce8eff2cd7e4b8f2cd587aa1a45df90a83d542d9",
+      "size": 4221
+    },
+    {
+      "path": "test/sim/moves/spikes.js",
+      "digest": "sha256:6de393cad1137113d1895b2fdb6a59649615d92b7b5eff72b360d38a1cd26431",
+      "size": 1249
+    },
+    {
+      "path": "test/sim/moves/spite.js",
+      "digest": "sha256:7e599364d39d385226999fec7f674173c6c9e0412f5b9158174116f2665188f7",
+      "size": 1257
+    },
+    {
+      "path": "test/sim/moves/stealthrock.js",
+      "digest": "sha256:33840ee3fedca3dffc70f7b30993399843b98f942e6f79dd73373c54e1ac76c9",
+      "size": 2030
+    },
+    {
+      "path": "test/sim/moves/stockpile.js",
+      "digest": "sha256:c9f4c919dce102c35b9779a4a284786e4641d26e2f154baf29d023b614a82229",
+      "size": 817
+    },
+    {
+      "path": "test/sim/moves/stompingtantrum.js",
+      "digest": "sha256:79cb14b120165547105f1f09859682999ed4765ca818932c9848563b1d726cfe",
+      "size": 7998
+    },
+    {
+      "path": "test/sim/moves/stoneaxe.js",
+      "digest": "sha256:0b5d2e632b92b37da29784f419778a62e67e4999db08a5052344b0215ce3080d",
+      "size": 3179
+    },
+    {
+      "path": "test/sim/moves/struggle.js",
+      "digest": "sha256:bb0a6cd803cddeff63bf21e00661dd2e6c62d38f0ddfb5c2822c35b57c8974f3",
+      "size": 505
+    },
+    {
+      "path": "test/sim/moves/substitute.js",
+      "digest": "sha256:8e22b65981168fb1dea8e84dbc45488529d82cfa37cf11f725074f336711771d",
+      "size": 9435
+    },
+    {
+      "path": "test/sim/moves/sunsteelstrike.js",
+      "digest": "sha256:7e1b0e40d02ade9dd26c191b71a59c51030a14d08229b6b21216e526b5b892c5",
+      "size": 929
+    },
+    {
+      "path": "test/sim/moves/synchronoise.js",
+      "digest": "sha256:bd78c28afff45c97792c46f546bf40307cf54b547afc4feffd34c6ce9a1a6fdf",
+      "size": 789
+    },
+    {
+      "path": "test/sim/moves/syrupbomb.js",
+      "digest": "sha256:ed7a0c7811d4332d64cebfb81d3a60c62aa209861015688101100384eb58a618",
+      "size": 1664
+    },
+    {
+      "path": "test/sim/moves/tarshot.js",
+      "digest": "sha256:cc6a5b7ff4db055b386ab3961a48107ec898f91c16c50e15d3501bdaa7de1650",
+      "size": 3266
+    },
+    {
+      "path": "test/sim/moves/taunt.js",
+      "digest": "sha256:c94c579dce0c9aec6f6bbfebae3ebdf55f028c998ad2134d1d186b0a13c6f414",
+      "size": 1503
+    },
+    {
+      "path": "test/sim/moves/teattime.js",
+      "digest": "sha256:a9ed049f4e6ecdc5ea0ad6e15c6d9e0f6e98ad10bce3bfe0940663f07e1a2183",
+      "size": 2837
+    },
+    {
+      "path": "test/sim/moves/teleport.js",
+      "digest": "sha256:2f6d1a63a02369f686a13633ec36f74bff01bcc56b98f4ae4067b9aeb2046339",
+      "size": 863
+    },
+    {
+      "path": "test/sim/moves/terablast.js",
+      "digest": "sha256:33d8fb69246d6febac65a8bad30c10f0e78bf9f11696a9bf013a6b2ca69c0b7e",
+      "size": 2606
+    },
+    {
+      "path": "test/sim/moves/terastarstorm.js",
+      "digest": "sha256:eab3e087d7b0b1f8f89a93817547b7df9151a5eebd1b0fa83995d69f5e38cbb1",
+      "size": 1924
+    },
+    {
+      "path": "test/sim/moves/thief.js",
+      "digest": "sha256:10b61a20b40195cce5acd24ee4236bc0ba0bf8fda556752fab80e20b63594228",
+      "size": 1370
+    },
+    {
+      "path": "test/sim/moves/thousandarrows.js",
+      "digest": "sha256:32dafae17e8c3efa1aa8a7484aa4ca47b98cb99e0cb5129b4ef6ff00ec4f8035",
+      "size": 5383
+    },
+    {
+      "path": "test/sim/moves/thrash.js",
+      "digest": "sha256:eee78f3f94db37437ac12c0688cd9c2c3f0aae0f06be91caa6f247c0a83404b6",
+      "size": 3746
+    },
+    {
+      "path": "test/sim/moves/thunderwave.js",
+      "digest": "sha256:fdb86116db42c91c5e9a72f55f8a813152f8eb96be9fe55e986932970b49d9a7",
+      "size": 557
+    },
+    {
+      "path": "test/sim/moves/toxic.js",
+      "digest": "sha256:0bc56e1ddf216423a288d00bec7b5a4c4ed461af0e68ca60c3928379ff141236",
+      "size": 1146
+    },
+    {
+      "path": "test/sim/moves/toxicspikes.js",
+      "digest": "sha256:26d839afc711141ea60be2d31b21b920a60987555c793e1c13dfc86c05de3265",
+      "size": 1588
+    },
+    {
+      "path": "test/sim/moves/transform.js",
+      "digest": "sha256:a7978797cf582f27f61b9e8238906167d7b3b927aaefb852f9a92d98fd75d508",
+      "size": 17004
+    },
+    {
+      "path": "test/sim/moves/trick.js",
+      "digest": "sha256:2646583881f1276bbcb7a93c2ce9292dbf840606dca63bd2e5a6e8599dedb7d9",
+      "size": 3493
+    },
+    {
+      "path": "test/sim/moves/trickroom.js",
+      "digest": "sha256:1c8159d2809315fffa907bbf36e4b7ddde54f218e93ef97455fb140a7a9e29a1",
+      "size": 4325
+    },
+    {
+      "path": "test/sim/moves/trumpcard.js",
+      "digest": "sha256:d026d646ca4b17d920fb3e639cc7c7c84f769e26ceefac812db0768ba1f0fb14",
+      "size": 1901
+    },
+    {
+      "path": "test/sim/moves/uproar.js",
+      "digest": "sha256:e54b359fb55006325c0a2e8ace70764458d98f9067c235513f1d2e788799a038",
+      "size": 1587
+    },
+    {
+      "path": "test/sim/moves/uturn.js",
+      "digest": "sha256:90ca118711a6eec7e86ce9ddeb597b7d6ac02bda892312acba272ff2f57ec218",
+      "size": 635
+    },
+    {
+      "path": "test/sim/moves/weatherball.js",
+      "digest": "sha256:fed9be09c4b72401cd4384414b361033ad2925151f285abf360de3fdab99c74e",
+      "size": 2822
+    },
+    {
+      "path": "test/sim/moves/wish.js",
+      "digest": "sha256:07997477af378e0d47b37154565fdf27290ea85a5f61b0c10374c12a5da49be1",
+      "size": 2852
+    },
+    {
+      "path": "test/sim/moves/wonderroom.js",
+      "digest": "sha256:8833b32bce932fe1590af36d8b88cceab5ea5b10249f8bbeedcd67d35722e2e9",
+      "size": 2602
+    },
+    {
+      "path": "test/sim/moves/yawn.js",
+      "digest": "sha256:fed7ee2730e795dc394c605371cf31e7976f17c1dc419b473b94524e6fa3405b",
+      "size": 1162
+    },
+    {
+      "path": "test/sim/othermetas/mixandmega.js",
+      "digest": "sha256:bb8988cadccc2a3d48ff83536968cb39e9fba41e13e6c75d777cc302e993ddfe",
+      "size": 707
+    },
+    {
+      "path": "test/sim/othermetas/partnersincrime.js",
+      "digest": "sha256:e26fadceea15b1f97b39965f79bd506b519687b3a53079c6184124dee9ed2b83",
+      "size": 3419
+    },
+    {
+      "path": "test/sim/rulesets/endlessbattleclause.js",
+      "digest": "sha256:e3975e83a9077eda43f9c5dc2b9cf63e1531c16f261e42f7f7e9644ba8c8dc00",
+      "size": 7319
+    },
+    {
+      "path": "test/sim/rulesets/inversebattle.js",
+      "digest": "sha256:aff6cd7e3b057d0c1a08b00b1b69be9bea471b3993047b2f974d2ff9c096b171",
+      "size": 4999
+    },
+    {
+      "path": "test/sim/rulesets/overflowstatmod.js",
+      "digest": "sha256:fff458eca95021dcc4902070754125b1d4bd291b870c603a008c60ab2bd4ec4f",
+      "size": 670
+    },
+    {
+      "path": "test/sim/rulesets/sleepclausemod.js",
+      "digest": "sha256:d8d4babc10f88fcfca023aa34e7c6944262383e9870db761bf801f060d22cd71",
+      "size": 1245
+    },
+    {
+      "path": "test/sim/team-validator/basic.js",
+      "digest": "sha256:6f368f5b0c598cbed0eb741b3dd79e90a5dd70756da9f2191f9039063a4087c2",
+      "size": 9297
+    },
+    {
+      "path": "test/sim/team-validator/breeding.js",
+      "digest": "sha256:cc8343bb13a1d4ebc4d246e6ee697e9d6f7986e15374dfba95ef26c8e5b5ad0d",
+      "size": 8937
+    },
+    {
+      "path": "test/sim/team-validator/custom-rules.js",
+      "digest": "sha256:5841870ead2a6e4b968f3a8cff94854674e6fd09a664415c9a72528f0d25407c",
+      "size": 12159
+    },
+    {
+      "path": "test/sim/team-validator/events.js",
+      "digest": "sha256:048e38b2c6722689bd5097a42ba8fb90bb1f83ee32105879e29c2ff6ac9774ee",
+      "size": 8077
+    },
+    {
+      "path": "test/sim/team-validator/formes.js",
+      "digest": "sha256:715edff8a30b8c51001db309f4865fdad43006ba3de1299c4818c10edb1dadd5",
+      "size": 4543
+    },
+    {
+      "path": "test/sim/team-validator/misc.js",
+      "digest": "sha256:672658d68bc42416baa1dbc38b51c4b09e353eac3e0a3902158b8a1cf3b73444",
+      "size": 10523
+    },
+    {
+      "path": "test/sim/tools/exhaustive-runner.js",
+      "digest": "sha256:46f763b7b11a6039073e64b1deeded8f28b3c7fe5d2ecba4d06fe6b6d388a637",
+      "size": 451
+    },
+    {
+      "path": "test/sim/tools/multi-random-runner.js",
+      "digest": "sha256:edd331de13e90fb0dcc0699cc80ef0bdc1059a2154e44c428b22f19fe8cd9c85",
+      "size": 392
+    },
+    {
+      "path": "test/tools/modlog/converter.js",
+      "digest": "sha256:83db5a232126095d0a7eec7db40c7085a636301bb78c61890f9c5176be5deda0",
+      "size": 59539
+    },
+    {
+      "path": "test/users-utils.js",
+      "digest": "sha256:2e23cb95220997a22f6cdd38adb5756c50e10eba17b8cf4c513ee1f546912015",
+      "size": 4664
+    },
+    {
+      "path": "tools/build-utils.js",
+      "digest": "sha256:99afb7bf037e0995c4ad364fdb00c33f2a29faa5c871f92bb9e9c7e22df9bbea",
+      "size": 1986
+    },
+    {
+      "path": "tools/debug/replay-inputlog.js",
+      "digest": "sha256:6bf18bad8f0948b7076906682bad08a815197977fc45f87861740558ccdf309e",
+      "size": 1560
+    },
+    {
+      "path": "tools/modlog/convert",
+      "digest": "sha256:b35a19526189cf2fa28e4c8aaa579d28ed9aeb1e8705cf74f83a481acbaefe4f",
+      "size": 1869
+    },
+    {
+      "path": "tools/modlog/converter.ts",
+      "digest": "sha256:2bddafd3e726872e73c1f7ddf0a7f8a5a76436b6b2993d42fe9cf962b0f0b4d8",
+      "size": 28974
+    },
+    {
+      "path": "tools/set-import/importer.ts",
+      "digest": "sha256:c3d98d945213448406577c22047e154b8436873a86463193fbb6e09ce71b77c5",
+      "size": 22051
+    },
+    {
+      "path": "tools/set-import/index.js",
+      "digest": "sha256:e4e5f8d576b8862289e6480a02dd54a1a2e198ae2394c4a25618d5b0e65098d1",
+      "size": 4650
+    },
+    {
+      "path": "tools/set-import/sets/LICENSE",
+      "digest": "sha256:603ee7f8d573467b9a84f6bd57a8621f2c3517e305639e42fd7de96d5f800366",
+      "size": 663
+    },
+    {
+      "path": "tools/set-import/sets/README.md",
+      "digest": "sha256:65a058d1e63ddef4c0ddea73bc99a19415e064c1ce88dcc47c8d7b441311d73d",
+      "size": 879
+    },
+    {
+      "path": "tools/set-import/sets/index.d.ts",
+      "digest": "sha256:3d8029e0a59b0a999be03236cdc2f0bc67ea5ca1d7de69356fc1d4357bea6176",
+      "size": 1059
+    },
+    {
+      "path": "tools/set-import/stats",
+      "digest": "sha256:384359a4ec4b1873fd05751c4c32abd68dfe533744780386be0898c400150a74",
+      "size": 1890
+    },
+    {
+      "path": "tools/simulate/README.md",
+      "digest": "sha256:1d571a46ed9b5f8ec95fd5e9da6d8c5a26c8aad77431cfad6295e53ee5d11bcc",
+      "size": 3546
+    },
+    {
+      "path": "tools/simulate/index.js",
+      "digest": "sha256:a9c7a6a9a35d03f9909ae1b708c194756e0f23c6a70054c203dff9583994115f",
+      "size": 4875
+    },
+    {
+      "path": "tools/team-generation-benchmark.js",
+      "digest": "sha256:99f0d42bb21223a400f715e70d7d990aed1d493c63f579428a264758856f471e",
+      "size": 705
+    },
+    {
+      "path": "translations/README.md",
+      "digest": "sha256:07d56fdeeb5909a290e36770d2b8458d7d6cc2ed2b380777ec18af1750358440",
+      "size": 413
+    },
+    {
+      "path": "translations/dutch/helptickets.ts",
+      "digest": "sha256:3d07a0b5071a9ba727cf6cc9487f3fdae1b5c0eb6423afb26651700865045968",
+      "size": 22021
+    },
+    {
+      "path": "translations/dutch/main.ts",
+      "digest": "sha256:e5850c1051154446ce17123f3ff89f9d7cd857abce9539e1b60cd5dd88f2df23",
+      "size": 21972
+    },
+    {
+      "path": "translations/dutch/minor-activities.ts",
+      "digest": "sha256:ad83b0ef089610629a7a335e6cfca164ff9d79681b84dec1c1aacb53b7695fca",
+      "size": 4510
+    },
+    {
+      "path": "translations/english/core-commands.ts",
+      "digest": "sha256:a894d4f46a3ce54f5d16e7bda8b19738c642d4733972a472cf41e1ad12e575ba",
+      "size": 7087
+    },
+    {
+      "path": "translations/english/helptickets.ts",
+      "digest": "sha256:1576382e09e4b2b8319cda775a1b67590a64515898651c65f8872c360056f6c3",
+      "size": 11111
+    },
+    {
+      "path": "translations/english/main.ts",
+      "digest": "sha256:fb307f40298ee091630b8df022f6ee7dddba52a9492212ef5f3478990bb29012",
+      "size": 11143
+    },
+    {
+      "path": "translations/english/minor-activities.ts",
+      "digest": "sha256:97a56741b625e44b8a903e531a94202a18f1c9e14788c834a3b162ecf4fcd2bf",
+      "size": 2428
+    },
+    {
+      "path": "translations/english/repeats.ts",
+      "digest": "sha256:930b6b610151bdda206b1538c5cd04d655ff2d755e1d5c794e7a7fd386ade8ef",
+      "size": 1477
+    },
+    {
+      "path": "translations/english/trivia.ts",
+      "digest": "sha256:062bdd216ad2da36549ef9a146898a0c14443c6153a7462caeac2695087e5677",
+      "size": 10634
+    },
+    {
+      "path": "translations/french/core-commands.ts",
+      "digest": "sha256:2d0d3f8de20c87f3d1834839855efba020d8510c15386a57fc4bab920abb54bd",
+      "size": 13894
+    },
+    {
+      "path": "translations/french/helptickets.ts",
+      "digest": "sha256:7801c70c5f4a8974677dd6baf710a5b8a79bb5cf41527697ed7313f230196bb1",
+      "size": 22134
+    },
+    {
+      "path": "translations/french/main.ts",
+      "digest": "sha256:9c03be847fe95386b9730b81f6b720a434ea85b6c6242500663854fb633c8d1d",
+      "size": 21736
+    },
+    {
+      "path": "translations/french/minor-activities.ts",
+      "digest": "sha256:a863e0ba968f8f8fa8275a13d46d0b884df349a88616ae593da434ad30b49b1f",
+      "size": 4724
+    },
+    {
+      "path": "translations/german/core-commands.ts",
+      "digest": "sha256:5d5b814f4076840e2f217d57ea740efd8757dad3a19bc13797960d060fa9df9d",
+      "size": 14456
+    },
+    {
+      "path": "translations/german/helptickets.ts",
+      "digest": "sha256:5d21f34f41967a8cbd137648050427a22c4f93c5c82866e926091596a55bd2e8",
+      "size": 23548
+    },
+    {
+      "path": "translations/german/main.ts",
+      "digest": "sha256:88c7c8d46a96bd3eff5e6e6863bb75b6eb76017a64a170b0b4c9ece3a8837b49",
+      "size": 23392
+    },
+    {
+      "path": "translations/german/minor-activities.ts",
+      "digest": "sha256:d83f731f22ce6ba2e6179d9799ca951dd46e514714fb5ba88d9c2c9373238c07",
+      "size": 4863
+    },
+    {
+      "path": "translations/german/repeats.ts",
+      "digest": "sha256:bacb4c8543bc2f45e28b9585855e364823e602ec2b7e008ab693267fb990e9b5",
+      "size": 2772
+    },
+    {
+      "path": "translations/hindi/main.ts",
+      "digest": "sha256:94b77be182ef4d5173b85eae9aa3caea4fc1b8492c64dcff6b712053e70d638e",
+      "size": 24759
+    },
+    {
+      "path": "translations/italian/core-commands.ts",
+      "digest": "sha256:01a791b9686bc5ef548b02757dd24591a5f8ab02e4dfe1e18e50c446ac9e84a8",
+      "size": 13723
+    },
+    {
+      "path": "translations/italian/helptickets.ts",
+      "digest": "sha256:61d35f859073940defb9bfa7bd165fb4dfbec67476113c5a86120c5ef099c5f3",
+      "size": 21947
+    },
+    {
+      "path": "translations/italian/main.ts",
+      "digest": "sha256:f183b5c2fc74723fd94768d2d4b81569dccc7b7e5af9b31b384bcda3fe2e4f23",
+      "size": 22262
+    },
+    {
+      "path": "translations/italian/minor-activities.ts",
+      "digest": "sha256:afdf2ddeba8914e94d5f6fe8ef14a1ec2cae28b96f6ea4a42a0452c02faedb72",
+      "size": 4417
+    },
+    {
+      "path": "translations/italian/repeats.ts",
+      "digest": "sha256:6d0e1403b2329f7c41cd81c0d05ce5daaa8051eff55143dd8675b0ff76f3c163",
+      "size": 2602
+    },
+    {
+      "path": "translations/japanese/core-commands.ts",
+      "digest": "sha256:83383e2c04afd430d0acce228a4dad19310b7df1d506e2f180109c59abcc7718",
+      "size": 16432
+    },
+    {
+      "path": "translations/japanese/helptickets.ts",
+      "digest": "sha256:6737d9c7685a677d26e8c38b1780a086a48e3863ea2ddc57e2a2be2ba2b61c4c",
+      "size": 24389
+    },
+    {
+      "path": "translations/japanese/main.ts",
+      "digest": "sha256:7dc0430e09e84cfee8b2eac42cffd72f8273e442e202d336925dcf1a9702f9fd",
+      "size": 25782
+    },
+    {
+      "path": "translations/japanese/minor-activities.ts",
+      "digest": "sha256:ef80f5b0997be78350dbb2004cd241bf53c1fcde176543f46f058c6c87d5ed9c",
+      "size": 5097
+    },
+    {
+      "path": "translations/japanese/repeats.ts",
+      "digest": "sha256:7ada9d17831afbcfe8868befc7759d95cfa2c77cb8377e0c6abea4484e55888d",
+      "size": 2875
+    },
+    {
+      "path": "translations/portuguese/core-commands.ts",
+      "digest": "sha256:fc7decbfce72562fe15c304b77a1c2d5fc14ddc785b600537dbf2e3bdb8bf23a",
+      "size": 13773
+    },
+    {
+      "path": "translations/portuguese/helptickets.ts",
+      "digest": "sha256:3e5aeddf818486e2208798a7b3b3f7947e752f1a8b15fbedd4805aad1622b4e4",
+      "size": 22026
+    },
+    {
+      "path": "translations/portuguese/main.ts",
+      "digest": "sha256:c08d8b53f1017d84f0c29537f798014f96355546680823de2c68bb646a08396a",
+      "size": 22537
+    },
+    {
+      "path": "translations/portuguese/minor-activities.ts",
+      "digest": "sha256:f265ead917d53274557458702b6f9d23e2093d83dd17c7d6de06984fb2cb1dd5",
+      "size": 4484
+    },
+    {
+      "path": "translations/portuguese/repeats.ts",
+      "digest": "sha256:f9fa46f10297a5990ca3b82eaa4945042308e72cbc997a02790db6699160bc92",
+      "size": 2673
+    },
+    {
+      "path": "translations/simplifiedchinese/helptickets.ts",
+      "digest": "sha256:0783baea0c9d6eaab62ea0ee7beadbf63f8e68a8dbc57bf0724bf75f7b1be720",
+      "size": 18590
+    },
+    {
+      "path": "translations/simplifiedchinese/main.ts",
+      "digest": "sha256:0b8d2d3e6a9b5dea3416204602e4dfa42f115a18f9390c5728825ecea11b1522",
+      "size": 19132
+    },
+    {
+      "path": "translations/simplifiedchinese/minor-activities.ts",
+      "digest": "sha256:2bbc22aa273dc6ef4adbdb13b70543ce3189d109f61e0fa778899e81a89156dc",
+      "size": 4173
+    },
+    {
+      "path": "translations/spanish/core-commands.ts",
+      "digest": "sha256:6197aaac37d08c1aca11ad8acde76a413a69d80b7ca348f886084cba7c980339",
+      "size": 13615
+    },
+    {
+      "path": "translations/spanish/helptickets.ts",
+      "digest": "sha256:b8bc3ccd7da72d9f0f2e9875316b72a0d7b06ab471e3922bb1c0192db86772b2",
+      "size": 20509
+    },
+    {
+      "path": "translations/spanish/main.ts",
+      "digest": "sha256:97ca40065674ef1bde0fd14dc48b65639984567ee9d5654bdd138ae98cd506e0",
+      "size": 21038
+    },
+    {
+      "path": "translations/spanish/minor-activities.ts",
+      "digest": "sha256:02b9b1c1c89292176269cdcf630897cf2b24c2701dc71347fafbb1083e0bd59d",
+      "size": 4559
+    },
+    {
+      "path": "translations/spanish/repeats.ts",
+      "digest": "sha256:5ae18a30fda2676116b3cf7e882bff6ba54dffd33c7ca7e266df0a6010d25b2d",
+      "size": 2708
+    },
+    {
+      "path": "translations/traditionalchinese/main.ts",
+      "digest": "sha256:7b73d67ec35f97aa640013518a611152a07e1a25a4e00b8e087b8dae0a00497b",
+      "size": 18618
+    },
+    {
+      "path": "translations/traditionalchinese/minor-activities.ts",
+      "digest": "sha256:db0e2fd5d65ba51a1088dd220aa5c919160839a69ffd95d609e06dad590f72bd",
+      "size": 3769
+    },
+    {
+      "path": "translations/turkish/main.ts",
+      "digest": "sha256:e93d7b45c46da1ab08d270ed9972546677836cec622d6176ca7af5a6f37b28d1",
+      "size": 390
+    },
+    {
+      "path": "tsconfig.json",
+      "digest": "sha256:80f4fcbd5c9fc6a27b274259eedab9d6b1ea85fb8687d2a2d6c8ace36d2d6bc8",
+      "size": 1245
+    }
+  ],
+  "source_tree_digest": "sha256:1b4a43fbd5ce2357f04554143a61012dd3fd032d529ae94ab4fa65476f3bef75",
+  "git_tree_oid": "b0404c1084b81b68d48102b6ba17b455199668db",
+  "source_file_count": 984,
+  "adapter_version": "showdown-oracle-v1",
+  "canonicalization_profile": "rfc8785-jcs-v1",
+  "schema_id": "urn:battlebelief:schema:manifest:showdown-oracle-source:v1",
+  "pid": 1
+}

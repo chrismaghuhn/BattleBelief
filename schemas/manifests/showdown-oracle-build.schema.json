@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:showdown-oracle-build:v1",
+  "title": "BattleBelief local Showdown oracle build manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "probe_role": {"const": "candidate"},
+            "node_version": {"const": "22.23.2"},
+            "npm_version": {"const": "10.9.8"}
+          },
+          "required": ["probe_role", "node_version", "npm_version"]
+        },
+        {
+          "properties": {
+            "probe_role": {"const": "comparison"},
+            "node_version": {"enum": ["18.20.8", "20.20.2"]},
+            "npm_version": {"const": "10.8.2"}
+          },
+          "required": ["probe_role", "node_version", "npm_version"]
+        }
+      ]
+    }
+  ],
+  "required": ["schema_version", "manifest_id", "source_manifest_digest", "commit", "node_version", "npm_version", "probe_role", "os", "architecture", "npm_ci_argv", "npm_build_argv", "simulator_argv", "npm_config", "dependency_tree_digest", "dependency_files", "dependency_files_digest", "dist_files", "dist_tree_digest", "format_id", "ruleset_snapshot", "ruleset_snapshot_digest", "format_identity_digest", "adapter_version", "canonicalization_profile", "schema_id"],
+  "properties": {
+    "schema_version": {"const": 1}, "manifest_id": {"$ref": "#/$defs/id"}, "source_manifest_digest": {"$ref": "#/$defs/digest"}, "commit": {"const": "6a1836dd71c0718e923206f3d089e61074410868"},
+    "node_version": {"$ref": "#/$defs/version"}, "npm_version": {"$ref": "#/$defs/version"}, "probe_role": {"enum": ["candidate", "comparison"]}, "os": {"enum": ["linux", "windows"]}, "architecture": {"enum": ["x86_64", "arm64"]},
+    "npm_ci_argv": {"const": ["npm", "ci", "--no-audit", "--no-fund"]}, "npm_build_argv": {"const": ["npm", "run", "build"]}, "simulator_argv": {"const": ["node", "pokemon-showdown", "--skip-build", "simulate-battle"]},
+    "npm_config": {"type": "object", "minProperties": 1, "additionalProperties": false, "properties": {"audit": {"enum": ["true", "false"]}, "fund": {"enum": ["true", "false"]}, "ignore-scripts": {"enum": ["true", "false"]}, "package-lock": {"enum": ["true", "false"]}, "update-notifier": {"enum": ["true", "false"]}}},
+    "dependency_tree_digest": {"$ref": "#/$defs/digest"}, "dependency_files": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dependencyFileRecord"}}, "dependency_files_digest": {"$ref": "#/$defs/digest"}, "dist_files": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fileRecord"}}, "dist_tree_digest": {"$ref": "#/$defs/digest"},
+    "format_id": {"const": "gen9ou"}, "ruleset_snapshot": {"$ref": "#/$defs/rulesetSnapshot"}, "ruleset_snapshot_digest": {"$ref": "#/$defs/digest"}, "format_identity_digest": {"$ref": "#/$defs/digest"}, "adapter_version": {"const": "showdown-oracle-v1"}, "canonicalization_profile": {"const": "rfc8785-jcs-v1"}, "schema_id": {"const": "urn:battlebelief:schema:manifest:showdown-oracle-build:v1"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"},
+    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._@+~=-]+(?:/[A-Za-z0-9._@+~=-]+)*$"},
+    "fileRecord": {"type": "object", "additionalProperties": false, "required": ["path", "digest", "size"], "properties": {"path": {"$ref": "#/$defs/path"}, "digest": {"$ref": "#/$defs/digest"}, "size": {"type": "integer", "minimum": 0}}},
+    "dependencyPath": {"type": "string", "pattern": "^node_modules/[A-Za-z0-9._@+~=-]+(?:/[A-Za-z0-9._@+~=-]+)*$"},
+    "dependencyLinkTarget": {"type": "string", "pattern": "^(?!/)(?!.*\\\\)(?![A-Za-z]:)(?!.*(?:^|/)\\.(?:/|$))(?!.*//)[A-Za-z0-9._@+~=-]+(?:/[A-Za-z0-9._@+~=-]+)*$"},
+    "dependencyFileRecord": {"oneOf": [{"type": "object", "additionalProperties": false, "required": ["kind", "path", "digest", "size"], "properties": {"kind": {"const": "file"}, "path": {"$ref": "#/$defs/dependencyPath"}, "digest": {"$ref": "#/$defs/digest"}, "size": {"type": "integer", "minimum": 0}}}, {"type": "object", "additionalProperties": false, "required": ["kind", "path", "target"], "properties": {"kind": {"const": "symlink"}, "path": {"$ref": "#/$defs/dependencyPath"}, "target": {"$ref": "#/$defs/dependencyLinkTarget"}}}]},
+    "stringList": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "keyValue": {"type": "object", "additionalProperties": false, "required": ["key", "value"], "properties": {"key": {"type": "string", "minLength": 1}, "value": {"type": "string"}}},
+    "complexBan": {"type": "object", "additionalProperties": false, "required": ["limit", "rules", "source"], "properties": {"limit": {"type": "integer", "minimum": 1}, "rules": {"$ref": "#/$defs/stringList"}, "source": {"type": "string", "minLength": 1}}},
+    "tagRule": {"type": "object", "additionalProperties": false, "required": ["prefix", "tag"], "properties": {"prefix": {"type": "string", "minLength": 1}, "tag": {"type": "string", "minLength": 1}}},
+    "formatIdentity": {"type": "object", "additionalProperties": false, "required": ["id", "name", "mod", "game_type", "gen", "rated", "ruleset", "base_ruleset", "banlist", "restricted", "unbanlist"], "properties": {"id": {"const": "gen9ou"}, "name": {"type": "string", "minLength": 1}, "mod": {"const": "gen9"}, "game_type": {"const": "singles"}, "gen": {"const": 9}, "rated": {"type": "boolean"}, "ruleset": {"$ref": "#/$defs/stringList"}, "base_ruleset": {"$ref": "#/$defs/stringList"}, "banlist": {"$ref": "#/$defs/stringList"}, "restricted": {"$ref": "#/$defs/stringList"}, "unbanlist": {"$ref": "#/$defs/stringList"}}},
+    "rulesetSnapshot": {"type": "object", "additionalProperties": false, "required": ["schema_version", "extractor_id", "extractor_digest", "format", "resolved_rule_table"], "properties": {"schema_version": {"const": 1}, "extractor_id": {"const": "battlebelief-showdown-ruleset-extractor-v1"}, "extractor_digest": {"const": "sha256:82ae637f73a81aa9bafeab27fc0bc057d1fc281660985898a9c0006159e56f58"}, "format": {"$ref": "#/$defs/formatIdentity"}, "resolved_rule_table": {"type": "object", "additionalProperties": false, "required": ["entries", "value_rules", "complex_bans", "complex_team_bans", "tag_rules", "team_constraints"], "properties": {"entries": {"type": "array", "items": {"$ref": "#/$defs/keyValue"}, "uniqueItems": true}, "value_rules": {"type": "array", "items": {"$ref": "#/$defs/keyValue"}, "uniqueItems": true}, "complex_bans": {"type": "array", "items": {"$ref": "#/$defs/complexBan"}, "uniqueItems": true}, "complex_team_bans": {"type": "array", "items": {"$ref": "#/$defs/complexBan"}, "uniqueItems": true}, "tag_rules": {"type": "array", "items": {"$ref": "#/$defs/tagRule"}, "uniqueItems": true}, "team_constraints": {"type": "object", "additionalProperties": false, "required": ["ev_limit", "max_level", "max_move_count", "max_team_size", "min_level", "min_source_gen", "min_team_size"], "properties": {"ev_limit": {"type": "integer", "minimum": 0}, "max_level": {"type": "integer", "minimum": 0}, "max_move_count": {"type": "integer", "minimum": 0}, "max_team_size": {"type": "integer", "minimum": 0}, "min_level": {"type": "integer", "minimum": 0}, "min_source_gen": {"type": "integer", "minimum": 0}, "min_team_size": {"type": "integer", "minimum": 0}}}}}}}
+  }
+}

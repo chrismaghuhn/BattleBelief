@@ -202,6 +202,36 @@ def main() -> int:
             [
                 str(environment_python(lab_env)),
                 "-c",
+                "import hashlib; "
+                "from battlebelief_lab.oracle.showdown.installation import "
+                "RULESET_EXTRACTOR_DIGEST, ruleset_extractor_bytes; "
+                "assert 'sha256:' + hashlib.sha256(ruleset_extractor_bytes()).hexdigest() "
+                "== RULESET_EXTRACTOR_DIGEST",
+            ]
+        )
+        run(
+            [
+                str(environment_python(lab_env)),
+                "-c",
+                "from battlebelief_lab.oracle.showdown import "
+                "OracleFailureClass, OracleRequestIdentity, OracleResult, "
+                "ShowdownBuildManifest, ShowdownOracleConfig, ShowdownOracleSession, "
+                "ShowdownSourceManifest; "
+                "from battlebelief_lab.oracle.showdown.network import "
+                "network_guard_bytes, network_guard_digest; "
+                "assert network_guard_digest() == "
+                "'sha256:4d373632513bc09b22536206f912a6cebd8909c34a2da7cedbfececd33bc2124'; "
+                "assert network_guard_bytes(); "
+                "assert all(value is not None for value in "
+                "(OracleFailureClass, OracleRequestIdentity, OracleResult, "
+                "ShowdownBuildManifest, ShowdownOracleConfig, ShowdownOracleSession, "
+                "ShowdownSourceManifest))",
+            ]
+        )
+        run(
+            [
+                str(environment_python(lab_env)),
+                "-c",
                 "from pathlib import Path; "
                 "from battlebelief_lab.registration_validation import "
                 "validate_repository_artifacts; "
