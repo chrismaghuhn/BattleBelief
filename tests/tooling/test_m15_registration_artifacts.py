@@ -7,8 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from battlebelief_lab.registration_validation import (
+    RegistrationValidationError,
+    _validate_implementation_provenance,
     artifact_digest,
     validate_repository_artifacts,
+    validate_synthetic_fixture_manifest,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,7 +45,9 @@ def test_task21_artifacts_exist_and_pass_the_repository_validator() -> None:
 
 def test_registration_freezes_arms_comparisons_and_digest_references() -> None:
     registration = _load(REGISTRATION)
-    assert artifact_digest(registration) == artifact_digest(dict(registration))
+    implementation = _load(IMPLEMENTATION)
+    assert registration["schema_version"] == 4
+    assert implementation["registration_digest"] == artifact_digest(registration)
     assert [arm["arm_id"] for arm in registration["arms"]] == [
         "heuristic_v0",
         "determinization_search_v0",
@@ -67,11 +72,48 @@ def test_registration_freezes_arms_comparisons_and_digest_references() -> None:
         arm for arm in registration["arms"] if arm["arm_id"] == "determinization_search_v0"
     )
     assert search_arm["execution_spec_digest"] == artifact_digest(search)
+    assert search["world_sampling"]["count"] == 16
+    assert search["budget_parameter"]["parameter_id"] == "per_world_work"
+    assert search["budget_parameter"]["ordered_work_grid"] == [64, 128, 256, 512]
+    assert (
+        search["budget_parameter"]["total_work_formula"]
+        == "world_sampling_count_times_per_world_work"
+    )
 
     calibration = _load(CALIBRATION_SPEC)
     for profile in registration["budget_profiles"].values():
         assert profile["calibration_spec_digest"] == artifact_digest(calibration)
-        assert profile["selected_work_value"] is None
+        assert profile["calibrated_parameter"] == "per_world_work"
+        assert profile["ordered_work_grid"] == [64, 128, 256, 512]
+        assert profile["total_work_formula"] == ("world_sampling_count_times_per_world_work")
+
+    assert registration["metric_references"] == [
+        {
+            "document_id": "evaluation-metrics",
+            "document_version": 4,
+            "document_digest": registration["metric_references"][0]["document_digest"],
+            "metric_id": "battle_outcome_weighted_v1",
+            "role": "primary",
+        },
+        {
+            "document_id": "evaluation-metrics",
+            "document_version": 4,
+            "document_digest": registration["metric_references"][1]["document_digest"],
+            "metric_id": "end_to_end_latency_ms_v1",
+            "role": "diagnostic",
+        },
+    ]
+    for comparison, gate in zip(
+        registration["comparisons"], registration["decision_gates"], strict=True
+    ):
+        assert comparison["primary_metric_id"] == "battle_outcome_weighted_v1"
+        assert comparison["direction"] == "higher_is_better"
+        assert comparison["minimum_effect"] == 0.05
+        assert comparison["confidence_level"] == 0.95
+        assert comparison["confidence_sidedness"] == "one_sided"
+        assert comparison["tie_break_metric_id"] == "end_to_end_latency_ms_v1"
+        assert gate["comparison_id"] == comparison["comparison_id"]
+        assert gate["go_rule_id"] == "lower_confidence_bound_at_least_minimum_effect_v1"
 
 
 def test_only_heuristic_is_implementation_bound() -> None:
@@ -96,3 +138,51 @@ def test_synthetic_run_binding_uses_fixture_provenance_without_opening_pools() -
     assert run_binding["implementation_binding_digest"] == artifact_digest(implementation)
     assert run_binding["synthetic_fixture_manifest_digest"] == artifact_digest(fixture_manifest)
     assert run_binding["calibration_evidence_digest"] is None
+    assert run_binding["schema_version"] == 3
+    assert fixture_manifest["schema_version"] == 3
+    assert fixture_manifest["schedule_rows"][0]["row_id"].startswith("sha256:")
+    assert "schedule_block" in fixture_manifest["schedule_rows"][0]
+    assert "seed_family" in fixture_manifest["schedule_rows"][0]
+    assert fixture_manifest["schedule_rows"][0]["seed_family"]["derivation_id"] == (
+        "sha256-canonical-fields-v1"
+    )
+    assert fixture_manifest["budget_profile"]["profile_id"]
+    assert fixture_manifest["budget_profile"]["deployment"]["wall_time_budget_ms"] == 2000
+
+
+def test_synthetic_fixture_rejects_noncanonical_schedule_identity() -> None:
+    fixture = _load(FIXTURES)
+    fixture["schedule_rows"][0]["row_id"] = "sha256:" + "0" * 64
+
+    try:
+        validate_synthetic_fixture_manifest(fixture, ROOT)
+    except ValueError as error:
+        assert "schedule row" in str(error)
+    else:
+        raise AssertionError("noncanonical schedule row was accepted")
+
+
+def test_heuristic_binding_declares_recomputable_source_manifests() -> None:
+    implementation = _load(IMPLEMENTATION)
+    assert implementation["schema_version"] == 3
+    assert implementation["source_manifest"]
+    assert implementation["contract_set"]
+    assert implementation["package_or_wheel_source_manifest"]
+
+
+def test_heuristic_binding_rejects_a_tampered_policy_digest() -> None:
+    implementation = _load(IMPLEMENTATION)
+    implementation["components"]["policy"]["digest"] = "sha256:" + "0" * 64
+
+    try:
+        _validate_implementation_provenance(implementation, ROOT)
+    except RegistrationValidationError as error:
+        assert "policy digest" in str(error)
+    else:
+        raise AssertionError("tampered policy provenance was accepted")
+
+
+def test_ruleset_fixture_is_versioned_not_a_placeholder_digest() -> None:
+    ruleset = _load(ROOT / "tests/fixtures/rulesets/gen9ou.json")
+    assert ruleset["ruleset_digest"] != "sha256:" + "7" * 64
+    assert ruleset["ruleset_id"] == "synthetic-gen9ou-ruleset-v1"

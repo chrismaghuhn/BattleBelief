@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:budget-calibration-spec:v3",
+  "title": "Budget calibration specification v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "spec_id", "budget_mode", "calibrated_parameter", "world_sampling_count", "total_work_formula", "reference_environment_specification", "calibration_state_rule_id", "ordered_work_grid", "selection_rule_id", "measurement_profile_id", "selection_measurement_id", "required_measurement_ids", "runtime_limit_ms", "allowed_runtime_measurements", "forbidden_quality_measurements"],
+  "properties": {"schema_version": {"const": 3}, "spec_id": {"type": "string", "minLength": 1}, "budget_mode": {"const": "calibrated_grid"}, "calibrated_parameter": {"const": "per_world_work"}, "world_sampling_count": {"const": 16}, "total_work_formula": {"const": "world_sampling_count_times_per_world_work"}, "reference_environment_specification": {"type": "object", "minProperties": 1}, "calibration_state_rule_id": {"const": "m15-synthetic-calibration-state-v1"}, "ordered_work_grid": {"const": [64, 128, 256, 512]}, "selection_rule_id": {"const": "largest-value-under-runtime-limit-v1"}, "measurement_profile_id": {"type": "string", "minLength": 1}, "selection_measurement_id": {"type": "string", "minLength": 1}, "required_measurement_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "runtime_limit_ms": {"const": 2000}, "allowed_runtime_measurements": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}, "forbidden_quality_measurements": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}}
+}

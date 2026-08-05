@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 10
+version: 11
 applies_to:
   - manifests
   - release
@@ -33,13 +33,13 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Evaluation-Claim | [`evaluation-claim.schema.json`](../../schemas/manifests/evaluation-claim.schema.json) |
 | Ruleset-Snapshot | [`ruleset-snapshot.schema.json`](../../schemas/manifests/ruleset-snapshot.schema.json) |
 | Dataset-Provenance | [`dataset-manifest.schema.json`](../../schemas/manifests/dataset-manifest.schema.json) |
-| Experiment-Registrierung | [`experiment-registration.schema.json`](../../schemas/manifests/experiment-registration.schema.json) |
-| Arm-Implementierungsbindung | [`evaluation-arm-binding.schema.json`](../../schemas/manifests/evaluation-arm-binding.schema.json) |
-| Evaluationslauf-Bindung | [`evaluation-run-binding.schema.json`](../../schemas/manifests/evaluation-run-binding.schema.json) |
-| Budget-Kalibrierungsspezifikation | [`budget-calibration-spec.schema.json`](../../schemas/manifests/budget-calibration-spec.schema.json) |
+| Experiment-Registrierung v3/v4 | [`experiment-registration.schema.json`](../../schemas/manifests/experiment-registration.schema.json), [`experiment-registration-v4.schema.json`](../../schemas/manifests/experiment-registration-v4.schema.json) |
+| Arm-Implementierungsbindung v2/v3 | [`evaluation-arm-binding.schema.json`](../../schemas/manifests/evaluation-arm-binding.schema.json), [`evaluation-arm-binding-v3.schema.json`](../../schemas/manifests/evaluation-arm-binding-v3.schema.json) |
+| Evaluationslauf-Bindung v2/v3 | [`evaluation-run-binding.schema.json`](../../schemas/manifests/evaluation-run-binding.schema.json), [`evaluation-run-binding-v3.schema.json`](../../schemas/manifests/evaluation-run-binding-v3.schema.json) |
+| Budget-Kalibrierungsspezifikation v2/v3 | [`budget-calibration-spec.schema.json`](../../schemas/manifests/budget-calibration-spec.schema.json), [`budget-calibration-spec-v3.schema.json`](../../schemas/manifests/budget-calibration-spec-v3.schema.json) |
 | Budget-Kalibrierungsevidenz | [`budget-calibration-evidence.schema.json`](../../schemas/manifests/budget-calibration-evidence.schema.json) |
-| Deklarative Search-Ausführungsspezifikation | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json) |
-| Synthetisches Fixture-Manifest | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json) |
+| Deklarative Search-Ausführungsspezifikation v2/v3 | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json), [`search-execution-spec-v3.schema.json`](../../schemas/manifests/search-execution-spec-v3.schema.json) |
+| Synthetisches Fixture-Manifest v2/v3 | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json), [`synthetic-fixture-manifest-v3.schema.json`](../../schemas/manifests/synthetic-fixture-manifest-v3.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
 | Decision-Record-Payload v2 | [`decision-record-payload-v2.schema.json`](../../schemas/records/decision-record-payload-v2.schema.json) |
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |

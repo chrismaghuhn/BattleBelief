@@ -1,19 +1,22 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "spec_id": "m15-search-work-calibration-v1",
   "budget_mode": "calibrated_grid",
+  "calibrated_parameter": "per_world_work",
+  "world_sampling_count": 16,
+  "total_work_formula": "world_sampling_count_times_per_world_work",
   "reference_environment_specification": {
     "python": "3.14",
     "platform": "ubuntu-24.04",
     "runtime_profile": "offline_m15_calibration"
   },
-  "calibration_state_construction_rule": "Use the versioned synthetic calibration-state construction for the applicable Search implementation; do not inspect action quality or battle outcomes.",
+  "calibration_state_rule_id": "m15-synthetic-calibration-state-v1",
   "ordered_work_grid": [64, 128, 256, 512],
   "selection_rule_id": "largest-value-under-runtime-limit-v1",
   "measurement_profile_id": "m15-runtime-only-v1",
   "selection_measurement_id": "wall_time_ms",
   "required_measurement_ids": ["wall_time_ms", "cpu_time_ms"],
-  "runtime_limit_ms": 2000.0,
+  "runtime_limit_ms": 2000,
   "allowed_runtime_measurements": ["wall_time_ms", "cpu_time_ms", "peak_memory_bytes"],
   "forbidden_quality_measurements": [
     "decision_regret_teacher_v1",

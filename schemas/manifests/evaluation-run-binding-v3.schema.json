@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:evaluation-run-binding:v3",
+  "title": "BattleBelief evaluation run binding v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding_id", "binding_kind", "artifact_version", "supersedes_digest", "run_purpose", "registration_id", "registration_digest", "implementation_binding_digest", "schedule_digest", "seed_family_digest", "budget_profile_digest", "runtime_environment_digest", "ruleset_digest", "synthetic_fixture_manifest_digest"],
+  "properties": {
+    "schema_version": {"const": 3}, "binding_id": {"type": "string", "minLength": 1}, "binding_kind": {"const": "run"}, "artifact_version": {"type": "integer", "minimum": 1}, "supersedes_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "run_purpose": {"const": "synthetic_acceptance"}, "registration_id": {"type": "string", "minLength": 1}, "registration_digest": {"$ref": "#/$defs/digest"}, "implementation_binding_digest": {"$ref": "#/$defs/digest"}, "schedule_digest": {"$ref": "#/$defs/digest"}, "seed_family_digest": {"$ref": "#/$defs/digest"}, "budget_profile_digest": {"$ref": "#/$defs/digest"}, "runtime_environment_digest": {"$ref": "#/$defs/digest"}, "ruleset_digest": {"$ref": "#/$defs/digest"}, "calibration_evidence_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}, "synthetic_fixture_manifest_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}

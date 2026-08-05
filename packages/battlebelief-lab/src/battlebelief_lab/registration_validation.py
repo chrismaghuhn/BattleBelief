@@ -15,9 +15,12 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
 from battlebelief_core.canonicalization import manifest_digest
+from battlebelief_lab.evaluation.budget_profiles import BudgetMode, BudgetProfile, BudgetView
 from battlebelief_lab.evaluation.measurement_runner import (
     validate_measurement_run_result_document,
 )
+from battlebelief_lab.evaluation.schedule import Schedule, ScheduleRow, SideAssignment
+from battlebelief_lab.evaluation.seed_families import SeedFamily
 
 
 class RegistrationValidationError(ValueError):
@@ -34,6 +37,8 @@ _REQUIRED_CONTRACT_REFERENCES = frozenset(
         "evaluation-pool-separation",
     }
 )
+_TASK21_SOURCE_COMMIT = "ebbc648fc62908a0227e8d90ab03b3692f583aca"
+_MAX_SAFE_INTEGER = 9_007_199_254_740_991
 
 
 def schema_issue_summary(issue: Any) -> str:
@@ -120,6 +125,17 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
         raise RegistrationValidationError(
             f"unknown selection_rule_id: {spec.get('selection_rule_id')}"
         )
+    if spec.get("schema_version") == 3:
+        if spec.get("calibrated_parameter") != "per_world_work":
+            raise RegistrationValidationError("calibration parameter must be per_world_work")
+        if spec.get("world_sampling_count") != 16:
+            raise RegistrationValidationError("calibration world count must be 16")
+        if spec.get("total_work_formula") != "world_sampling_count_times_per_world_work":
+            raise RegistrationValidationError("calibration total-work formula is invalid")
+        if spec.get("calibration_state_rule_id") != "m15-synthetic-calibration-state-v1":
+            raise RegistrationValidationError("unknown calibration state construction rule")
+        if spec.get("runtime_limit_ms") != 2000:
+            raise RegistrationValidationError("M1.5 calibration runtime limit must be 2000 ms")
     grid = spec.get("ordered_work_grid")
     if not isinstance(grid, list) or any(
         not isinstance(value, int) or isinstance(value, bool) for value in grid
@@ -426,9 +442,27 @@ def validate_registration_semantics(
                 raise RegistrationValidationError(
                     f"comparison {comparison_id} references invalid technical outcome treatment"
                 )
-            for field in ("tie_break_rule_id",):
+            rule_fields = () if registration.get("schema_version") == 4 else ("tie_break_rule_id",)
+            for field in rule_fields:
                 if comparison.get(field) not in rule_registry.get(field, set()):
                     raise RegistrationValidationError(f"unknown {field}: {comparison.get(field)}")
+            if registration.get("schema_version") == 4 and (
+                comparison.get("tie_break_metric_id") != "end_to_end_latency_ms_v1"
+                or comparison.get("tie_break_direction") != "lower_is_better"
+            ):
+                raise RegistrationValidationError(
+                    f"comparison {comparison_id} has an invalid tie-break metric"
+                )
+            if registration.get("schema_version") == 4:
+                tie_break_id = comparison.get("tie_break_metric_id")
+                if tie_break_id not in metric_ids or tie_break_id not in metric_roles:
+                    raise RegistrationValidationError(
+                        f"comparison {comparison_id} tie-break metric is not registered"
+                    )
+                if metric_directions.get(tie_break_id) != "lower_is_better":
+                    raise RegistrationValidationError(
+                        f"comparison {comparison_id} tie-break direction is invalid"
+                    )
 
     budget_profiles = registration.get("budget_profiles")
     if isinstance(budget_profiles, Mapping):
@@ -437,7 +471,32 @@ def validate_registration_semantics(
                 raise RegistrationValidationError(
                     f"budget profile {profile_name} must be an object"
                 )
-            mode = profile.get("budget_mode")
+            mode = profile.get("budget_mode", profile.get("mode"))
+            if registration.get("schema_version") == 4:
+                if profile.get("calibrated_parameter") != "per_world_work":
+                    raise RegistrationValidationError(
+                        f"budget profile {profile_name} must calibrate per_world_work"
+                    )
+                if profile.get("ordered_work_grid") != [64, 128, 256, 512]:
+                    raise RegistrationValidationError(
+                        f"budget profile {profile_name} has an invalid work grid"
+                    )
+                if profile.get("total_work_formula") != (
+                    "world_sampling_count_times_per_world_work"
+                ):
+                    raise RegistrationValidationError(
+                        f"budget profile {profile_name} has an invalid total-work formula"
+                    )
+                deployment = profile.get("deployment")
+                if (
+                    not isinstance(deployment, Mapping)
+                    or deployment.get("wall_time_budget_ms") != 2000
+                    or deployment.get("cpu_time_budget_ms") != 2000
+                ):
+                    raise RegistrationValidationError(
+                        f"budget profile {profile_name} must bind 2000 ms deployment limits"
+                    )
+                continue
             selected = profile.get("selected_work_value")
             calibration = profile.get("calibration_spec_digest")
             benchmark = profile.get("benchmark_spec_digest")
@@ -471,9 +530,45 @@ def validate_registration_semantics(
                     raise RegistrationValidationError(f"unknown {field}: {pool_rules.get(field)}")
         for gate in registration.get("decision_gates", []):
             if isinstance(gate, Mapping):
-                for field in ("stop_rule_id", "pivot_rule_id"):
+                gate_rule_fields = ["stop_rule_id", "pivot_rule_id"]
+                if registration.get("schema_version") == 4:
+                    gate_rule_fields.append("go_rule_id")
+                for field in gate_rule_fields:
                     if gate.get(field) not in rule_registry.get(field, set()):
                         raise RegistrationValidationError(f"unknown {field}: {gate.get(field)}")
+        if registration.get("schema_version") == 4:
+            comparisons_by_id = {
+                comparison.get("comparison_id"): comparison
+                for comparison in registration.get("comparisons", [])
+                if isinstance(comparison, Mapping)
+            }
+            gates = registration.get("decision_gates")
+            if not isinstance(gates, list) or set(comparisons_by_id) != {
+                gate.get("comparison_id") for gate in gates if isinstance(gate, Mapping)
+            }:
+                raise RegistrationValidationError(
+                    "decision gates must bind exactly one gate to each comparison"
+                )
+            for gate in gates:
+                if not isinstance(gate, Mapping):
+                    continue
+                comparison = comparisons_by_id.get(gate.get("comparison_id"))
+                if not isinstance(comparison, Mapping):
+                    continue
+                for field in (
+                    "primary_metric_id",
+                    "estimand_id",
+                    "analysis_procedure_id",
+                    "minimum_effect",
+                    "confidence_level",
+                    "confidence_sidedness",
+                    "tie_break_metric_id",
+                    "tie_break_direction",
+                ):
+                    if gate.get(field) != comparison.get(field):
+                        raise RegistrationValidationError(
+                            f"decision gate does not match comparison {comparison.get('comparison_id')}"
+                        )
 
 
 _SCHEMA_BY_KIND = {
@@ -496,19 +591,36 @@ def _schema_for_artifact(
             "measurement_run_result",
         )
     if path.name == "registration.json" or "registration_status" in value:
+        schema_name = (
+            "experiment-registration-v4.schema.json"
+            if value.get("schema_version") == 4
+            else "experiment-registration.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/experiment-registration.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "registration",
         )
     kind = value.get("binding_kind")
     if isinstance(kind, str) and kind in _SCHEMA_BY_KIND:
+        version = value.get("schema_version")
+        versioned_names = {
+            ("implementation", 3): "evaluation-arm-binding-v3.schema.json",
+            ("run", 3): "evaluation-run-binding-v3.schema.json",
+        }
+        version_key = version if type(version) is int else -1
+        schema_name = versioned_names.get((kind, version_key), _SCHEMA_BY_KIND[kind])
         return (
-            repository_root / "schemas/manifests" / _SCHEMA_BY_KIND[kind],
+            repository_root / "schemas/manifests" / schema_name,
             kind,
         )
     if value.get("purpose") == "synthetic_acceptance":
+        schema_name = (
+            "synthetic-fixture-manifest-v3.schema.json"
+            if value.get("schema_version") == 3
+            else "synthetic-fixture-manifest.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/synthetic-fixture-manifest.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "synthetic_acceptance",
         )
     if "evidence_id" in value:
@@ -517,13 +629,23 @@ def _schema_for_artifact(
             "calibration_evidence",
         )
     if "reference_environment_specification" in value:
+        schema_name = (
+            "budget-calibration-spec-v3.schema.json"
+            if value.get("schema_version") == 3
+            else "budget-calibration-spec.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/budget-calibration-spec.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "calibration_spec",
         )
     if {"spec_id", "world_sampling", "lookahead"}.issubset(value):
+        schema_name = (
+            "search-execution-spec-v3.schema.json"
+            if value.get("schema_version") == 3
+            else "search-execution-spec.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/search-execution-spec.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "search_execution",
         )
     return None
@@ -1083,6 +1205,128 @@ def _validate_fixture_file(
         raise RegistrationValidationError(f"{label} content digest mismatch")
 
 
+def _validate_repository_file_manifest(root: Path, entries: Any, label: str) -> str:
+    if not isinstance(entries, list) or not entries:
+        raise RegistrationValidationError(f"{label} source manifest is invalid")
+    seen: set[str] = set()
+    normalized_entries: list[dict[str, str]] = []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            raise RegistrationValidationError(f"{label} source manifest entry is invalid")
+        repository_path = entry.get("repository_path")
+        content_digest = entry.get("content_digest")
+        if (
+            not isinstance(repository_path, str)
+            or not repository_path
+            or repository_path in seen
+            or not isinstance(content_digest, str)
+            or not re.fullmatch(r"sha256:[0-9a-f]{64}", content_digest)
+        ):
+            raise RegistrationValidationError(f"{label} source manifest entry is invalid")
+        seen.add(repository_path)
+        normalized = repository_path.replace("\\", "/")
+        parts = normalized.split("/")
+        if (
+            normalized.startswith("/")
+            or re.match(r"^[A-Za-z]:", normalized)
+            or any(part in {"", ".", ".."} for part in parts)
+        ):
+            raise RegistrationValidationError(f"{label} source manifest path is invalid")
+        path = (root / Path(*parts)).resolve()
+        try:
+            path.relative_to(root.resolve())
+        except ValueError as exc:
+            raise RegistrationValidationError(
+                f"{label} source manifest path escapes repository"
+            ) from exc
+        if not path.is_file():
+            raise RegistrationValidationError(
+                f"{label} source manifest file does not exist: {repository_path}"
+            )
+        actual = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != content_digest:
+            raise RegistrationValidationError(f"{label} source digest mismatch")
+        normalized_entries.append({"repository_path": normalized, "content_digest": content_digest})
+    if normalized_entries != sorted(normalized_entries, key=lambda entry: entry["repository_path"]):
+        raise RegistrationValidationError(f"{label} source manifest is not canonical")
+    return manifest_digest(normalized_entries)
+
+
+def _validate_implementation_provenance(value: Mapping[str, Any], root: Path) -> None:
+    if value.get("source_commit") != _TASK21_SOURCE_COMMIT:
+        raise RegistrationValidationError(
+            "implementation source_commit is not the validated Task-20 commit"
+        )
+    _validate_repository_file_manifest(root, value.get("source_manifest"), "implementation")
+    component_entries = [
+        value.get("components", {}).get("policy", {}).get("source_manifest"),
+        value.get("components", {}).get("fallback_and_safety", {}).get("source_manifest"),
+    ]
+    flattened = [
+        entry for entries in component_entries if isinstance(entries, list) for entry in entries
+    ]
+    if value.get("source_manifest") != sorted(
+        flattened, key=lambda entry: entry["repository_path"]
+    ):
+        raise RegistrationValidationError(
+            "implementation source manifest does not match bound component manifests"
+        )
+    policy_digest = _validate_repository_file_manifest(
+        root, value.get("components", {}).get("policy", {}).get("source_manifest"), "policy"
+    )
+    if policy_digest != value.get("components", {}).get("policy", {}).get("digest"):
+        raise RegistrationValidationError("policy digest does not match its source manifest")
+    safety_digest = _validate_repository_file_manifest(
+        root,
+        value.get("components", {}).get("fallback_and_safety", {}).get("source_manifest"),
+        "fallback and safety",
+    )
+    if safety_digest != value.get("components", {}).get("fallback_and_safety", {}).get("digest"):
+        raise RegistrationValidationError(
+            "fallback and safety digest does not match its source manifest"
+        )
+    package_digest = _validate_repository_file_manifest(
+        root, value.get("package_or_wheel_source_manifest"), "package"
+    )
+    if package_digest != value.get("package_or_wheel_digest"):
+        raise RegistrationValidationError("package digest does not match its source manifest")
+    schema_path = root / "schemas/records/decision-record-v2.schema.json"
+    canonicalizer_path = (
+        root / "packages/battlebelief-core/src/battlebelief_core/canonicalization.py"
+    )
+    for field, path in (
+        ("decision_record_schema_digest", schema_path),
+        ("canonicalizer_digest", canonicalizer_path),
+    ):
+        actual = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+        if value.get(field) != actual:
+            raise RegistrationValidationError(f"{field} does not match the repository artifact")
+    contract_set = value.get("contract_set")
+    if not isinstance(contract_set, list) or not contract_set:
+        raise RegistrationValidationError("contract_set is invalid")
+    document_ids = [
+        entry["document_id"]
+        for entry in contract_set
+        if isinstance(entry, Mapping) and isinstance(entry.get("document_id"), str)
+    ]
+    if len(set(document_ids)) != len(document_ids) or document_ids != sorted(document_ids):
+        raise RegistrationValidationError("contract_set must be sorted and unique")
+    contract_digest = manifest_digest(contract_set)
+    if contract_digest != value.get("contract_set_digest"):
+        raise RegistrationValidationError("contract_set digest mismatch")
+    reference_errors = _validate_registration_references(
+        {
+            "contract_references": contract_set,
+            "metric_references": [],
+            "estimand_references": [],
+            "analysis_procedure_references": [],
+        },
+        root,
+    )
+    if reference_errors:
+        raise RegistrationValidationError(reference_errors[0])
+
+
 def validate_synthetic_fixture_manifest(fixture: Mapping[str, Any], root: Path) -> None:
     """Validate fixture identities and content without opening evaluation pools."""
 
@@ -1125,6 +1369,58 @@ def validate_synthetic_fixture_manifest(fixture: Mapping[str, Any], root: Path) 
         "ruleset_digest"
     ) != ruleset.get("ruleset_digest"):
         raise RegistrationValidationError("ruleset snapshot identity mismatch")
+    if fixture.get("schema_version") == 3:
+        identity = {
+            "format_id": ruleset.get("format_id"),
+            "ruleset_id": ruleset.get("ruleset_id"),
+            "ruleset_version": ruleset.get("ruleset_version"),
+        }
+        if ruleset_value.get("ruleset_id") != ruleset.get("ruleset_id") or ruleset_value.get(
+            "ruleset_version"
+        ) != ruleset.get("ruleset_version"):
+            raise RegistrationValidationError("ruleset snapshot versioned identity mismatch")
+        if ruleset.get("ruleset_digest") != manifest_digest(identity):
+            raise RegistrationValidationError("ruleset snapshot inner digest mismatch")
+        rows = fixture.get("schedule_rows")
+        if not isinstance(rows, list):
+            raise RegistrationValidationError("schedule rows are invalid")
+        try:
+            typed_rows = tuple(
+                ScheduleRow(
+                    row_id=row["row_id"],
+                    base_matchup_id=row["base_matchup_id"],
+                    side_assignment=SideAssignment(row["side_assignment"]),
+                    schedule_block=row["schedule_block"],
+                    seed_family=SeedFamily(**row["seed_family"]),
+                    repetition_index=row["repetition_index"],
+                )
+                for row in rows
+                if isinstance(row, Mapping)
+            )
+            Schedule(
+                rows=typed_rows,
+                digest=manifest_digest([row.to_dict() for row in typed_rows]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RegistrationValidationError(f"schedule row is not canonical: {exc}") from exc
+        seed_digest = manifest_digest([row["seed_family"] for row in rows])
+        if fixture.get("seed_family") is not None:
+            raise RegistrationValidationError("v3 fixture must bind SeedFamily per schedule row")
+        budget = fixture.get("budget_profile")
+        if not isinstance(budget, Mapping):
+            raise RegistrationValidationError("budget profile is not canonical")
+        try:
+            BudgetProfile(
+                profile_id=budget["profile_id"],
+                mode=BudgetMode(budget["mode"]),
+                deployment=BudgetView(**budget["deployment"]),
+                mechanism=BudgetView(**budget["mechanism"]),
+                calibration_spec_digest=budget["calibration_spec_digest"],
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RegistrationValidationError(f"budget profile is not canonical: {exc}") from exc
+        if seed_digest != manifest_digest([row["seed_family"] for row in rows]):
+            raise RegistrationValidationError("seed family digest is not reproducible")
 
 
 def validate_repository_artifacts(root: Path | None = None) -> list[str]:
@@ -1289,6 +1585,22 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     errors.append(f"{relative}: execution specification digest is unresolved")
                 elif execution[1].get("arm_id") != arm.get("arm_id"):
                     errors.append(f"{relative}: execution specification arm mismatch")
+                elif execution[1].get("schema_version") == 3:
+                    parameter = execution[1].get("budget_parameter")
+                    calibration_digest = (
+                        parameter.get("calibration_spec_digest")
+                        if isinstance(parameter, Mapping)
+                        else None
+                    )
+                    calibration = (
+                        by_digest.get(calibration_digest)
+                        if isinstance(calibration_digest, str)
+                        else None
+                    )
+                    if calibration is None or calibration[2] != "calibration_spec":
+                        errors.append(
+                            f"{relative}: execution specification calibration digest is unresolved"
+                        )
             budget_profiles = value.get("budget_profiles", {})
             if isinstance(budget_profiles, Mapping):
                 for profile_name, profile in budget_profiles.items():
@@ -1358,6 +1670,11 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             )
         _, registration, _ = registration_entry
         if kind == "implementation":
+            if value.get("schema_version") == 3:
+                try:
+                    _validate_implementation_provenance(value, repository_root)
+                except RegistrationValidationError as exc:
+                    errors.append(f"{relative}: {exc}")
             arm_ids = {
                 arm.get("arm_id")
                 for arm in registration.get("arms", [])
@@ -1434,14 +1751,25 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     errors.append(f"{relative}: calibration evidence digest is unresolved")
             fixture_digest = value.get("synthetic_fixture_manifest_digest")
             if value.get("run_purpose") == "synthetic_acceptance":
-                fixture = by_digest.get(fixture_digest) if isinstance(fixture_digest, str) else None
-                if fixture is None or fixture[2] != "synthetic_acceptance":
+                fixture_entry = (
+                    by_digest.get(fixture_digest) if isinstance(fixture_digest, str) else None
+                )
+                if fixture_entry is None:
                     errors.append(f"{relative}: synthetic fixture digest is unresolved")
                 else:
-                    fixture_value = fixture[1]
+                    _, fixture_value, fixture_kind = fixture_entry
+                    if fixture_kind != "synthetic_acceptance":
+                        errors.append(f"{relative}: synthetic fixture digest is unresolved")
+                        continue
+                    rows = fixture_value.get("schedule_rows")
+                    seed_component = (
+                        [row.get("seed_family") for row in rows]
+                        if fixture_value.get("schema_version") == 3 and isinstance(rows, list)
+                        else fixture_value.get("seed_family")
+                    )
                     expected_fixture_fields = {
-                        "schedule_digest": fixture_value.get("schedule_rows"),
-                        "seed_family_digest": fixture_value.get("seed_family"),
+                        "schedule_digest": rows,
+                        "seed_family_digest": seed_component,
                         "budget_profile_digest": fixture_value.get("budget_profile"),
                         "runtime_environment_digest": fixture_value.get("runtime_environment"),
                         "ruleset_digest": fixture_value.get("ruleset_snapshot"),

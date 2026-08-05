@@ -1,18 +1,18 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "binding_id": "heuristic_v0-m15-synthetic-run",
   "binding_kind": "run",
   "artifact_version": 1,
   "supersedes_digest": null,
   "run_purpose": "synthetic_acceptance",
   "registration_id": "m15-core-comparisons-v1",
-  "registration_digest": "sha256:931484a5e205af5e810be3cdaeb812026869dbcba0027d89120f58d28fba7fdc",
-  "implementation_binding_digest": "sha256:8231d653e330c5637e425fb2014e091b144dc76a2b47d4df18ce96b64c96be11",
-  "schedule_digest": "sha256:d15600d8388587b259e7a5b20ed656e0b990d560003b9a2037759a06e0cef762",
-  "seed_family_digest": "sha256:b4e811c0af58c4eb7df558d7834628320a5952e0778c549204735e01732aef3f",
-  "budget_profile_digest": "sha256:77d58e114717ac53475bed9ba9a091ed78a16144f43c766f680eebd586000b16",
+  "registration_digest": "sha256:06db6f783ea2418aee34e7396faffcda22893c7ddfbfd2600c2a7557a280aa37",
+  "implementation_binding_digest": "sha256:551c412f005468123dd2865c474d56dfe5cee79b587da99c30b32af20445b86c",
+  "schedule_digest": "sha256:4953492533b6d49415fd8d3950d44fb0c456aefb81fe4c8c79a6cee29f59b946",
+  "seed_family_digest": "sha256:bf958d2a84122e602d4e29e03928a1538db8b87131820a182487f2d4cfb1b62c",
+  "budget_profile_digest": "sha256:417bc19e6505040b25e54cbf5f9838aa58afb88914e3c06bae44cb47131aef02",
   "runtime_environment_digest": "sha256:5a53e86eb07849aa0719ffe14e673668f64f6b7cbd28472239c1a97da01be200",
-  "ruleset_digest": "sha256:dcfd448bb79e9c5e41806a405f40688a573c05c289355c372d22f8ba6613f583",
+  "ruleset_digest": "sha256:3b4e0886191a02dc8a8a81818da5805136cd29cacf5588a7cf581f100215089b",
   "calibration_evidence_digest": null,
-  "synthetic_fixture_manifest_digest": "sha256:6c2c675300fa5bdf13065e5226744275a765da0da9b1a63b7de8ce91cdbb1e4b"
+  "synthetic_fixture_manifest_digest": "sha256:04c7ed670cc61f295926085b330300e3d4b0637c9b1ac9cbb14f7d4d0b95b94c"
 }

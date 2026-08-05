@@ -1,30 +1,40 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "binding_id": "heuristic_v0-implementation",
   "binding_kind": "implementation",
   "artifact_version": 1,
   "supersedes_digest": null,
   "registration_id": "m15-core-comparisons-v1",
-  "registration_digest": "sha256:931484a5e205af5e810be3cdaeb812026869dbcba0027d89120f58d28fba7fdc",
+  "registration_digest": "sha256:06db6f783ea2418aee34e7396faffcda22893c7ddfbfd2600c2a7557a280aa37",
   "arm_id": "heuristic_v0",
   "source_commit": "ebbc648fc62908a0227e8d90ab03b3692f583aca",
-  "package_or_wheel_digest": "sha256:2b202e47885777dbd43cd0970e54760a1d1e1f0427f2bb2d2e5231ab5c245747",
+  "source_manifest": [
+    {"repository_path": "packages/battlebelief-core/src/battlebelief_core/application/decision/heuristic_policy.py", "content_digest": "sha256:73350d34d2f6512cfd1733e1ebf132e11c2ebc096b2363c198745d37dcbf67cb"},
+    {"repository_path": "packages/battlebelief-core/src/battlebelief_core/application/safety/action_gate.py", "content_digest": "sha256:e9d92e5fa0ef9badac53ecd436fbe1090cbc574e87187e3a643db9a80b300e75"}
+  ],
+  "package_or_wheel_source_manifest": [
+    {"repository_path": "packages/battlebelief-core/pyproject.toml", "content_digest": "sha256:2b202e47885777dbd43cd0970e54760a1d1e1f0427f2bb2d2e5231ab5c245747"},
+    {"repository_path": "packages/battlebelief-core/src/battlebelief_core/__init__.py", "content_digest": "sha256:6882636dbfd86ebe34398a96e3905e6b65b5e846805d2b1afdb696e271e2a6ef"}
+  ],
+  "package_or_wheel_digest": "sha256:3c368e120a69e7fa982e73feecc8810450b7b24777e05b3766cd651478e00532",
   "components": {
-    "policy": {
-      "state": "bound",
-      "digest": "sha256:73350d34d2f6512cfd1733e1ebf132e11c2ebc096b2363c198745d37dcbf67cb"
-    },
-    "fallback_and_safety": {
-      "state": "bound",
-      "digest": "sha256:e9d92e5fa0ef9badac53ecd436fbe1090cbc574e87187e3a643db9a80b300e75"
-    },
+    "policy": {"state": "bound", "digest": "sha256:ce95753937640ee80d9d732dd609ed9705d8eff196fb8276de88df6f93e6beb1", "source_manifest": [{"repository_path": "packages/battlebelief-core/src/battlebelief_core/application/decision/heuristic_policy.py", "content_digest": "sha256:73350d34d2f6512cfd1733e1ebf132e11c2ebc096b2363c198745d37dcbf67cb"}]},
+    "fallback_and_safety": {"state": "bound", "digest": "sha256:c573050f6585b6ab04106b0132a85bc8cd2bbe6520b5ae96ee4e86c9e85352c6", "source_manifest": [{"repository_path": "packages/battlebelief-core/src/battlebelief_core/application/safety/action_gate.py", "content_digest": "sha256:e9d92e5fa0ef9badac53ecd436fbe1090cbc574e87187e3a643db9a80b300e75"}]},
     "search_algorithm": {"state": "not_applicable"},
     "engine": {"state": "not_applicable"},
     "prior": {"state": "not_applicable"},
     "belief": {"state": "not_applicable"},
     "model": {"state": "not_applicable"}
   },
-  "decision_record_schema_digest": "sha256:a5dad3edbe2a46e2a6b779565a6a143a9668110ae47344efcb56372f8f2ece31",
+  "decision_record_schema_digest": "sha256:918960ad5ab3df5c1866eaea4a565dd9c8f6d8d21ecafadbfa05072a023eedeb",
   "canonicalizer_digest": "sha256:a4098468c69e17bf61894c47e62f69d1e011c3489afee76157f25dc629cba6d1",
-  "contract_set_digest": "sha256:2d04d9b237d9204be72967b74fc53c786fb9edcfa6270d191c6f508fd3d910d9"
+  "contract_set": [
+    {"document_id": "contract-determinism", "document_version": 1, "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"},
+    {"document_id": "contract-manifest-schemas", "document_version": 11, "document_digest": "sha256:387d52bda9bf6d6ef10f6e25991b8b482213ecf7f217d907ffb237aaa6a2613e"},
+    {"document_id": "contract-provenance", "document_version": 7, "document_digest": "sha256:cc21ef8a2915aca48da7f670ab7e1c1e9645ad9f640af04e02acc921a4c0c370"},
+    {"document_id": "evaluation-pool-separation", "document_version": 1, "document_digest": "sha256:104b0c94f6963f7904b7f0f733185a1911d70f6da639d833b6ed3408dbf87b29"},
+    {"document_id": "evaluation-target-population", "document_version": 1, "document_digest": "sha256:6796bc41b6986e414061ac652a19433bad603048d21eb929a921b00a405e8c18"},
+    {"document_id": "experiment-registration", "document_version": 6, "document_digest": "sha256:2a56279f111d21a81598a374618fe631778c96bf32ae1675789cb6bb2673ae80"}
+  ],
+  "contract_set_digest": "sha256:bccae87cf5340641ecfbbf2bc5df82ec408837eb63bfaa2e3a96fce2c1ae867d"
 }

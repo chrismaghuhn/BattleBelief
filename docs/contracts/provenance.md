@@ -4,7 +4,7 @@ title: Provenance-, Snapshot- und Claim-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 6
+version: 7
 applies_to:
   - release
   - evaluation
@@ -81,3 +81,8 @@ sidecar-registrierte, typisierte und byte-identische Snapshots unter
 Lebenszyklus- und
 Supersessionsregeln stehen ausschließlich im
 [`experiment-registration`](experiment-registration.md)-Contract.
+
+Eine Implementierungsbindung muss ihre behaupteten Paket-, Policy-,
+Fallback-/Safety-, Canonicalizer- und Contract-Set-Digests aus expliziten,
+repository-relativen Source-Manifests oder den benannten Schema-/Dokumentbytes
+ableiten. Ein Digestformat ohne auflösbare Eingabemenge ist keine Provenienz.

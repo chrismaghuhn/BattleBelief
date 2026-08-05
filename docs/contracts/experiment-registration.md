@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 5
+version: 6
 applies_to:
   - research
   - evaluation
@@ -26,6 +26,8 @@ Hypothesen, Nullhypothesen, registrierte Arme, Vergleichsreihenfolge,
 Metrik- und Contractverweise, Budgets, Poolzugriff sowie Stop-/Pivotregeln.
 Ihre kanonische Struktur ist in
 [`experiment-registration.schema.json`](../../schemas/manifests/experiment-registration.schema.json)
+und für die M1.5-Präregistrierung in
+[`experiment-registration-v4.schema.json`](../../schemas/manifests/experiment-registration-v4.schema.json)
 definiert.
 
 Eine Arm-Implementierungsbindung versiegelt später die konkrete Implementierung
@@ -54,6 +56,26 @@ Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 | `tie_break_rule_id` | `prefer_lower_runtime_v1` | Resolves a registered tie in favor of the lower runtime. |
 | `stop_rule_id` | `no_effect_stop_v1` | Stops a comparison at the preregistered null-effect criterion. |
 | `pivot_rule_id` | `uncertain_effect_pivot_v1` | Routes an uncertain effect through the preregistered pivot path. |
+| `go_rule_id` | `lower_confidence_bound_at_least_minimum_effect_v1` | Go only when the one-sided lower confidence bound for `right - left` reaches the registered practical margin. |
+| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v1` | Constructs the fixed, outcome-blind calibration states used by the M1.5 budget specification. |
+
+## Task-21-Präregistrierung
+
+Die bestätigte M1.5-Registrierung verwendet `battle_outcome_weighted_v1` als
+Primärmetrik. Die Richtung ist `higher_is_better`; der Estimand ist der
+rechte minus den linken Arm. Die Mindestmarge beträgt `0.05`, das
+Konfidenzniveau `0.95`, und die Grenze ist einseitig. Ein Vergleich ist
+`go`, wenn die untere Konfidenzgrenze mindestens `0.05` beträgt. Er ist
+`stop`, wenn die Punktschätzung höchstens `0` oder die obere Grenze höchstens
+`0` ist; andernfalls wird er als unsicher an den registrierten Pivotpfad
+geleitet. Die Metrik `end_to_end_latency_ms_v1` mit Richtung
+`lower_is_better` ist ausschließlich der Tie-Break.
+
+Die Deployment-Ansicht bindet 2.000 ms Wandzeit und 2.000 ms CPU-Zeit. Die
+Mechanismus-Ansicht kalibriert ausschließlich `per_world_work` auf dem
+vorab eingefrorenen Grid `[64, 128, 256, 512]`; die Gesamtarbeit ist
+`world_sampling.count * per_world_work`. Die Kalibrierung darf nur Laufzeit-
+und Ressourcenmessungen verwenden.
 
 Eine Registrierung darf keine freie oder unbekannte Regel-ID verwenden. Diese
 versionierte Tabelle ist der normative Eigentümer der zulässigen IDs und ihrer
