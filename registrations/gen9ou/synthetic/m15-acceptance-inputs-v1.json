@@ -9,10 +9,13 @@
   "opponent_policy_fixtures": [
     {"fixture_id": "fixture-opponent-heuristic", "repository_path": "tests/fixtures/policies/fixture-opponent-heuristic.json", "content_digest": "sha256:361dd212ad583a479f1f716095ddd4e607612a44fd562c4147353e20d2dd6be0"}
   ],
+  "base_matchups": [
+    {"base_matchup_id": "sha256:3613110179d8d44a333196d2e6f81e4fbff1a0ed82f45e4b7fba920493af45b5", "hero_team_fixture_id": "fixture-team-alpha", "opponent_team_fixture_id": "fixture-team-beta", "opponent_archetype": "synthetic_gen9ou", "opponent_policy_fixture_id": "fixture-opponent-heuristic", "schedule_block": "m15-synthetic"}
+  ],
   "schedule_rows": [
     {
-      "row_id": "sha256:95d8ba622fabe2919a3d608d598ab99d98350661d00efdc99ccd27f75f6f0b25",
-      "base_matchup_id": "sha256:e6a9177b112f0deb6bf04793f2cc1f0d57eafa0eaee88d2f86148e4d248d3a83",
+      "row_id": "sha256:998ad3d52772d251c89dd65ae07b5aae73078b0570e80cefb68eb09af17f5e3c",
+      "base_matchup_id": "sha256:3613110179d8d44a333196d2e6f81e4fbff1a0ed82f45e4b7fba920493af45b5",
       "side_assignment": "p1",
       "schedule_block": "m15-synthetic",
       "seed_family": {
@@ -27,8 +30,8 @@
       "repetition_index": 0
     },
     {
-      "row_id": "sha256:07e937499d8fb37df124dc677e86b43ffb594669ea765ec0c75e80f98f6c8ce2",
-      "base_matchup_id": "sha256:e6a9177b112f0deb6bf04793f2cc1f0d57eafa0eaee88d2f86148e4d248d3a83",
+      "row_id": "sha256:078f2ea940144047f6b079882b5b6cc5b3c41088f05f4ad0599507cd2c6b24af",
+      "base_matchup_id": "sha256:3613110179d8d44a333196d2e6f81e4fbff1a0ed82f45e4b7fba920493af45b5",
       "side_assignment": "p2",
       "schedule_block": "m15-synthetic",
       "seed_family": {

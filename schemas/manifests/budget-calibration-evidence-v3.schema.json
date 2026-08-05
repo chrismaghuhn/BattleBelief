@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:budget-calibration-evidence:v3",
+  "title": "Budget calibration evidence v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence_id", "calibration_spec_digest", "measurement_profile_id", "selection_measurement_id", "runtime_limits_ms", "actual_environment_digest", "actual_calibration_state_digest", "runtime_measurements", "selected_work_value"],
+  "properties": {
+    "schema_version": {"const": 3},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "calibration_spec_digest": {"$ref": "#/$defs/digest"},
+    "measurement_profile_id": {"type": "string", "minLength": 1},
+    "selection_measurement_id": {"const": "wall_time_ms"},
+    "runtime_limits_ms": {"type": "object", "additionalProperties": false, "required": ["wall_time_ms", "cpu_time_ms"], "properties": {"wall_time_ms": {"const": 2000}, "cpu_time_ms": {"const": 2000}}},
+    "actual_environment_digest": {"$ref": "#/$defs/digest"},
+    "actual_calibration_state_digest": {"$ref": "#/$defs/digest"},
+    "runtime_measurements": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["work_value", "status", "measurements", "error_class"], "properties": {"work_value": {"type": "integer", "minimum": 1}, "status": {"enum": ["completed", "over_limit", "failed", "unsupported"]}, "measurements": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}}, "error_class": {"type": ["string", "null"]}}}},
+    "selected_work_value": {"type": ["integer", "null"], "minimum": 1}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}

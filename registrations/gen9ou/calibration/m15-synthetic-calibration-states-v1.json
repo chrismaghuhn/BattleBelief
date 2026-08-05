@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "manifest_id": "m15-synthetic-calibration-states-v1",
+  "rule_id": "m15-synthetic-calibration-state-v1",
+  "construction": {
+    "algorithm_id": "public-observation-grid-v1",
+    "field_order": ["turn_index", "active_slot_count", "request_kind", "weather_class"],
+    "enumeration_order": "lexicographic_over_declared_domains",
+    "public_fields_only": true,
+    "declared_domains": {
+      "turn_index": [0, 1, 2],
+      "active_slot_count": [1, 2],
+      "request_kind": ["move", "switch"],
+      "weather_class": ["none", "sun"]
+    },
+    "state_set": "explicit_public_states_v1"
+  },
+  "states": [
+    {"state_id": "sha256:75489410965bffa18877ad5bd21bba928708757077ac1bba9791b212aa5a2d02", "public_state": {"turn_index": 0, "active_slot_count": 1, "request_kind": "move", "weather_class": "none"}},
+    {"state_id": "sha256:ed2fb4e7f372865dfaedb348d53cbe951e20a4fe34d5ad45f5ce641550b48559", "public_state": {"turn_index": 1, "active_slot_count": 1, "request_kind": "move", "weather_class": "sun"}},
+    {"state_id": "sha256:e3fa99f2b44110a2d4765e6d6f37d69aac9b8fd876ea31efa14610c07b7a61ef", "public_state": {"turn_index": 1, "active_slot_count": 2, "request_kind": "switch", "weather_class": "none"}},
+    {"state_id": "sha256:0f7aff3931cd2b0ece3e02258d6ca8b7bdadd5a258ef15753fd432b8c2f4a6d8", "public_state": {"turn_index": 2, "active_slot_count": 2, "request_kind": "switch", "weather_class": "sun"}}
+  ]
+}

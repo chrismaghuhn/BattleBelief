@@ -4,7 +4,7 @@ title: Provenance-, Snapshot- und Claim-Vertrag
 document_type: contract
 status: accepted
 normative: true
-version: 7
+version: 8
 applies_to:
   - release
   - evaluation
@@ -72,6 +72,11 @@ zu einem Tag geschrieben werden.
 
 Canonicalization und Hashbildung folgen
 [`contract-manifest-schemas`](manifest-schemas.md).
+
+Bei einem unveränderlichen `source_commit` müssen Source-Manifeste gegen die
+historischen Blobbytes dieses Commits aufgelöst werden; der aktuelle
+Arbeitsbaum ist dafür keine zulässige Ersatzquelle. Ein Digestformat ohne
+auflösbare Eingabemenge ist keine Provenienz.
 
 Experimentregistrierungen, Implementierungsbindungen und Laufbindungen sind
 unveränderliche Provenienzartefakte. Dokumentreferenzen binden neben ID und

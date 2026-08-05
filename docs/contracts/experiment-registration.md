@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 6
+version: 7
 applies_to:
   - research
   - evaluation
@@ -83,6 +83,17 @@ Minimalbedeutung; spezialisierte Verträge dürfen die Verfahren operationalisie
 aber keine abweichende Identität einführen.
 
 ## Komponentenstatus
+
+Die v3-Kalibrierung bindet Wandzeit und CPU-Zeit beide als harte
+Auswahlbedingungen. Ihr `calibration_state_manifest_digest` verweist auf ein
+eigenes, versioniertes Manifest mit expliziten öffentlichen Zustandsfeldern,
+Domänen, Reihenfolge und deterministischer Zustandsliste. Der `work_value`
+bleibt bis zur Kalibrierevidenz `null`; ein fester Wert in einem synthetischen
+Acceptance-Binding ist davon getrennt.
+
+Eine Implementierungsbindung mit `source_commit` prüft ihre Source-Manifeste
+gegen die Blobbytes dieses Commits, nicht gegen den späteren Arbeitsbaum. So
+bleibt eine eingefrorene Binding auch nach Änderungen in M2 reproduzierbar.
 
 Jede Komponente einer Implementierungsbindung besitzt genau einen Status:
 

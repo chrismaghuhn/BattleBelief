@@ -26,7 +26,7 @@
   },
   "$defs": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "budgetView": {"type": "object", "additionalProperties": false, "required": ["wall_time_budget_ms", "cpu_time_budget_ms", "work_value", "work_unit"], "properties": {"wall_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "cpu_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "work_value": {"type": "integer", "minimum": 1}, "work_unit": {"type": "string", "minLength": 1}}},
+    "budgetView": {"type": "object", "additionalProperties": false, "required": ["wall_time_budget_ms", "cpu_time_budget_ms", "work_value", "work_unit"], "properties": {"wall_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "cpu_time_budget_ms": {"type": ["integer", "null"], "minimum": 0}, "work_value": {"type": ["integer", "null"], "minimum": 1}, "work_unit": {"type": "string", "minLength": 1}}},
     "budgetProfile": {"type": "object", "additionalProperties": false, "required": ["profile_id", "mode", "deployment", "mechanism", "calibrated_parameter", "ordered_work_grid", "total_work_formula", "calibration_spec_digest"], "properties": {"profile_id": {"type": "string", "minLength": 1}, "mode": {"const": "calibrated_grid"}, "deployment": {"$ref": "#/$defs/budgetView"}, "mechanism": {"$ref": "#/$defs/budgetView"}, "calibrated_parameter": {"const": "per_world_work"}, "ordered_work_grid": {"const": [64, 128, 256, 512]}, "total_work_formula": {"const": "world_sampling_count_times_per_world_work"}, "calibration_spec_digest": {"$ref": "#/$defs/digest"}}}
   }
 }

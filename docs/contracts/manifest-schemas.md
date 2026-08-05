@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 11
+version: 12
 applies_to:
   - manifests
   - release
@@ -37,7 +37,8 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Arm-Implementierungsbindung v2/v3 | [`evaluation-arm-binding.schema.json`](../../schemas/manifests/evaluation-arm-binding.schema.json), [`evaluation-arm-binding-v3.schema.json`](../../schemas/manifests/evaluation-arm-binding-v3.schema.json) |
 | Evaluationslauf-Bindung v2/v3 | [`evaluation-run-binding.schema.json`](../../schemas/manifests/evaluation-run-binding.schema.json), [`evaluation-run-binding-v3.schema.json`](../../schemas/manifests/evaluation-run-binding-v3.schema.json) |
 | Budget-Kalibrierungsspezifikation v2/v3 | [`budget-calibration-spec.schema.json`](../../schemas/manifests/budget-calibration-spec.schema.json), [`budget-calibration-spec-v3.schema.json`](../../schemas/manifests/budget-calibration-spec-v3.schema.json) |
-| Budget-Kalibrierungsevidenz | [`budget-calibration-evidence.schema.json`](../../schemas/manifests/budget-calibration-evidence.schema.json) |
+| Budget-Kalibrierungsevidenz v2/v3 | [`budget-calibration-evidence.schema.json`](../../schemas/manifests/budget-calibration-evidence.schema.json), [`budget-calibration-evidence-v3.schema.json`](../../schemas/manifests/budget-calibration-evidence-v3.schema.json) |
+| Kalibrierzustandsmanifest v1 | [`calibration-state-manifest-v1.schema.json`](../../schemas/manifests/calibration-state-manifest-v1.schema.json) |
 | Deklarative Search-Ausführungsspezifikation v2/v3 | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json), [`search-execution-spec-v3.schema.json`](../../schemas/manifests/search-execution-spec-v3.schema.json) |
 | Synthetisches Fixture-Manifest v2/v3 | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json), [`synthetic-fixture-manifest-v3.schema.json`](../../schemas/manifests/synthetic-fixture-manifest-v3.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
@@ -51,6 +52,13 @@ Beispieldateien unter `/schemas/examples` sind Test-Fixtures und müssen im
 `pr-gate` gegen das zugehörige Schema validieren.
 
 ## Canonicalization und Hashbildung
+
+Die M1.5-Kalibrierspezifikation v3 bindet beide Auswahlgrenzen
+(`wall_time_ms` und `cpu_time_ms`) sowie ein unveränderliches
+Kalibrierzustandsmanifest. Der ausgewählte `per_world_work`-Wert bleibt in
+der Präregistrierung ungebunden und entsteht erst durch spätere,
+outcome-blinde Kalibrierevidenz. Ein synthetischer Acceptance-Lauf darf
+dagegen einen separat gebundenen festen Fixture-Wert verwenden.
 
 Der verbindliche Bytevertrag steht in
 [`schemas/canonicalization/README.md`](../../schemas/canonicalization/README.md).

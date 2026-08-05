@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
+    _git_blob_bytes,
     _validate_implementation_provenance,
     artifact_digest,
+    validate_calibration_evidence,
     validate_repository_artifacts,
     validate_synthetic_fixture_manifest,
 )
@@ -86,6 +89,8 @@ def test_registration_freezes_arms_comparisons_and_digest_references() -> None:
         assert profile["calibrated_parameter"] == "per_world_work"
         assert profile["ordered_work_grid"] == [64, 128, 256, 512]
         assert profile["total_work_formula"] == ("world_sampling_count_times_per_world_work")
+        assert profile["deployment"]["work_value"] is None
+        assert profile["mechanism"]["work_value"] is None
 
     assert registration["metric_references"] == [
         {
@@ -170,6 +175,18 @@ def test_heuristic_binding_declares_recomputable_source_manifests() -> None:
     assert implementation["package_or_wheel_source_manifest"]
 
 
+def test_implementation_source_manifest_reads_the_frozen_commit_tree() -> None:
+    content = _git_blob_bytes(
+        ROOT,
+        "ebbc648fc62908a0227e8d90ab03b3692f583aca",
+        "packages/battlebelief-core/src/battlebelief_core/application/decision/heuristic_policy.py",
+    )
+    assert (
+        "sha256:" + hashlib.sha256(content).hexdigest()
+        == _load(IMPLEMENTATION)["components"]["policy"]["source_manifest"][0]["content_digest"]
+    )
+
+
 def test_heuristic_binding_rejects_a_tampered_policy_digest() -> None:
     implementation = _load(IMPLEMENTATION)
     implementation["components"]["policy"]["digest"] = "sha256:" + "0" * 64
@@ -180,6 +197,68 @@ def test_heuristic_binding_rejects_a_tampered_policy_digest() -> None:
         assert "policy digest" in str(error)
     else:
         raise AssertionError("tampered policy provenance was accepted")
+
+
+def test_implementation_provenance_rejects_malformed_component_manifest() -> None:
+    implementation = _load(IMPLEMENTATION)
+    implementation["components"]["policy"]["source_manifest"] = [None]
+
+    try:
+        _validate_implementation_provenance(implementation, ROOT)
+    except RegistrationValidationError:
+        pass
+    else:
+        raise AssertionError("malformed component manifest was accepted")
+
+
+def test_calibration_selection_requires_wall_and_cpu_limits() -> None:
+    spec = _load(CALIBRATION_SPEC)
+    evidence = {
+        "measurement_profile_id": spec["measurement_profile_id"],
+        "selection_measurement_id": spec["selection_measurement_id"],
+        "runtime_limits_ms": spec["runtime_limits_ms"],
+        "runtime_measurements": [
+            {
+                "work_value": work_value,
+                "status": "completed",
+                "measurements": {"wall_time_ms": 1900, "cpu_time_ms": 2600},
+                "error_class": None,
+            }
+            for work_value in spec["ordered_work_grid"]
+        ],
+        "selected_work_value": 512,
+    }
+
+    try:
+        validate_calibration_evidence(evidence, spec)
+    except RegistrationValidationError:
+        pass
+    else:
+        raise AssertionError("CPU-over-limit calibration was accepted")
+
+
+def test_synthetic_fixture_rejects_unresolved_base_matchup_fixture() -> None:
+    fixture = _load(FIXTURES)
+    fixture["base_matchups"][0]["hero_team_fixture_id"] = "fixture-team-beta"
+
+    try:
+        validate_synthetic_fixture_manifest(fixture, ROOT)
+    except RegistrationValidationError as error:
+        assert "base matchup" in str(error)
+    else:
+        raise AssertionError("base matchup fixture substitution was accepted")
+
+
+def test_synthetic_fixture_rejects_non_mapping_schedule_row() -> None:
+    fixture = _load(FIXTURES)
+    fixture["schedule_rows"].append("not-a-row")
+
+    try:
+        validate_synthetic_fixture_manifest(fixture, ROOT)
+    except RegistrationValidationError as error:
+        assert "schedule row" in str(error)
+    else:
+        raise AssertionError("non-mapping schedule row was accepted")
 
 
 def test_ruleset_fixture_is_versioned_not_a_placeholder_digest() -> None:
