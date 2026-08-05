@@ -143,6 +143,15 @@ def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
     assert "--verify-only" in commands
     assert "schemas/examples/showdown-oracle-source.example.json" in commands
     assert "packages/battlebelief-lab/tests/fixtures/showdown_oracle" in commands
+    diagnostic = next(
+        step for step in steps if step.get("name") == "Diagnose a rejected Linux oracle checkout"
+    )
+    assert diagnostic["if"] == "failure() && runner.os != 'Windows'"
+    assert diagnostic["shell"] == "bash"
+    assert diagnostic["env"] == {"ORACLE_CHECKOUT": "${{ runner.temp }}/pokemon-showdown"}
+    assert 'git -C "$ORACLE_CHECKOUT" diff --name-status --no-ext-diff' in diagnostic["run"]
+    assert 'GIT_INDEX_FILE="$ORACLE_CHECKOUT/logs/.gitindex"' in diagnostic["run"]
+    assert "cat " not in diagnostic["run"]
 
 
 def test_pr_gate_requires_oracle_smoke() -> None:

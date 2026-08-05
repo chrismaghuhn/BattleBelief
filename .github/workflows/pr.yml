@@ -142,6 +142,28 @@ jobs:
         run: |
           uv run python tools/smoke_lab_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --build-manifest "${{ runner.temp }}/showdown-oracle-build.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --fixtures-dir "packages/battlebelief-lab/tests/fixtures/showdown_oracle" > "${{ runner.temp }}/oracle-smoke-1.json"
           uv run python tools/smoke_lab_oracle.py --source-manifest "schemas/examples/showdown-oracle-source.example.json" --build-manifest "${{ runner.temp }}/showdown-oracle-build.json" --checkout "${{ runner.temp }}/pokemon-showdown" --node "${{ env.ORACLE_NODE }}" --npm "${{ env.ORACLE_NPM }}" --fixtures-dir "packages/battlebelief-lab/tests/fixtures/showdown_oracle" > "${{ runner.temp }}/oracle-smoke-2.json"
+      - name: Diagnose a rejected Linux oracle checkout
+        if: failure() && runner.os != 'Windows'
+        shell: bash
+        env:
+          ORACLE_CHECKOUT: ${{ runner.temp }}/pokemon-showdown
+        run: |
+          if [[ ! -d "$ORACLE_CHECKOUT/.git" ]]; then
+            printf '%s\n' 'oracle_checkout_missing'
+            exit 0
+          fi
+          printf '%s\n' 'tracked_worktree_changes'
+          git -C "$ORACLE_CHECKOUT" diff --name-status --no-ext-diff
+          printf '%s\n' 'tracked_index_changes'
+          git -C "$ORACLE_CHECKOUT" diff --cached --name-status --no-ext-diff
+          printf '%s\n' 'non_build_generated_paths'
+          git -C "$ORACLE_CHECKOUT" status --porcelain=v1 --ignored --untracked-files=all -- . ':(exclude)node_modules' ':(exclude)dist'
+          if [[ -f "$ORACLE_CHECKOUT/logs/.gitindex" ]]; then
+            printf 'head_tree='
+            git -C "$ORACLE_CHECKOUT" rev-parse 'HEAD^{tree}'
+            printf 'generated_tree='
+            GIT_INDEX_FILE="$ORACLE_CHECKOUT/logs/.gitindex" git -C "$ORACLE_CHECKOUT" write-tree || printf '%s\n' 'invalid'
+          fi
       - name: Compare and report canonical evidence
         env:
           BUILD_MANIFEST: ${{ runner.temp }}/showdown-oracle-build.json
