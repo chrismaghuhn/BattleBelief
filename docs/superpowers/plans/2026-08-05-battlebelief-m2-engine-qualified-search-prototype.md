@@ -176,7 +176,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Options:** (A) qualify an exact Node 22 LTS patch; (B) qualify an exact Node 20 LTS patch; (C) qualify an exact Node 18 patch matching upstream CI; (D) rely only on the declared package minimum Node 16.
 - **Advantages:** A follows the launcher's stated recommendation; B tests the intervening LTS family; C follows the official workflow and satisfies the actual global-`fetch` feature test; D follows package metadata.
 - **Disadvantages:** the upstream metadata, feature test/message, and CI do not define one coherent support floor. Node 18 is end-of-life according to the launcher's own comment; Node 16 does not normally supply the required global `fetch`; Node 20/22 still need exact Windows/Ubuntu proof for the selected commit.
-- **Recommendation:** probe exact maintained Node 18, 20, and 22 releases against the selected Showdown commit, including clean `npm ci`, build, stdio simulator, and loopback server lifecycle. Prefer a validated Node 22 LTS patch for BattleBelief after those results, but do not justify it as an upstream-enforced `<22` rejection.
+- **Recommendation:** probe exact Node 18, 20, and 22 patch releases against the selected Showdown commit, including clean `npm ci`, build, stdio simulator, and loopback server lifecycle. Prefer a validated Node 22 LTS patch for BattleBelief after those results, but do not justify it as an upstream-enforced `<22` rejection.
 - **Consequences:** the approval record must distinguish declared metadata, the actual `fetch` feature test, emitted message, upstream CI coverage, and BattleBelief's independently supported version. Task 24 may not claim support from any one signal alone.
 
 ### MD-04 — Oracle process boundary
@@ -626,7 +626,7 @@ The transition port defines root preparation, per-player information views/keys,
 
 **Public types and APIs:** `DifferentialCorpus`, `DifferentialFixture`, `DifferentialRunner`, `CanonicalMechanicsObservation`, `DivergenceClass`, `FixtureResult`, and `CapabilityQualificationEvidence` are **[PUBLIC LAB API]**. The evidence builder defaults to unknown/non-exact and cannot emit exact when any required result is absent, synthetic, skipped, failed, or unclassified.
 
-**Allowed imports:** Lab may import Core capability/types and the approved Runtime `PokeEngineAdapter` public surface. It calls the Lab oracle internally. It must not import private extension objects, and Runtime/Core must not import Lab.
+**Allowed imports:** Lab may import Core capability/types and the approved Runtime `PokeEngineTransitionModel` public surface. It calls the Lab oracle internally. It must not import private extension objects, and Runtime/Core must not import Lab.
 
 **Corpus and runner contract:**
 
@@ -879,7 +879,7 @@ The implementation must validate frozen values against `registrations/gen9ou/arm
 - [ ] Add qualified-adapter integration smoke while keeping unit tests engine-free.
 - [ ] Run all work-grid vectors, focused Core tests, frozen-artifact checks, and full repository gates.
 
-**Failure/fallback:** any Task-27 ineligibility, world sampling failure, transition/model failure, non-finite value, candidate/action mapping mismatch, work-budget violation, or no score for every safe root candidate returns the precomputed `heuristic_v0` incumbent with the stable class. Partial search does not override it in deterministic mode.
+**Failure/fallback:** any Task-31 ineligibility, world sampling failure, transition/model failure, non-finite value, candidate/action mapping mismatch, work-budget violation, or no score for every safe root candidate returns the precomputed `heuristic_v0` incumbent with the stable class. Partial search does not override it in deterministic mode.
 
 **Provenance/digests:** result binds algorithm/version, frozen execution-spec digest, Task-32 algorithm-spec digest, search config/work point, 16-world distribution/support digest, all named seed identities, transition-model artifact identity, capability evidence, and deterministic score summary. It never includes sampled world content.
 
