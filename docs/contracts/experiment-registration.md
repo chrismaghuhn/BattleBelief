@@ -128,7 +128,7 @@ den jeweils akzeptierten Freigabekriterien geschlossen. Ein synthetischer
 Acceptance-Lauf verwendet ausschließlich deklarierte Fixture-Manifeste und
 öffnet oder simuliert keinen Evaluationspool.
 
-Schema-Version 2 aktiviert nur synthetische Acceptance-Bindings. Evaluation-
+Schema-Version 4 aktiviert nur synthetische Acceptance-Bindings. Evaluation-
 Bindings bleiben geschlossen, solange keine auflösbaren Poolartefakte und
 Poolrollen existieren; ein solcher Lauf darf keinen geschützten Pool nur über
 einen freien Digest öffnen.

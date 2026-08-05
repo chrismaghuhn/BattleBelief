@@ -53,7 +53,7 @@
     {"document_id": "contract-manifest-schemas", "document_version": 14, "document_digest": "sha256:757083080b5cecf06d26156680fa5db30a61874436da805609f1015510d0f0e6"},
     {"document_id": "contract-determinism", "document_version": 1, "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"},
     {"document_id": "contract-provenance", "document_version": 8, "document_digest": "sha256:d2c4f826226535c67034449c8dcc5edd673ffcac809fca7cd850b33ba18f29d2"},
-    {"document_id": "experiment-registration", "document_version": 8, "document_digest": "sha256:fa8574cda48b9a75d5914e2a7d032db7af7de5be98b03daf18aab30320545067"},
+    {"document_id": "experiment-registration", "document_version": 8, "document_digest": "sha256:1869886e1a78034c89a6d8c269fd34a0b6e66e0246d9ede56d3d106a815c5586"},
     {"document_id": "evaluation-target-population", "document_version": 1, "document_digest": "sha256:6796bc41b6986e414061ac652a19433bad603048d21eb929a921b00a405e8c18"},
     {"document_id": "evaluation-pool-separation", "document_version": 1, "document_digest": "sha256:104b0c94f6963f7904b7f0f733185a1911d70f6da639d833b6ed3408dbf87b29"}
   ],
