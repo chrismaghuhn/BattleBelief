@@ -51,7 +51,8 @@ Effizienz
 
 Sie sollen nicht gleichzeitig in die Roadmap gedrückt werden. Jede Richtung
 benötigt vor einer Implementierung eine eigene Fragestellung, Ausführungs-
-identität, Ablation und Stop-/Pivot-Regel.
+identität, Ablation und Stop-/Pivot-Regel. Zusätzlich muss sie das allgemeine
+[Research Admission Gate](research-admission-gate.md) bestehen.
 
 ## 1. Gegneraktionen als probabilistische Belief-Evidenz
 
