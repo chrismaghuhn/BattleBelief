@@ -4,7 +4,7 @@ title: Quellenbasis
 document_type: research
 status: accepted
 normative: false
-version: 3
+version: 4
 applies_to:
   - research
   - repository
@@ -41,6 +41,7 @@ Primärquellen oder Projektquellen.
 - [Learning to Stop: Dynamic Simulation Monte-Carlo Tree Search](https://ojs.aaai.org/index.php/AAAI/article/view/16100)
 - [Understanding the Success of Perfect Information Monte Carlo Sampling in Game Tree Search](https://ojs.aaai.org/index.php/AAAI/article/view/7562)
 - [Monte Carlo Tree Search in the Presence of Transition Uncertainty](https://ojs.aaai.org/index.php/AAAI/article/view/29994)
+- [Research Admission Gate](research-admission-gate.md)
 - [Constraint-guided Open-World Set Materialization](constraint-guided-other-materialization.md)
 - [Adjacent Belief, Search, and Evaluation Directions](adjacent-belief-search-directions.md)
 
