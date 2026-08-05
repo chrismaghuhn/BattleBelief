@@ -50,10 +50,10 @@
     {"document_id": "evaluation-statistical-analysis", "document_version": 4, "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531", "analysis_procedure_id": "technical_outcomes_full_v1"}
   ],
   "contract_references": [
-    {"document_id": "contract-manifest-schemas", "document_version": 12, "document_digest": "sha256:a2d6d8e65c92a7dee260f80d4c3b5adc5e0bdae2bcd7be68de066e3e6f81ff93"},
+    {"document_id": "contract-manifest-schemas", "document_version": 14, "document_digest": "sha256:757083080b5cecf06d26156680fa5db30a61874436da805609f1015510d0f0e6"},
     {"document_id": "contract-determinism", "document_version": 1, "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"},
     {"document_id": "contract-provenance", "document_version": 8, "document_digest": "sha256:d2c4f826226535c67034449c8dcc5edd673ffcac809fca7cd850b33ba18f29d2"},
-    {"document_id": "experiment-registration", "document_version": 7, "document_digest": "sha256:b2c5a0c3dcd68ff60d86f41c3e2ca363656b81d9b27b274eb8e0089f42f5b2ce"},
+    {"document_id": "experiment-registration", "document_version": 8, "document_digest": "sha256:fa8574cda48b9a75d5914e2a7d032db7af7de5be98b03daf18aab30320545067"},
     {"document_id": "evaluation-target-population", "document_version": 1, "document_digest": "sha256:6796bc41b6986e414061ac652a19433bad603048d21eb929a921b00a405e8c18"},
     {"document_id": "evaluation-pool-separation", "document_version": 1, "document_digest": "sha256:104b0c94f6963f7904b7f0f733185a1911d70f6da639d833b6ed3408dbf87b29"}
   ],

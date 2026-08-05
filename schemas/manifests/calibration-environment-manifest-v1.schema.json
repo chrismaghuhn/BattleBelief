@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:calibration-environment-manifest:v1",
+  "title": "M1.5 calibration environment manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_version",
+    "supersedes_digest",
+    "manifest_id",
+    "environment_kind",
+    "runtime_environment",
+    "runtime_environment_digest",
+    "runtime_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_version": {"type": "integer", "minimum": 1},
+    "supersedes_digest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "manifest_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
+    "environment_kind": {"const": "calibration_runtime"},
+    "runtime_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "platform", "network", "cpu_model"],
+      "properties": {
+        "python": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "platform": {"type": "string", "minLength": 1},
+        "network": {"const": "disabled"},
+        "cpu_model": {"type": "string", "minLength": 1}
+      }
+    },
+    "runtime_environment_digest": {"$ref": "#/$defs/digest"},
+    "runtime_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

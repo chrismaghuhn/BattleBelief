@@ -11,7 +11,7 @@ import unicodedata
 from collections.abc import Mapping
 from itertools import pairwise, product
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
@@ -128,14 +128,19 @@ def validate_calibration_spec(spec: Mapping[str, Any]) -> None:
         raise RegistrationValidationError(
             f"unknown selection_rule_id: {spec.get('selection_rule_id')}"
         )
-    if spec.get("schema_version") == 3:
+    if spec.get("schema_version") in {3, 4}:
         if spec.get("calibrated_parameter") != "per_world_work":
             raise RegistrationValidationError("calibration parameter must be per_world_work")
         if spec.get("world_sampling_count") != 16:
             raise RegistrationValidationError("calibration world count must be 16")
         if spec.get("total_work_formula") != "world_sampling_count_times_per_world_work":
             raise RegistrationValidationError("calibration total-work formula is invalid")
-        if spec.get("calibration_state_rule_id") != "m15-synthetic-calibration-state-v1":
+        expected_rule = (
+            "m15-synthetic-calibration-state-v2"
+            if spec.get("schema_version") == 4
+            else "m15-synthetic-calibration-state-v1"
+        )
+        if spec.get("calibration_state_rule_id") != expected_rule:
             raise RegistrationValidationError("unknown calibration state construction rule")
         limits = spec.get("runtime_limits_ms")
         if (
@@ -177,7 +182,7 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
     """Validate measured calibration rows against their frozen specification."""
 
     validate_calibration_spec(spec)
-    if spec.get("schema_version") == 3:
+    if spec.get("schema_version") in {3, 4}:
         if evidence.get("calibration_spec_digest") != manifest_digest(dict(spec)):
             raise RegistrationValidationError("calibration specification digest mismatch")
         if evidence.get("actual_calibration_state_digest") != spec.get(
@@ -188,7 +193,7 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
     for field in shared_fields:
         if evidence.get(field) != spec.get(field):
             raise RegistrationValidationError(f"calibration {field} mismatch")
-    if spec.get("schema_version") == 3:
+    if spec.get("schema_version") in {3, 4}:
         if evidence.get("runtime_limits_ms") != spec.get("runtime_limits_ms"):
             raise RegistrationValidationError("calibration runtime limits mismatch")
     elif evidence.get("runtime_limit_ms") != spec.get("runtime_limit_ms"):
@@ -200,7 +205,7 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
     forbidden = spec.get("forbidden_quality_measurements")
     selection_id = spec.get("selection_measurement_id")
     limits = spec.get("runtime_limits_ms")
-    if spec.get("schema_version") == 3:
+    if spec.get("schema_version") in {3, 4}:
         if not isinstance(limits, Mapping):
             raise RegistrationValidationError("calibration runtime limits are invalid")
         wall_limit = limits.get("wall_time_ms")
@@ -245,7 +250,7 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
             if not isinstance(selected, (int, float)) or isinstance(selected, bool):
                 raise RegistrationValidationError("selection measurement is not numeric")
             over_limit = selected > wall_limit
-            if spec.get("schema_version") == 3:
+            if spec.get("schema_version") in {3, 4}:
                 cpu_time = measurements.get("cpu_time_ms")
                 if not isinstance(cpu_time, (int, float)) or isinstance(cpu_time, bool):
                     raise RegistrationValidationError("CPU measurement is not numeric")
@@ -268,6 +273,18 @@ def validate_calibration_evidence(evidence: Mapping[str, Any], spec: Mapping[str
     expected = max(eligible) if eligible else None
     if evidence.get("selected_work_value") != expected:
         raise RegistrationValidationError("selected calibration work value is not reproducible")
+
+
+def validate_calibration_environment_manifest(value: Mapping[str, Any]) -> None:
+    """Validate the typed environment identity referenced by calibration evidence."""
+
+    runtime_environment = value.get("runtime_environment")
+    if not isinstance(runtime_environment, Mapping):
+        raise RegistrationValidationError("calibration runtime environment is invalid")
+    if value.get("runtime_environment_digest") != manifest_digest(dict(runtime_environment)):
+        raise RegistrationValidationError("calibration runtime environment digest mismatch")
+    if not _DIGEST_RE.fullmatch(str(value.get("runtime_digest", ""))):
+        raise RegistrationValidationError("calibration runtime digest is invalid")
 
 
 def validate_registration_semantics(
@@ -657,9 +674,17 @@ def _schema_for_artifact(
             repository_root / "schemas/manifests" / schema_name,
             "registration",
         )
-    if value.get("rule_id") == "m15-synthetic-calibration-state-v1":
+    if value.get("rule_id") in {
+        "m15-synthetic-calibration-state-v1",
+        "m15-synthetic-calibration-state-v2",
+    }:
+        schema_name = (
+            "calibration-state-manifest-v2.schema.json"
+            if value.get("schema_version") == 2
+            else "calibration-state-manifest-v1.schema.json"
+        )
         return (
-            repository_root / "schemas/manifests/calibration-state-manifest-v1.schema.json",
+            repository_root / "schemas/manifests" / schema_name,
             "calibration_state_manifest",
         )
     kind = value.get("binding_kind")
@@ -667,7 +692,9 @@ def _schema_for_artifact(
         version = value.get("schema_version")
         versioned_names = {
             ("implementation", 3): "evaluation-arm-binding-v3.schema.json",
+            ("implementation", 4): "evaluation-arm-binding-v4.schema.json",
             ("run", 3): "evaluation-run-binding-v3.schema.json",
+            ("run", 4): "evaluation-run-binding-v4.schema.json",
         }
         version_key = version if type(version) is int else -1
         schema_name = versioned_names.get((kind, version_key), _SCHEMA_BY_KIND[kind])
@@ -695,9 +722,16 @@ def _schema_for_artifact(
             repository_root / "schemas/manifests" / schema_name,
             "calibration_evidence",
         )
+    if value.get("environment_kind") == "calibration_runtime":
+        return (
+            repository_root / "schemas/manifests/calibration-environment-manifest-v1.schema.json",
+            "calibration_environment",
+        )
     if "reference_environment_specification" in value:
         schema_name = (
-            "budget-calibration-spec-v3.schema.json"
+            "budget-calibration-spec-v4.schema.json"
+            if value.get("schema_version") == 4
+            else "budget-calibration-spec-v3.schema.json"
             if value.get("schema_version") == 3
             else "budget-calibration-spec.schema.json"
         )
@@ -707,7 +741,9 @@ def _schema_for_artifact(
         )
     if {"spec_id", "world_sampling", "lookahead"}.issubset(value):
         schema_name = (
-            "search-execution-spec-v3.schema.json"
+            "search-execution-spec-v4.schema.json"
+            if value.get("schema_version") == 4
+            else "search-execution-spec-v3.schema.json"
             if value.get("schema_version") == 3
             else "search-execution-spec.schema.json"
         )
@@ -1235,6 +1271,36 @@ def _validate_search_execution_references(
             expected_document_type="roadmap",
             expected_normative=False,
         )
+    if specification.get("schema_version") == 4:
+        registration_id = specification.get("registration_id")
+        fallback_arm_id = specification.get("fallback_arm_id")
+        registrations = []
+        for registration_path in sorted((root / "registrations").rglob("*.json")):
+            try:
+                candidate = load_json_strict(registration_path)
+            except RegistrationValidationError:
+                continue
+            if (
+                isinstance(candidate, Mapping)
+                and "registration_status" in candidate
+                and candidate.get("registration_id") == registration_id
+            ):
+                registrations.append(candidate)
+        if len(registrations) != 1:
+            errors.append("search execution registration reference is not uniquely resolvable")
+        else:
+            arms = registrations[0].get("arms")
+            matching = (
+                [
+                    arm
+                    for arm in arms
+                    if isinstance(arm, Mapping) and arm.get("arm_id") == fallback_arm_id
+                ]
+                if isinstance(arms, list)
+                else []
+            )
+            if len(matching) != 1 or matching[0].get("lifecycle") != "active":
+                errors.append("search execution fallback_arm_id is not an active registered arm")
     return errors
 
 
@@ -1354,45 +1420,44 @@ def _validate_repository_file_manifest(
 
 def _validate_implementation_provenance(value: Mapping[str, Any], root: Path) -> None:
     source_commit = value.get("source_commit")
-    if not isinstance(source_commit, str):
+    if not isinstance(source_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise RegistrationValidationError("implementation source_commit is invalid")
-    if source_commit != _TASK21_SOURCE_COMMIT:
-        raise RegistrationValidationError(
-            "implementation source_commit is not the validated Task-21 commit"
-        )
-    _validate_repository_file_manifest(
-        root, value.get("source_manifest"), "implementation", source_commit=source_commit
-    )
     components = value.get("components")
     if not isinstance(components, Mapping):
         raise RegistrationValidationError("implementation components are invalid")
-    policy = components.get("policy")
-    safety = components.get("fallback_and_safety")
-    if not isinstance(policy, Mapping) or not isinstance(safety, Mapping):
-        raise RegistrationValidationError("implementation component bindings are invalid")
-    policy_entries = policy.get("source_manifest")
-    safety_entries = safety.get("source_manifest")
-    policy_digest = _validate_repository_file_manifest(
-        root, policy_entries, "policy", source_commit=source_commit
+    flattened: dict[str, dict[str, str]] = {}
+    for component_name, component in components.items():
+        if not isinstance(component, Mapping):
+            raise RegistrationValidationError(
+                f"implementation component {component_name} is invalid"
+            )
+        if component.get("state") != "bound":
+            continue
+        entries = component.get("source_manifest")
+        component_digest = _validate_repository_file_manifest(
+            root, entries, component_name, source_commit=source_commit
+        )
+        if component_digest != component.get("digest"):
+            raise RegistrationValidationError(
+                f"{component_name} digest does not match its source manifest"
+            )
+        if not isinstance(entries, list):
+            raise RegistrationValidationError(f"{component_name} source manifest is invalid")
+        for entry in entries:
+            path = entry["repository_path"]
+            normalized = {"repository_path": path, "content_digest": entry["content_digest"]}
+            previous = flattened.get(path)
+            if previous is not None and previous != normalized:
+                raise RegistrationValidationError(
+                    f"bound component manifests disagree about {path}"
+                )
+            flattened[path] = normalized
+    expected_source_manifest = sorted(
+        flattened.values(), key=lambda entry: entry["repository_path"]
     )
-    safety_digest = _validate_repository_file_manifest(
-        root, safety_entries, "fallback and safety", source_commit=source_commit
-    )
-    component_entries = [policy_entries, safety_entries]
-    flattened = [
-        entry for entries in component_entries if isinstance(entries, list) for entry in entries
-    ]
-    if value.get("source_manifest") != sorted(
-        flattened, key=lambda entry: entry["repository_path"]
-    ):
+    if value.get("source_manifest") != expected_source_manifest:
         raise RegistrationValidationError(
             "implementation source manifest does not match bound component manifests"
-        )
-    if policy_digest != policy.get("digest"):
-        raise RegistrationValidationError("policy digest does not match its source manifest")
-    if safety_digest != safety.get("digest"):
-        raise RegistrationValidationError(
-            "fallback and safety digest does not match its source manifest"
         )
     package_digest = _validate_repository_file_manifest(
         root,
@@ -1402,6 +1467,15 @@ def _validate_implementation_provenance(value: Mapping[str, Any], root: Path) ->
     )
     if package_digest != value.get("package_or_wheel_digest"):
         raise RegistrationValidationError("package digest does not match its source manifest")
+    if value.get("schema_version") == 4:
+        runtime_digest = _validate_repository_file_manifest(
+            root,
+            value.get("runtime_source_manifest"),
+            "runtime",
+            source_commit=source_commit,
+        )
+        if runtime_digest != value.get("runtime_digest"):
+            raise RegistrationValidationError("runtime digest does not match its source manifest")
     for field, repository_path in (
         ("decision_record_schema_digest", "schemas/records/decision-record-v2.schema.json"),
         (
@@ -1600,6 +1674,10 @@ def validate_synthetic_fixture_manifest(fixture: Mapping[str, Any], root: Path) 
 def validate_calibration_state_manifest(value: Mapping[str, Any]) -> None:
     """Validate the public, outcome-blind M1.5 calibration state definition."""
 
+    if value.get("schema_version") == 2:
+        _validate_executable_calibration_state_manifest(value)
+        return
+
     construction = value.get("construction")
     if construction != {
         "algorithm_id": "public-observation-grid-v1",
@@ -1651,6 +1729,136 @@ def validate_calibration_state_manifest(value: Mapping[str, Any]) -> None:
                 "calibration state enumeration order is not canonical"
             )
         seen.add(state_id)
+
+
+def _calibration_input_payload(public_state: Mapping[str, Any], state_id: str) -> dict[str, Any]:
+    """Build one deterministic, public calibration input bundle."""
+
+    turn_index = public_state["turn_index"]
+    request_kind = "move" if public_state["request_kind"] == "move" else "forced_switch"
+    request_identity = {
+        "rqid": turn_index + 1,
+        "request_digest": manifest_digest({"state_id": state_id, "request_kind": request_kind}),
+    }
+    submission = (
+        {
+            "kind": "move",
+            "provenance": "explicit_request",
+            "slot": 1,
+            "move_id": "tackle",
+            "terastallize": False,
+            "team_order": [],
+        }
+        if request_kind == "move"
+        else {
+            "kind": "switch",
+            "provenance": "explicit_request",
+            "slot": 2,
+            "move_id": None,
+            "terastallize": False,
+            "team_order": [],
+        }
+    )
+    public_observed_state = {
+        "event_index": turn_index,
+        "turn": turn_index,
+        "battle_started": True,
+        "our_side": "p1",
+        "weather": public_state["weather_class"],
+        "rules": ["gen9ou"],
+        "field_conditions": [],
+        "p1": {
+            "side_id": "p1",
+            "team_size": 6,
+            "active_slot": 1,
+            "pokemon": [
+                {
+                    "slot": 1,
+                    "details": "Pikachu, L50",
+                    "active": True,
+                    "hp": {"current": 100, "maximum": 100, "precision": "exact", "fainted": False},
+                    "revealed_moves": ["tackle"],
+                }
+            ],
+        },
+        "p2": {
+            "side_id": "p2",
+            "team_size": 6,
+            "active_slot": 1,
+            "pokemon": [
+                {
+                    "slot": 1,
+                    "details": "Bulbasaur, L50",
+                    "active": True,
+                    "hp": {"current": 100, "maximum": 100, "precision": "exact", "fainted": False},
+                    "revealed_moves": [],
+                }
+            ],
+        },
+        "visible_evidence": [],
+        "ignored_display_count": 0,
+    }
+    decision_request = {
+        "identity": request_identity,
+        "kind": request_kind,
+        "side_id": "p1",
+        "team_member_count": 6,
+        "active_identity": "fixture-p1-slot-1",
+        "is_update": False,
+    }
+    safe_submission_set = {
+        "request_identity": request_identity,
+        "submissions": [submission],
+    }
+    return {
+        "public_observed_state": public_observed_state,
+        "decision_request": decision_request,
+        "safe_submission_set": safe_submission_set,
+    }
+
+
+def _validate_executable_calibration_state_manifest(value: Mapping[str, Any]) -> None:
+    expected_construction = {
+        "algorithm_id": "public-observation-grid-v2",
+        "field_order": ["turn_index", "active_slot_count", "request_kind", "weather_class"],
+        "enumeration_order": "lexicographic_over_declared_domains",
+        "public_fields_only": True,
+        "declared_domains": {
+            "turn_index": [0, 1, 2],
+            "active_slot_count": [1, 2],
+            "request_kind": ["move", "switch"],
+            "weather_class": ["none", "sun"],
+        },
+        "state_set": "explicit_public_executable_inputs_v1",
+    }
+    if value.get("manifest_id") != "m15-synthetic-calibration-states-v2":
+        raise RegistrationValidationError("calibration executable manifest identity is invalid")
+    if value.get("rule_id") != "m15-synthetic-calibration-state-v2":
+        raise RegistrationValidationError("calibration executable rule is invalid")
+    if value.get("construction") != expected_construction:
+        raise RegistrationValidationError("calibration executable construction is not frozen")
+    states = value.get("states")
+    if not isinstance(states, list):
+        raise RegistrationValidationError("calibration executable state list is invalid")
+    expected_states: list[dict[str, Any]] = []
+    field_order = cast(list[str], expected_construction["field_order"])
+    domains = cast(dict[str, list[Any]], expected_construction["declared_domains"])
+    for combination in product(*(domains[field] for field in field_order)):
+        public_state = dict(zip(field_order, combination, strict=True))
+        state_id = manifest_digest(public_state)
+        inputs = _calibration_input_payload(public_state, state_id)
+        expected_states.append(
+            {
+                "state_id": state_id,
+                "public_state": public_state,
+                **inputs,
+                "inputs_digest": manifest_digest(inputs),
+            }
+        )
+    if states != expected_states:
+        raise RegistrationValidationError(
+            "calibration executable inputs do not match the frozen product"
+        )
 
 
 def validate_repository_artifacts(root: Path | None = None) -> list[str]:
@@ -1742,6 +1950,7 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             "search_execution": "spec_id",
             "synthetic_acceptance": "manifest_id",
             "calibration_state_manifest": "manifest_id",
+            "calibration_environment": "manifest_id",
         }
         field = field_by_kind.get(kind)
         identifier = value.get(field) if field is not None else None
@@ -1818,7 +2027,7 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     errors.append(f"{relative}: execution specification digest is unresolved")
                 elif execution[1].get("arm_id") != arm.get("arm_id"):
                     errors.append(f"{relative}: execution specification arm mismatch")
-                elif execution[1].get("schema_version") == 3:
+                elif execution[1].get("schema_version") in {3, 4}:
                     parameter = execution[1].get("budget_parameter")
                     calibration_digest = (
                         parameter.get("calibration_spec_digest")
@@ -1856,7 +2065,7 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 for error in _validate_registration_references(value, repository_root)
             )
             continue
-        if kind == "calibration_spec" and value.get("schema_version") == 3:
+        if kind == "calibration_spec" and value.get("schema_version") in {3, 4}:
             state_digest = value.get("calibration_state_manifest_digest")
             state_entry = by_digest.get(state_digest) if isinstance(state_digest, str) else None
             if (
@@ -1865,6 +2074,12 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 or state_entry[1].get("rule_id") != value.get("calibration_state_rule_id")
             ):
                 errors.append(f"{relative}: calibration state manifest digest is unresolved")
+        if kind == "calibration_environment":
+            try:
+                validate_calibration_environment_manifest(value)
+            except RegistrationValidationError as exc:
+                errors.append(f"{relative}: {exc}")
+            continue
         if kind not in {"implementation", "run"}:
             if kind != "calibration_evidence":
                 continue
@@ -1874,6 +2089,12 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                 errors.append(f"{relative}: calibration specification digest is unresolved")
                 continue
             specification = spec[1]
+            environment_digest = value.get("actual_environment_digest")
+            environment = (
+                by_digest.get(environment_digest) if isinstance(environment_digest, str) else None
+            )
+            if environment is None or environment[2] != "calibration_environment":
+                errors.append(f"{relative}: calibration environment digest is unresolved")
             try:
                 validate_calibration_evidence(value, specification)
             except RegistrationValidationError as exc:
@@ -1912,11 +2133,18 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
             )
         _, registration, _ = registration_entry
         if kind == "implementation":
-            if value.get("schema_version") == 3:
+            if value.get("schema_version") in {3, 4}:
                 try:
                     _validate_implementation_provenance(value, repository_root)
                 except RegistrationValidationError as exc:
                     errors.append(f"{relative}: {exc}")
+                if (
+                    value.get("binding_id") == "heuristic_v0-implementation"
+                    and value.get("source_commit") != _TASK21_SOURCE_COMMIT
+                ):
+                    errors.append(
+                        f"{relative}: heuristic_v0 Task-21 binding has the wrong source_commit"
+                    )
             arm_ids = {
                 arm.get("arm_id")
                 for arm in registration.get("arms", [])
@@ -2011,7 +2239,6 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     )
                     expected_fixture_fields = {
                         "schedule_digest": rows,
-                        "seed_family_digest": seed_component,
                         "budget_profile_digest": fixture_value.get("budget_profile"),
                         "runtime_environment_digest": fixture_value.get("runtime_environment"),
                         "ruleset_digest": fixture_value.get("ruleset_snapshot"),
@@ -2019,6 +2246,29 @@ def validate_repository_artifacts(root: Path | None = None) -> list[str]:
                     for field, fixture_component in expected_fixture_fields.items():
                         if value.get(field) != manifest_digest(fixture_component):
                             errors.append(f"{relative}: synthetic fixture {field} mismatch")
+                    if value.get("schema_version") == 4:
+                        schedule_row_id = value.get("schedule_row_id")
+                        matching_rows = (
+                            [
+                                row
+                                for row in rows
+                                if isinstance(row, Mapping) and row.get("row_id") == schedule_row_id
+                            ]
+                            if isinstance(rows, list)
+                            else []
+                        )
+                        if len(matching_rows) != 1:
+                            errors.append(
+                                f"{relative}: synthetic fixture schedule row is unresolved"
+                            )
+                        elif value.get("seed_family_digest") != manifest_digest(
+                            matching_rows[0]["seed_family"]
+                        ):
+                            errors.append(
+                                f"{relative}: synthetic fixture seed_family_digest does not match schedule row"
+                            )
+                    elif value.get("seed_family_digest") != manifest_digest(seed_component):
+                        errors.append(f"{relative}: synthetic fixture seed_family_digest mismatch")
     return sorted(errors)
 
 

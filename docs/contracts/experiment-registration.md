@@ -4,7 +4,7 @@ title: Experimentregistrierung und Artefaktbindungen
 document_type: contract
 status: accepted
 normative: true
-version: 7
+version: 8
 applies_to:
   - research
   - evaluation
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-05
 ---
 
 # Experimentregistrierung und Artefaktbindungen
@@ -57,7 +57,7 @@ Die folgenden IDs sind die für M1.5 zulässigen, versionierten Regelreferenzen:
 | `stop_rule_id` | `no_effect_stop_v1` | Stops a comparison at the preregistered null-effect criterion. |
 | `pivot_rule_id` | `uncertain_effect_pivot_v1` | Routes an uncertain effect through the preregistered pivot path. |
 | `go_rule_id` | `lower_confidence_bound_at_least_minimum_effect_v1` | Go only when the one-sided lower confidence bound for `right - left` reaches the registered practical margin. |
-| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v1` | Constructs the fixed, outcome-blind calibration states used by the M1.5 budget specification. |
+| `calibration_state_rule_id` | `m15-synthetic-calibration-state-v2` | Constructs the fixed, outcome-blind calibration states with executable public observation, request, and safe-submission inputs used by the M1.5 budget specification. |
 
 ## Task-21-Präregistrierung
 
@@ -84,16 +84,32 @@ aber keine abweichende Identität einführen.
 
 ## Komponentenstatus
 
-Die v3-Kalibrierung bindet Wandzeit und CPU-Zeit beide als harte
+Die v4-Kalibrierung bindet Wandzeit und CPU-Zeit beide als harte
 Auswahlbedingungen. Ihr `calibration_state_manifest_digest` verweist auf ein
 eigenes, versioniertes Manifest mit expliziten öffentlichen Zustandsfeldern,
-Domänen, Reihenfolge und deterministischer Zustandsliste. Der `work_value`
+Domänen, Reihenfolge und deterministischer Zustandsliste. Jeder Zustand bindet
+zusätzlich einen vollständigen öffentlichen Observed State, einen Decision
+Request und ein Safe Submission Set. Der `work_value`
 bleibt bis zur Kalibrierevidenz `null`; ein fester Wert in einem synthetischen
 Acceptance-Binding ist davon getrennt.
 
 Eine Implementierungsbindung mit `source_commit` prüft ihre Source-Manifeste
 gegen die Blobbytes dieses Commits, nicht gegen den späteren Arbeitsbaum. So
 bleibt eine eingefrorene Binding auch nach Änderungen in M2 reproduzierbar.
+Die Bindung validiert jede gebundene Komponente gegen ihr eigenes Source-Manifest
+und bildet daraus die kanonische Union. Die Runtime-Implementierung besitzt
+zusätzlich ein separates `runtime_source_manifest` und `runtime_digest`; die
+Laufumgebung bleibt als `runtime_environment_digest` davon getrennt.
+
+Ein synthetisches v4-Run-Binding bindet genau eine `schedule_row_id` und den
+Digest der zugehörigen SeedFamily. Ein vollständiger Schedule-Digest bleibt
+zusätzlich erhalten. Dadurch kann jeder Run Context direkt zu genau einer
+Task-20-ScheduleRow rekonstruiert werden, ohne einen Listendigest als einzelne
+SeedFamily auszugeben.
+
+Die deklarative Search-Spezifikation bindet ihre Kalibrierspezifikation und das
+ausführbare Zustandsmanifest. Ein Fallback wird als `fallback_arm_id` auf einen
+aktiven registrierten Arm aufgelöst; freie Fallback-Texte sind nicht zulässig.
 
 Jede Komponente einer Implementierungsbindung besitzt genau einen Status:
 

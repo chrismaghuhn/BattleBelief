@@ -14,6 +14,7 @@ from battlebelief_lab.registration_validation import (
     _schema_for_artifact,
     _validate_registration_references,
     _validate_search_execution_references,
+    validate_calibration_environment_manifest,
     validate_calibration_evidence,
     validate_calibration_spec,
     validate_registration_semantics,
@@ -776,6 +777,69 @@ def test_v3_calibration_evidence_binds_spec_and_state_manifest_digests() -> None
     evidence["actual_calibration_state_digest"] = "sha256:" + "3" * 64
     with pytest.raises(RegistrationValidationError, match="state manifest digest"):
         validate_calibration_evidence(evidence, spec)
+
+
+def test_calibration_environment_manifest_binds_its_runtime_environment() -> None:
+    environment = {
+        "schema_version": 1,
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "manifest_id": "m15-calibration-environment-v1",
+        "environment_kind": "calibration_runtime",
+        "runtime_environment": {
+            "python": "3.14",
+            "platform": "ubuntu-24.04",
+            "network": "disabled",
+            "cpu_model": "fixture-cpu",
+        },
+        "runtime_environment_digest": "sha256:" + "1" * 64,
+        "runtime_digest": "sha256:" + "2" * 64,
+    }
+
+    with pytest.raises(RegistrationValidationError, match="environment digest"):
+        validate_calibration_environment_manifest(environment)
+
+    environment["runtime_environment_digest"] = manifest_digest(environment["runtime_environment"])
+    validate_calibration_environment_manifest(environment)
+
+
+def test_calibration_evidence_requires_a_resolvable_environment_manifest(
+    tmp_path: Path,
+) -> None:
+    root, _ = _repository_fixture(tmp_path)
+    spec = json.loads((root / "schemas/examples/budget-calibration-spec.example.json").read_text())
+    evidence = json.loads(
+        (root / "schemas/examples/budget-calibration-evidence.example.json").read_text()
+    )
+    runtime_environment = {
+        "python": "3.14",
+        "platform": "fixture",
+        "network": "disabled",
+        "cpu_model": "fixture-cpu",
+    }
+    environment = {
+        "schema_version": 1,
+        "artifact_version": 1,
+        "supersedes_digest": None,
+        "manifest_id": "m15-calibration-environment-v1",
+        "environment_kind": "calibration_runtime",
+        "runtime_environment": runtime_environment,
+        "runtime_environment_digest": manifest_digest(runtime_environment),
+        "runtime_digest": "sha256:" + "2" * 64,
+    }
+    evidence["calibration_spec_digest"] = manifest_digest(spec)
+    evidence["actual_environment_digest"] = manifest_digest(environment)
+    (root / "registrations/calibration-spec.json").write_text(json.dumps(spec))
+    (root / "registrations/calibration-environment.json").write_text(json.dumps(environment))
+    (root / "registrations/calibration-evidence.json").write_text(json.dumps(evidence))
+
+    errors = validate_repository_artifacts(root)
+    assert not any("calibration environment digest is unresolved" in error for error in errors)
+
+    evidence["actual_environment_digest"] = "sha256:" + "3" * 64
+    (root / "registrations/calibration-evidence.json").write_text(json.dumps(evidence))
+    errors = validate_repository_artifacts(root)
+    assert any("calibration environment digest is unresolved" in error for error in errors)
 
 
 def test_decision_gates_reject_duplicate_comparison_bindings() -> None:

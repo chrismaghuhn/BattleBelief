@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_lab.registration_validation import (
     RegistrationValidationError,
     _git_blob_bytes,
@@ -23,11 +24,12 @@ from battlebelief_lab.registration_validation import (
 
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRATION = ROOT / "registrations/gen9ou/m1-5-core-comparisons-v1.json"
-IMPLEMENTATION = ROOT / "registrations/gen9ou/bindings/heuristic_v0-implementation.json"
-RUN_BINDING = ROOT / "registrations/gen9ou/bindings/heuristic_v0-m15-synthetic-run.json"
+IMPLEMENTATION = ROOT / "registrations/gen9ou/bindings/heuristic_v0-implementation-v2.json"
+RUN_BINDING = ROOT / "registrations/gen9ou/bindings/heuristic_v0-m15-synthetic-run-p1.json"
+RUN_BINDING_DIR = ROOT / "registrations/gen9ou/bindings"
 FIXTURES = ROOT / "registrations/gen9ou/synthetic/m15-acceptance-inputs-v1.json"
-EXECUTION_SPEC = ROOT / "registrations/gen9ou/arm-specs/determinization-search-v0.json"
-CALIBRATION_SPEC = ROOT / "registrations/gen9ou/budgets/m15-search-work-calibration-v1.json"
+EXECUTION_SPEC = ROOT / "registrations/gen9ou/arm-specs/determinization-search-v0-v4.json"
+CALIBRATION_SPEC = ROOT / "registrations/gen9ou/budgets/m15-search-work-calibration-v2.json"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -147,7 +149,7 @@ def test_synthetic_run_binding_uses_fixture_provenance_without_opening_pools() -
     assert run_binding["implementation_binding_digest"] == artifact_digest(implementation)
     assert run_binding["synthetic_fixture_manifest_digest"] == artifact_digest(fixture_manifest)
     assert run_binding["calibration_evidence_digest"] is None
-    assert run_binding["schema_version"] == 3
+    assert run_binding["schema_version"] == 4
     assert fixture_manifest["schema_version"] == 3
     assert fixture_manifest["schedule_rows"][0]["row_id"].startswith("sha256:")
     assert "schedule_block" in fixture_manifest["schedule_rows"][0]
@@ -157,6 +159,22 @@ def test_synthetic_run_binding_uses_fixture_provenance_without_opening_pools() -
     )
     assert fixture_manifest["budget_profile"]["profile_id"]
     assert fixture_manifest["budget_profile"]["deployment"]["wall_time_budget_ms"] == 2000
+
+
+def test_each_synthetic_run_binding_resolves_one_schedule_row_and_seed_family() -> None:
+    bindings = sorted(RUN_BINDING_DIR.glob("heuristic_v0-m15-synthetic-run-*.json"))
+    assert len(bindings) == 2
+
+    fixture_manifest = _load(FIXTURES)
+    rows = {row["row_id"]: row for row in fixture_manifest["schedule_rows"]}
+    assert len(rows) == 2
+
+    for binding_path in bindings:
+        binding = _load(binding_path)
+        row = rows[binding["schedule_row_id"]]
+        assert binding["seed_family_digest"] == manifest_digest(row["seed_family"])
+
+    assert validate_repository_artifacts(ROOT) == []
 
 
 def test_synthetic_fixture_rejects_noncanonical_schedule_identity() -> None:
@@ -169,10 +187,29 @@ def test_synthetic_fixture_rejects_noncanonical_schedule_identity() -> None:
 
 def test_heuristic_binding_declares_recomputable_source_manifests() -> None:
     implementation = _load(IMPLEMENTATION)
-    assert implementation["schema_version"] == 3
+    assert implementation["schema_version"] == 4
     assert implementation["source_manifest"]
     assert implementation["contract_set"]
     assert implementation["package_or_wheel_source_manifest"]
+    assert implementation["runtime_source_manifest"]
+
+
+def test_implementation_provenance_validates_every_bound_component() -> None:
+    implementation = _load(IMPLEMENTATION)
+    implementation["components"]["search_algorithm"] = {
+        "state": "bound",
+        "digest": "sha256:" + "0" * 64,
+        "source_manifest": implementation["components"]["policy"]["source_manifest"],
+    }
+
+    with pytest.raises(RegistrationValidationError, match="search_algorithm"):
+        _validate_implementation_provenance(implementation, ROOT)
+
+
+def test_implementation_binding_declares_runtime_source_identity() -> None:
+    implementation = _load(IMPLEMENTATION)
+    assert implementation["runtime_source_manifest"]
+    assert implementation["runtime_digest"].startswith("sha256:")
 
 
 def test_implementation_source_manifest_reads_the_frozen_commit_tree() -> None:
@@ -218,13 +255,16 @@ def test_implementation_provenance_rejects_malformed_component_manifest() -> Non
 
 def test_calibration_state_manifest_matches_complete_frozen_product() -> None:
     manifest = _load(
-        ROOT / "registrations/gen9ou/calibration/m15-synthetic-calibration-states-v1.json"
+        ROOT / "registrations/gen9ou/calibration/m15-synthetic-calibration-states-v2.json"
     )
 
     incomplete = json.loads(json.dumps(manifest))
     incomplete["states"].pop()
 
-    with pytest.raises(RegistrationValidationError, match="state construction"):
+    with pytest.raises(
+        RegistrationValidationError,
+        match=r"calibration executable inputs|state construction",
+    ):
         validate_calibration_state_manifest(incomplete)
 
     reordered = json.loads(json.dumps(manifest))
@@ -233,8 +273,26 @@ def test_calibration_state_manifest_matches_complete_frozen_product() -> None:
         reordered["states"][0],
     )
 
-    with pytest.raises(RegistrationValidationError, match="enumeration order"):
+    with pytest.raises(
+        RegistrationValidationError,
+        match="calibration executable inputs",
+    ):
         validate_calibration_state_manifest(reordered)
+
+
+def test_calibration_states_bind_executable_public_inputs() -> None:
+    manifest = _load(
+        ROOT / "registrations/gen9ou/calibration/m15-synthetic-calibration-states-v2.json"
+    )
+    for state in manifest["states"]:
+        assert "public_observed_state" in state
+        assert "decision_request" in state
+        assert "safe_submission_set" in state
+
+
+def test_search_fallback_resolves_to_registered_heuristic_arm() -> None:
+    specification = _load(EXECUTION_SPEC)
+    assert specification["fallback_arm_id"] == "heuristic_v0"
 
 
 def test_calibration_selection_requires_wall_and_cpu_limits() -> None:
