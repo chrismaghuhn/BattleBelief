@@ -28,6 +28,9 @@ M2-Reihenfolge.
 Bei einem Widerspruch gelten die akzeptierten Contracts, Registrierungen und
 Manifeste im [Dokumentationsindex](../README.md).
 
+Vor einer Aufnahme in eine Implementierungsroadmap muss diese Richtung das
+allgemeine [Research Admission Gate](research-admission-gate.md) bestehen.
+
 ## Forschungsfrage
 
 Der aktuelle Open-World-Vertrag reserviert positive Masse für `OTHER` und
