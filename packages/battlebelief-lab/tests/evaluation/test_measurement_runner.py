@@ -414,3 +414,48 @@ def test_partial_trace_acceptance_preserves_session_submission_counters() -> Non
     errors = validate_measurement_run_result(result, decision_records=(record,))
 
     assert not any("explicit submission count does not match records" in error for error in errors)
+
+
+def test_partial_trace_allows_non_submitted_prefix_before_failed_submission() -> None:
+    record = _Record(
+        record_digest="sha256:" + "d" * 64,
+        decision_index=0,
+        run_context_digest=_RUN_DIGEST,
+        record_status=DecisionRecordStatus.WAIT_NOOP,
+        submission_provenance=None,
+    )
+    ledger = _Ledger()
+    ledger.records = (record,)
+    ledger.accepted_record_count = 1
+    ledger.accepted_record_digests = (record.record_digest,)
+    session = _TraceOnlySession(
+        ledger,
+        primary_error=TraceSinkFailure(),
+        trace_error=TraceSinkFailure(),
+        explicit_request_submissions=1,
+    )
+    schedule = build_schedule(
+        registration_digest=_RUN_DIGEST,
+        master_seed="0123456789abcdef" * 4,
+        matchup_keys=[BaseMatchupKey("hero", "opponent", "balance", "policy", "block")],
+        repetitions=2,
+    )
+    context = SimpleNamespace(
+        run_context_digest=_RUN_DIGEST,
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
+    )
+
+    result = asyncio.run(
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=context,
+            schedule_row=schedule.rows[0],
+        ).run()
+    )
+
+    assert result.run_status is RunStatus.TRACE_FAILED
+    assert result.explicit_submission_count == 1

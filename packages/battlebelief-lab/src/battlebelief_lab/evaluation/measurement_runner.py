@@ -209,8 +209,12 @@ def validate_measurement_run_result(
             record.submission_provenance is ActionProvenance.SERVER_DEFAULT
             for record in submitted_records
         )
-        partial_trace = result.trace_status is TraceStatus.SINK_FAILED and any(
-            record.record_status is DecisionRecordStatus.SUBMITTED for record in decision_records
+        partial_trace = result.trace_status is TraceStatus.SINK_FAILED and (
+            result.primary_error_class == "trace_sink_failure"
+            or any(
+                record.record_status is DecisionRecordStatus.SUBMITTED
+                for record in decision_records
+            )
         )
         if partial_trace:
             if result.explicit_submission_count < explicit:
