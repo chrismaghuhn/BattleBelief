@@ -163,6 +163,8 @@ jobs:
             git -C "$ORACLE_CHECKOUT" rev-parse 'HEAD^{tree}'
             printf 'generated_tree='
             GIT_INDEX_FILE="$ORACLE_CHECKOUT/logs/.gitindex" git -C "$ORACLE_CHECKOUT" write-tree || printf '%s\n' 'invalid'
+            printf '%s\n' 'generated_index_changes'
+            GIT_INDEX_FILE="$ORACLE_CHECKOUT/logs/.gitindex" git -C "$ORACLE_CHECKOUT" diff --cached --name-status HEAD
           fi
       - name: Compare and report canonical evidence
         env:

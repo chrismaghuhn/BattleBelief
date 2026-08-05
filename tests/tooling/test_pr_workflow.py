@@ -151,6 +151,7 @@ def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
     assert diagnostic["env"] == {"ORACLE_CHECKOUT": "${{ runner.temp }}/pokemon-showdown"}
     assert 'git -C "$ORACLE_CHECKOUT" diff --name-status --no-ext-diff' in diagnostic["run"]
     assert 'GIT_INDEX_FILE="$ORACLE_CHECKOUT/logs/.gitindex"' in diagnostic["run"]
+    assert "diff --cached --name-status HEAD" in diagnostic["run"]
     assert "cat " not in diagnostic["run"]
 
 
