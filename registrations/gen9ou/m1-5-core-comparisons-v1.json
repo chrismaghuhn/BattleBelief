@@ -1,0 +1,210 @@
+{
+  "schema_version": 3,
+  "artifact_version": 1,
+  "supersedes_digest": null,
+  "registration_id": "m15-core-comparisons-v1",
+  "registration_status": "frozen",
+  "hypothesis": "Protocol-safe decision policies with additional registered planning or information-set treatment improve decision regret under the same declared deployment budget.",
+  "null_hypotheses": [
+    "Determinization search does not improve decision regret over the registered heuristic.",
+    "Information-set DUCT with the registered closed-world distribution does not improve decision regret over determinization search.",
+    "The registered open-world belief treatment does not improve decision regret over the registered closed-world treatment."
+  ],
+  "arms": [
+    {
+      "arm_id": "heuristic_v0",
+      "policy_kind": "heuristic",
+      "search_algorithm_id": null,
+      "world_distribution_or_belief_mode": "not_applicable",
+      "lifecycle": "active"
+    },
+    {
+      "arm_id": "determinization_search_v0",
+      "policy_kind": "search",
+      "search_algorithm_id": "determinization_search_v0",
+      "world_distribution_or_belief_mode": "evaluation_closed_world_v0",
+      "lifecycle": "active",
+      "execution_spec_digest": "sha256:d6107c8f207cd4a4b5b830812b2f355e389614e264feb2409b43abb84d465e0d"
+    },
+    {
+      "arm_id": "information_set_duct_closed_world_v0",
+      "policy_kind": "search",
+      "search_algorithm_id": "information_set_duct_v0",
+      "world_distribution_or_belief_mode": "evaluation_closed_world_v0",
+      "lifecycle": "active"
+    },
+    {
+      "arm_id": "information_set_duct_open_world_v0",
+      "policy_kind": "search",
+      "search_algorithm_id": "information_set_duct_v0",
+      "world_distribution_or_belief_mode": "contract_open_world_belief_v0",
+      "lifecycle": "active"
+    },
+    {
+      "arm_id": "model_or_hybrid_v0",
+      "policy_kind": "model_or_hybrid",
+      "search_algorithm_id": null,
+      "world_distribution_or_belief_mode": "deferred",
+      "lifecycle": "deferred"
+    }
+  ],
+  "comparisons": [
+    {
+      "comparison_id": "heuristic-vs-determinization",
+      "left_arm_id": "heuristic_v0",
+      "right_arm_id": "determinization_search_v0",
+      "primary_metric_id": "decision_regret_teacher_v1",
+      "estimand_id": "paired_mean_difference_v1",
+      "analysis_procedure_id": "weighted_cluster_bootstrap_v1",
+      "direction": "lower_is_better",
+      "confidence_level": 0.95,
+      "technical_outcome_treatment_id": "technical_outcomes_full_v1",
+      "minimum_effect": 0.05,
+      "tie_break_rule_id": "prefer_lower_runtime_v1"
+    },
+    {
+      "comparison_id": "determinization-vs-duct-closed-world",
+      "left_arm_id": "determinization_search_v0",
+      "right_arm_id": "information_set_duct_closed_world_v0",
+      "primary_metric_id": "decision_regret_teacher_v1",
+      "estimand_id": "paired_mean_difference_v1",
+      "analysis_procedure_id": "weighted_cluster_bootstrap_v1",
+      "direction": "lower_is_better",
+      "confidence_level": 0.95,
+      "technical_outcome_treatment_id": "technical_outcomes_full_v1",
+      "minimum_effect": 0.05,
+      "tie_break_rule_id": "prefer_lower_runtime_v1"
+    },
+    {
+      "comparison_id": "duct-closed-vs-duct-open-world",
+      "left_arm_id": "information_set_duct_closed_world_v0",
+      "right_arm_id": "information_set_duct_open_world_v0",
+      "primary_metric_id": "decision_regret_teacher_v1",
+      "estimand_id": "paired_mean_difference_v1",
+      "analysis_procedure_id": "weighted_cluster_bootstrap_v1",
+      "direction": "lower_is_better",
+      "confidence_level": 0.95,
+      "technical_outcome_treatment_id": "technical_outcomes_full_v1",
+      "minimum_effect": 0.05,
+      "tie_break_rule_id": "prefer_lower_runtime_v1"
+    }
+  ],
+  "metric_references": [
+    {
+      "document_id": "evaluation-metrics",
+      "document_version": 4,
+      "document_digest": "sha256:2c2287d97cd166f1fd109a5c1b59ebc294d3dc2d83f1fa3f0a9ff487e9a5c11a",
+      "metric_id": "decision_regret_teacher_v1",
+      "role": "primary"
+    },
+    {
+      "document_id": "evaluation-metrics",
+      "document_version": 4,
+      "document_digest": "sha256:2c2287d97cd166f1fd109a5c1b59ebc294d3dc2d83f1fa3f0a9ff487e9a5c11a",
+      "metric_id": "fallback_rate_v1",
+      "role": "diagnostic"
+    }
+  ],
+  "estimand_references": [
+    {
+      "document_id": "evaluation-statistical-analysis",
+      "document_version": 4,
+      "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531",
+      "estimand_id": "paired_mean_difference_v1"
+    }
+  ],
+  "analysis_procedure_references": [
+    {
+      "document_id": "evaluation-statistical-analysis",
+      "document_version": 4,
+      "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531",
+      "analysis_procedure_id": "weighted_cluster_bootstrap_v1"
+    },
+    {
+      "document_id": "evaluation-statistical-analysis",
+      "document_version": 4,
+      "document_digest": "sha256:5b35d2dd0f0d055a7783f2b66b29ece63b0df0a3a6519f53d720fe30a971c531",
+      "analysis_procedure_id": "technical_outcomes_full_v1"
+    }
+  ],
+  "contract_references": [
+    {
+      "document_id": "contract-manifest-schemas",
+      "document_version": 10,
+      "document_digest": "sha256:404d8269834abe2e336ef2904a349dbcdece1146c9506fa10eb41214ae307a8d"
+    },
+    {
+      "document_id": "contract-determinism",
+      "document_version": 1,
+      "document_digest": "sha256:16f4865ad1442ce4593f7fe281ba974a801c2ed0adaa833389e54afcefdca617"
+    },
+    {
+      "document_id": "contract-provenance",
+      "document_version": 6,
+      "document_digest": "sha256:150ae89c0d4d28f7c44da480f46e1d738a6ba3418477dcab7277233ff05e8603"
+    },
+    {
+      "document_id": "experiment-registration",
+      "document_version": 5,
+      "document_digest": "sha256:00837426b533ed495ab3ae51ebd214e2ab13d8e81aa24ca1913099c540c8eeba"
+    },
+    {
+      "document_id": "evaluation-target-population",
+      "document_version": 1,
+      "document_digest": "sha256:6796bc41b6986e414061ac652a19433bad603048d21eb929a921b00a405e8c18"
+    },
+    {
+      "document_id": "evaluation-pool-separation",
+      "document_version": 1,
+      "document_digest": "sha256:104b0c94f6963f7904b7f0f733185a1911d70f6da639d833b6ed3408dbf87b29"
+    }
+  ],
+  "pool_access": {
+    "development": "available",
+    "selection": "unopened",
+    "power_pilot": "unopened",
+    "release_holdout": "unopened"
+  },
+  "pool_rules": {
+    "construction_rule_id": "registered_pool_construction_v1",
+    "near_duplicate_rule_id": "canonical_exact_team_cluster_v1",
+    "side_assignment_rule_id": "alternating_balanced_sides_v1",
+    "schedule_rule_id": "registered_schedule_v1"
+  },
+  "budget_profiles": {
+    "deployment_utility": {
+      "budget_mode": "calibrated_grid",
+      "work_unit": "search_work_units",
+      "selected_work_value": null,
+      "calibration_spec_digest": "sha256:4c8eae894842f86e9619b2ab5a5b3bad73df890b76f4c48230ccb4dc1a4df70b",
+      "benchmark_spec_digest": null
+    },
+    "mechanism_ablation": {
+      "budget_mode": "calibrated_grid",
+      "work_unit": "search_work_units",
+      "selected_work_value": null,
+      "calibration_spec_digest": "sha256:4c8eae894842f86e9619b2ab5a5b3bad73df890b76f4c48230ccb4dc1a4df70b",
+      "benchmark_spec_digest": null
+    }
+  },
+  "decision_gates": [
+    {
+      "decision_id": "search-utility-gate-v1",
+      "version": 1,
+      "stop_rule_id": "no_effect_stop_v1",
+      "pivot_rule_id": "uncertain_effect_pivot_v1"
+    },
+    {
+      "decision_id": "information-set-utility-gate-v1",
+      "version": 1,
+      "stop_rule_id": "no_effect_stop_v1",
+      "pivot_rule_id": "uncertain_effect_pivot_v1"
+    },
+    {
+      "decision_id": "open-world-utility-gate-v1",
+      "version": 1,
+      "stop_rule_id": "no_effect_stop_v1",
+      "pivot_rule_id": "uncertain_effect_pivot_v1"
+    }
+  ]
+}

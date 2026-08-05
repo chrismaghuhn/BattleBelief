@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "binding_id": "heuristic_v0-implementation",
+  "binding_kind": "implementation",
+  "artifact_version": 1,
+  "supersedes_digest": null,
+  "registration_id": "m15-core-comparisons-v1",
+  "registration_digest": "sha256:931484a5e205af5e810be3cdaeb812026869dbcba0027d89120f58d28fba7fdc",
+  "arm_id": "heuristic_v0",
+  "source_commit": "ebbc648fc62908a0227e8d90ab03b3692f583aca",
+  "package_or_wheel_digest": "sha256:2b202e47885777dbd43cd0970e54760a1d1e1f0427f2bb2d2e5231ab5c245747",
+  "components": {
+    "policy": {
+      "state": "bound",
+      "digest": "sha256:73350d34d2f6512cfd1733e1ebf132e11c2ebc096b2363c198745d37dcbf67cb"
+    },
+    "fallback_and_safety": {
+      "state": "bound",
+      "digest": "sha256:e9d92e5fa0ef9badac53ecd436fbe1090cbc574e87187e3a643db9a80b300e75"
+    },
+    "search_algorithm": {"state": "not_applicable"},
+    "engine": {"state": "not_applicable"},
+    "prior": {"state": "not_applicable"},
+    "belief": {"state": "not_applicable"},
+    "model": {"state": "not_applicable"}
+  },
+  "decision_record_schema_digest": "sha256:a5dad3edbe2a46e2a6b779565a6a143a9668110ae47344efcb56372f8f2ece31",
+  "canonicalizer_digest": "sha256:a4098468c69e17bf61894c47e62f69d1e011c3489afee76157f25dc629cba6d1",
+  "contract_set_digest": "sha256:2d04d9b237d9204be72967b74fc53c786fb9edcfa6270d191c6f508fd3d910d9"
+}

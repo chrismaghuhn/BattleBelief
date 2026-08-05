@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "manifest_id": "m15-synthetic-acceptance-fixtures-v1",
+  "purpose": "synthetic_acceptance",
+  "team_fixtures": [
+    {
+      "fixture_id": "fixture-team-alpha",
+      "repository_path": "tests/fixtures/teams/fixture-team-alpha.txt",
+      "content_digest": "sha256:7cf6d503f719df777a10cf2f53c957b37cbf2572a9c1e94979b2f143d3c78e91"
+    },
+    {
+      "fixture_id": "fixture-team-beta",
+      "repository_path": "tests/fixtures/teams/fixture-team-beta.txt",
+      "content_digest": "sha256:31fd5f5972a6be176f5a4a66dd2bbf9bf1b1ef8c7c27e3e7253ee480f64adbc1"
+    }
+  ],
+  "opponent_policy_fixtures": [
+    {
+      "fixture_id": "fixture-opponent-heuristic",
+      "repository_path": "tests/fixtures/policies/fixture-opponent-heuristic.json",
+      "content_digest": "sha256:361dd212ad583a479f1f716095ddd4e607612a44fd562c4147353e20d2dd6be0"
+    }
+  ],
+  "schedule_rows": [
+    {
+      "row_id": "synthetic-row-0",
+      "base_matchup_id": "synthetic-matchup-0",
+      "side_assignment": "p1",
+      "repetition_index": 0
+    },
+    {
+      "row_id": "synthetic-row-1",
+      "base_matchup_id": "synthetic-matchup-0",
+      "side_assignment": "p2",
+      "repetition_index": 1
+    }
+  ],
+  "seed_family": {
+    "search_seed": "1111111111111111111111111111111111111111111111111111111111111111",
+    "world_seed": "2222222222222222222222222222222222222222222222222222222222222222",
+    "policy_seed": "3333333333333333333333333333333333333333333333333333333333333333",
+    "simulator_seed": "4444444444444444444444444444444444444444444444444444444444444444",
+    "schedule_seed": "5555555555555555555555555555555555555555555555555555555555555555",
+    "side_assignment_seed": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "budget_profile": {
+    "mode": "synthetic_acceptance",
+    "work_value": 1
+  },
+  "runtime_environment": {
+    "python": "3.14",
+    "platform": "repository-fixture",
+    "network": "disabled"
+  },
+  "ruleset_snapshot": {
+    "format_id": "gen9ou",
+    "ruleset_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "repository_path": "tests/fixtures/rulesets/gen9ou.json",
+    "content_digest": "sha256:2c228455b58f35cde01044eb187d43831802658306f5a748b52eea7086027d33"
+  }
+}
