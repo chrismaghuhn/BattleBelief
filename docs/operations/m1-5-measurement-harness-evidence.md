@@ -31,11 +31,11 @@ Task-21 merge commit, not this later documentation commit.
 | Artifact or check | Measured value |
 |---|---|
 | `validated_source_commit` | [`eeb608e6d2f897665b6d01c97e56010ff7f73d56`](https://github.com/chrismaghuhn/BattleBelief/commit/eeb608e6d2f897665b6d01c97e56010ff7f73d56) |
-| `evidence_execution_commit` | [`11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6`](https://github.com/chrismaghuhn/BattleBelief/commit/11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6) |
+| `evidence_execution_commit` | [`d026439c8eb17fc9385151d542fef104846d8968`](https://github.com/chrismaghuhn/BattleBelief/commit/d026439c8eb17fc9385151d542fef104846d8968) |
 | Task-21 PR workflow (`pull_request`, PR #30) | [`31003761078`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31003761078) |
 | Task-21 main validation workflow (`push`, validated source) | [`31005007421`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007421) |
 | Task-21 CodeQL workflow (`push`, validated source) | [`31005007415`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31005007415) |
-| Task-22 PR workflow (`pull_request`, evidence execution commit) | [`31006644403`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31006644403) |
+| Task-22 PR workflow (`pull_request`, evidence execution commit) | [`31010438413`](https://github.com/chrismaghuhn/BattleBelief/actions/runs/31010438413) |
 | Registration | [`m1-5-core-comparisons-v1`](https://github.com/chrismaghuhn/BattleBelief/blob/eeb608e6d2f897665b6d01c97e56010ff7f73d56/registrations/gen9ou/m1-5-core-comparisons-v1.json) |
 | Registration digest | `sha256:c05cbeb123bcc797d325807a739402266ccdaf0c8e4de9691764af012a3ad03b` |
 | Heuristic implementation binding | [`heuristic_v0-implementation-v2`](https://github.com/chrismaghuhn/BattleBelief/blob/eeb608e6d2f897665b6d01c97e56010ff7f73d56/registrations/gen9ou/bindings/heuristic_v0-implementation-v2.json) |

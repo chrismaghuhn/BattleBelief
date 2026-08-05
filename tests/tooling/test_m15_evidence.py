@@ -225,8 +225,8 @@ def test_m15_audit_is_non_normative_and_keeps_live_and_strength_claims_narrow() 
     assert frontmatter["document_type"] == "audit"
     assert frontmatter["normative"] is False
     assert "eeb608e6d2f897665b6d01c97e56010ff7f73d56" in body
-    assert "11bb983bb39f0e48a9e6b27ea2771e7b3b39e0e6" in body
-    assert "31006644403" in body
+    assert "d026439c8eb17fc9385151d542fef104846d8968" in body
+    assert "31010438413" in body
     assert "registrations/gen9ou/m1-5-core-comparisons-v1.json" in body
     assert artifact_digest(registration) in body
     assert "selection: unopened" in body
