@@ -4,13 +4,14 @@ BattleBelief is an open-source Pokémon Singles research bot for decision-making
 
 The project currently targets **Smogon Gen 9 OU** and studies whether an explicit open-world belief over complete hidden sets, combined with information-set search, can improve battle decisions under fixed CPU and reproducibility budgets. An independent action-safety gate separately preserves legal, request-bound execution.
 
-> **Project status:** Milestone M1 — Protocol-safe Prototype is complete. The
-> repository contains the protocol-safe core, authenticated Pokémon Showdown
-> connectivity, request-driven battle sessions, direct-challenge coordination,
-> the secrets-safe challenge CLI, dedicated protocol and action-safety smokes,
-> lockstep version 0.2.0, and measured synthetic M1 evidence. Observed live
-> public-protocol coverage is not established. M1.5 has not started. Battle
-> strength, ladder readiness, release readiness, and MVP status are not claimed.
+> **Project status:** M1.5 — Measurement Harness and Baseline Registration is
+> complete. The repository contains the frozen registration, deterministic
+> synthetic run bindings, canonical Decision Records, and measured acceptance
+> evidence. Runtime remains version 0.2.0 and phase M1. Observed live
+> measurement coverage is not established. Next milestone: M2 —
+> Engine-qualified Search Prototype. Battle strength, engine parity, release
+> readiness, and MVP status are not claimed. See the [M1.5 measurement
+> evidence](https://github.com/chrismaghuhn/BattleBelief/blob/main/docs/operations/m1-5-measurement-harness-evidence.md).
 
 ## Start here
 
