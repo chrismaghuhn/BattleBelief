@@ -185,18 +185,28 @@ class _Ledger:
 
 
 class _TraceOnlySession:
-    def __init__(self, trace_sink: object) -> None:
+    def __init__(
+        self,
+        trace_sink: object,
+        *,
+        primary_error: BaseException | None = None,
+        explicit_request_submissions: int = 0,
+        default_submissions: int = 0,
+    ) -> None:
         self.trace_sink = trace_sink
+        self._primary_error = primary_error
+        self._explicit_request_submissions = explicit_request_submissions
+        self._default_submissions = default_submissions
 
     async def run(self) -> object:
         return SimpleNamespace(
             state=ObservedState.initial("ash"),
-            primary_error=None,
+            primary_error=self._primary_error,
             trace_error=TraceSinkFailure(),
             record_error=None,
             room_control_or_chat_count=0,
-            explicit_request_submissions=0,
-            default_submissions=0,
+            explicit_request_submissions=self._explicit_request_submissions,
+            default_submissions=self._default_submissions,
         )
 
     def failure_result(self, error: BaseException) -> object:
@@ -220,7 +230,10 @@ def test_runner_finalizes_lifecycle_and_sanitizes_session_exception() -> None:
     )
     context = SimpleNamespace(
         run_context_digest=_RUN_DIGEST,
-        run_scope=SimpleNamespace(schedule_row_id=schedule.rows[0].row_id),
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
     )
     runner = MeasurementRunner(
         session=session,
@@ -247,7 +260,10 @@ def test_runner_classifies_trace_only_failure_with_stable_code() -> None:
     )
     context = SimpleNamespace(
         run_context_digest=_RUN_DIGEST,
-        run_scope=SimpleNamespace(schedule_row_id=schedule.rows[0].row_id),
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
     )
     result = asyncio.run(
         MeasurementRunner(
@@ -261,3 +277,133 @@ def test_runner_classifies_trace_only_failure_with_stable_code() -> None:
     assert result.run_status is RunStatus.TRACE_FAILED
     assert result.primary_error_class == "trace_sink_failure"
     assert result.trace_status is TraceStatus.SINK_FAILED
+
+
+def test_runner_classifies_runtime_trace_only_failure_with_primary_trace_error() -> None:
+    ledger = _Ledger()
+    session = _TraceOnlySession(ledger, primary_error=TraceSinkFailure())
+    schedule = build_schedule(
+        registration_digest=_RUN_DIGEST,
+        master_seed="0123456789abcdef" * 4,
+        matchup_keys=[BaseMatchupKey("hero", "opponent", "balance", "policy", "block")],
+        repetitions=2,
+    )
+    context = SimpleNamespace(
+        run_context_digest=_RUN_DIGEST,
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
+    )
+
+    result = asyncio.run(
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=context,
+            schedule_row=schedule.rows[0],
+        ).run()
+    )
+
+    assert result.run_status is RunStatus.TRACE_FAILED
+    assert result.primary_error_class == "trace_sink_failure"
+
+
+class _FlushFailSession(_TraceOnlySession):
+    def flush_trace(self) -> None:
+        raise OSError("flush detail")
+
+
+def test_runner_classifies_flush_only_failure_as_trace_failed() -> None:
+    ledger = _Ledger()
+    session = _FlushFailSession(ledger)
+    schedule = build_schedule(
+        registration_digest=_RUN_DIGEST,
+        master_seed="0123456789abcdef" * 4,
+        matchup_keys=[BaseMatchupKey("hero", "opponent", "balance", "policy", "block")],
+        repetitions=2,
+    )
+    context = SimpleNamespace(
+        run_context_digest=_RUN_DIGEST,
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
+    )
+
+    result = asyncio.run(
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=context,
+            schedule_row=schedule.rows[0],
+        ).run()
+    )
+
+    assert result.run_status is RunStatus.TRACE_FAILED
+    assert result.primary_error_class == "trace_sink_failure"
+
+
+def test_runner_returns_trace_failed_for_a_partial_second_emit() -> None:
+    record = _Record(
+        record_digest="sha256:" + "c" * 64,
+        decision_index=0,
+        run_context_digest=_RUN_DIGEST,
+        record_status=DecisionRecordStatus.SUBMITTED,
+        submission_provenance=ActionProvenance.EXPLICIT_REQUEST,
+    )
+    ledger = _Ledger()
+    ledger.records = (record,)
+    ledger.accepted_record_count = 1
+    ledger.accepted_record_digests = (record.record_digest,)
+    session = _TraceOnlySession(
+        ledger,
+        primary_error=TraceSinkFailure(),
+        explicit_request_submissions=2,
+    )
+    schedule = build_schedule(
+        registration_digest=_RUN_DIGEST,
+        master_seed="0123456789abcdef" * 4,
+        matchup_keys=[BaseMatchupKey("hero", "opponent", "balance", "policy", "block")],
+        repetitions=2,
+    )
+    context = SimpleNamespace(
+        run_context_digest=_RUN_DIGEST,
+        run_scope=SimpleNamespace(
+            schedule_row_id=schedule.rows[0].row_id,
+            seed_family_digest=schedule.rows[0].seed_family.digest,
+        ),
+    )
+
+    result = asyncio.run(
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=context,
+            schedule_row=schedule.rows[0],
+        ).run()
+    )
+
+    assert result.run_status is RunStatus.TRACE_FAILED
+    assert result.explicit_submission_count == 2
+
+
+def test_partial_trace_acceptance_preserves_session_submission_counters() -> None:
+    record = _Record(
+        record_digest="sha256:" + "c" * 64,
+        decision_index=0,
+        run_context_digest=_RUN_DIGEST,
+        record_status=DecisionRecordStatus.SUBMITTED,
+        submission_provenance=ActionProvenance.EXPLICIT_REQUEST,
+    )
+    result = _result(
+        run_status=RunStatus.TRACE_FAILED,
+        primary_error_class="trace_sink_failure",
+        decision_record_digests=(record.record_digest,),
+        explicit_submission_count=2,
+        trace_status=TraceStatus.SINK_FAILED,
+    )
+
+    errors = validate_measurement_run_result(result, decision_records=(record,))
+
+    assert not any("explicit submission count does not match records" in error for error in errors)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -208,10 +209,19 @@ def validate_measurement_run_result(
             record.submission_provenance is ActionProvenance.SERVER_DEFAULT
             for record in submitted_records
         )
-        if result.explicit_submission_count != explicit:
-            errors.append("explicit submission count does not match records")
-        if result.default_submission_count != default:
-            errors.append("default submission count does not match records")
+        partial_trace = result.trace_status is TraceStatus.SINK_FAILED and any(
+            record.record_status is DecisionRecordStatus.SUBMITTED for record in decision_records
+        )
+        if partial_trace:
+            if result.explicit_submission_count < explicit:
+                errors.append("explicit submission count is below accepted records")
+            if result.default_submission_count < default:
+                errors.append("default submission count is below accepted records")
+        else:
+            if result.explicit_submission_count != explicit:
+                errors.append("explicit submission count does not match records")
+            if result.default_submission_count != default:
+                errors.append("default submission count does not match records")
     elif result.decision_record_digests:
         errors.append("decision record digests have no corresponding records")
     if (
@@ -311,7 +321,7 @@ def _validate_status_matrix(result: MeasurementRunResult) -> list[str]:
 
 
 def validate_measurement_run_result_document(
-    document: dict[str, Any],
+    document: Mapping[str, Any],
     *,
     decision_records: tuple[DecisionRecord, ...] = (),
 ) -> list[str]:
@@ -364,6 +374,8 @@ class MeasurementRunner:
         self._run_context = run_context
         if run_context.run_scope.schedule_row_id != schedule_row.row_id:
             raise ValueError("measurement session row does not match run context")
+        if run_context.run_scope.seed_family_digest != schedule_row.seed_family.digest:
+            raise ValueError("measurement session seed family does not match run context")
 
     async def run(self) -> MeasurementRunResult:
         """Run, flush, and close one session without exposing raw exceptions."""
@@ -423,11 +435,15 @@ class MeasurementRunner:
         primary_error_class = (
             _stable_error_code(primary_error) if primary_error is not None else None
         )
-        if trace_error and session_result.primary_error is None:
+        trace_only_failure = trace_error and (
+            session_result.primary_error is None
+            or _stable_error_code(session_result.primary_error) == "trace_sink_failure"
+        )
+        if trace_only_failure:
             primary_error_class = "trace_sink_failure"
         run_status = (
             RunStatus.TRACE_FAILED
-            if trace_error and primary_error is None
+            if trace_only_failure
             else RunStatus.FAILED
             if primary_error is not None
             else RunStatus.NO_REQUEST

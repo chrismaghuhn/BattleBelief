@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
+from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_lab.evaluation.matchup_blocks import BaseMatchupKey
 from battlebelief_lab.evaluation.schedule import (
+    Schedule,
     ScheduleRow,
     SideAssignment,
     build_schedule,
+    derive_schedule_row_id,
 )
 from battlebelief_lab.evaluation.seed_families import SeedNamespace, derive_seed
 
@@ -88,6 +93,93 @@ def test_schedule_row_rejects_fabricated_identity_outside_factory() -> None:
             schedule_block=row.schedule_block,
             seed_family=row.seed_family,
             repetition_index=row.repetition_index,
+        )
+
+
+def test_schedule_rejects_empty_and_noncontiguous_repetition_groups() -> None:
+    with pytest.raises(ValueError, match="at least one schedule row"):
+        Schedule(rows=(), digest=manifest_digest([]))
+
+    schedule = build_schedule(
+        registration_digest=REGISTRATION,
+        master_seed=MASTER_SEED,
+        matchup_keys=[_key("hero-alpha")],
+        repetitions=2,
+    )
+    second = schedule.rows[1]
+    noncontiguous_repetition_index = 2
+    noncontiguous = replace(
+        second,
+        repetition_index=noncontiguous_repetition_index,
+        row_id=derive_schedule_row_id(
+            base_matchup_id=second.base_matchup_id,
+            side_assignment=second.side_assignment,
+            schedule_block=second.schedule_block,
+            seed_family=second.seed_family,
+            repetition_index=noncontiguous_repetition_index,
+        ),
+    )
+    with pytest.raises(ValueError, match="contiguous"):
+        Schedule(
+            rows=(schedule.rows[0], noncontiguous),
+            digest=manifest_digest([schedule.rows[0].to_dict(), noncontiguous.to_dict()]),
+        )
+
+
+def test_schedule_rejects_unbalanced_direct_construction() -> None:
+    schedule = build_schedule(
+        registration_digest=REGISTRATION,
+        master_seed=MASTER_SEED,
+        matchup_keys=[_key("hero-alpha")],
+        repetitions=2,
+    )
+    original = schedule.rows[1]
+    changed = replace(
+        original,
+        side_assignment=SideAssignment.P1,
+        row_id=derive_schedule_row_id(
+            base_matchup_id=original.base_matchup_id,
+            side_assignment=SideAssignment.P1,
+            schedule_block=original.schedule_block,
+            seed_family=original.seed_family,
+            repetition_index=original.repetition_index,
+        ),
+    )
+    with pytest.raises(ValueError, match="balanced"):
+        Schedule(
+            rows=(schedule.rows[0], changed),
+            digest=manifest_digest([schedule.rows[0].to_dict(), changed.to_dict()]),
+        )
+
+
+def test_schedule_row_and_run_context_seed_family_must_match() -> None:
+    from types import SimpleNamespace
+
+    from battlebelief_lab.evaluation.measurement_runner import MeasurementRunner
+
+    schedule = build_schedule(
+        registration_digest=REGISTRATION,
+        master_seed=MASTER_SEED,
+        matchup_keys=[_key("hero-alpha")],
+        repetitions=2,
+    )
+    ledger = SimpleNamespace(
+        records=(),
+        accepted_record_count=0,
+        accepted_record_digests=(),
+    )
+    session = SimpleNamespace(trace_sink=ledger, failure_result=lambda error: None)
+    with pytest.raises(ValueError, match="seed family"):
+        MeasurementRunner(
+            session=session,
+            trace_sink=ledger,
+            run_context=SimpleNamespace(
+                run_scope=SimpleNamespace(
+                    schedule_row_id=schedule.rows[0].row_id,
+                    seed_family_digest=schedule.rows[1].seed_family.digest,
+                )
+            ),
+            schedule_row=schedule.rows[0],
         )
 
 

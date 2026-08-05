@@ -76,6 +76,8 @@ class Schedule:
             not isinstance(row, ScheduleRow) for row in self.rows
         ):
             raise ValueError("schedule rows must be a tuple of ScheduleRow values")
+        if not self.rows:
+            raise ValueError("schedule requires at least one schedule row")
         if len({row.row_id for row in self.rows}) != len(self.rows):
             raise ValueError("schedule row IDs must be unique")
         if self.rows != tuple(
@@ -87,6 +89,19 @@ class Schedule:
         expected = manifest_digest([row.to_dict() for row in self.rows])
         if self.digest != expected:
             raise ValueError("schedule digest does not match rows")
+        groups: dict[str, list[ScheduleRow]] = {}
+        for row in self.rows:
+            groups.setdefault(row.base_matchup_id, []).append(row)
+        for base_matchup_id, rows in groups.items():
+            repetitions = sorted(row.repetition_index for row in rows)
+            if repetitions != list(range(len(rows))):
+                raise ValueError(
+                    f"repetition indices for {base_matchup_id} must be contiguous from zero"
+                )
+            p1_count = sum(row.side_assignment is SideAssignment.P1 for row in rows)
+            p2_count = sum(row.side_assignment is SideAssignment.P2 for row in rows)
+            if abs(p1_count - p2_count) > 1:
+                raise ValueError(f"schedule rows for {base_matchup_id} must be balanced")
 
 
 def _initial_side(registration_digest: str, base_matchup_id: str) -> int:

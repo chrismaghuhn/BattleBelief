@@ -64,6 +64,64 @@ def test_calibration_spec_digest_is_stable() -> None:
     )
 
 
+def test_calibration_spec_copies_mutable_inputs_and_keeps_digest_stable() -> None:
+    references = [("python", "3.12"), ("platform", "windows")]
+    work_grid = [64, 128]
+    spec = create_calibration_specification(
+        spec_id="m15-calibration-v1",
+        reference_environment_specification=dict(references),
+        calibration_state_construction_rule="synthetic-state-grid-v1",
+        ordered_work_grid=work_grid,
+        measurement_profile_id="m15-runtime-profile-v1",
+        selection_measurement_id="wall_time_ms",
+        required_measurement_ids=("wall_time_ms", "cpu_time_ms"),
+        runtime_limit_ms=2_000.0,
+        allowed_runtime_measurements=("wall_time_ms", "cpu_time_ms"),
+        forbidden_quality_measurements=("wins", "regret", "holdout_rows"),
+    )
+    digest = spec.digest
+    references.append(("new", "value"))
+    work_grid.append(256)
+
+    assert spec.digest == digest
+    assert spec.ordered_work_grid == (64, 128)
+    assert spec.reference_environment_specification == (("platform", "windows"), ("python", "3.12"))
+
+
+def test_calibration_spec_rejects_invalid_environment_pairs() -> None:
+    with pytest.raises(ValueError, match="environment"):
+        create_calibration_specification(
+            spec_id="m15-calibration-v1",
+            reference_environment_specification={"python": 3.12},  # type: ignore[dict-item]
+            calibration_state_construction_rule="states-v1",
+            ordered_work_grid=(1, 2),
+            measurement_profile_id="profile-v1",
+            selection_measurement_id="wall_time_ms",
+            required_measurement_ids=("wall_time_ms",),
+            runtime_limit_ms=5.0,
+            allowed_runtime_measurements=("wall_time_ms",),
+            forbidden_quality_measurements=("wins",),
+        )
+    with pytest.raises(ValueError, match="duplicate"):
+        from battlebelief_lab.evaluation.budget_profiles import CalibrationSpecification
+
+        CalibrationSpecification(
+            schema_version=2,
+            spec_id="m15-calibration-v1",
+            budget_mode=BudgetMode.CALIBRATED_GRID,
+            reference_environment_specification=(("python", "3.12"), ("python", "3.13")),
+            calibration_state_construction_rule="states-v1",
+            ordered_work_grid=(1, 2),
+            selection_rule_id="largest-value-under-runtime-limit-v1",
+            measurement_profile_id="profile-v1",
+            selection_measurement_id="wall_time_ms",
+            required_measurement_ids=("wall_time_ms",),
+            runtime_limit_ms=5.0,
+            allowed_runtime_measurements=("wall_time_ms",),
+            forbidden_quality_measurements=("wins",),
+        )
+
+
 def test_calibration_spec_rejects_quality_measurement_overlap() -> None:
     with pytest.raises(ValueError, match="quality"):
         create_calibration_specification(

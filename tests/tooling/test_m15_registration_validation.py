@@ -633,6 +633,24 @@ def test_schema_invalid_registration_is_not_hashed_or_used_as_fallback(tmp_path:
     assert not any("TypeError" in error for error in errors)
 
 
+def test_measurement_run_result_artifacts_receive_semantic_validation(tmp_path: Path) -> None:
+    root, _ = _repository_fixture(tmp_path)
+    result = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "schemas/examples/measurement-run-result.example.json"
+        ).read_text()
+    )
+    result["run_status"] = "completed"
+    result["trace_status"] = "emitted"
+    result["decision_record_digests"] = ["sha256:" + "c" * 64]
+    (root / "registrations/measurement-run-result.json").write_text(json.dumps(result))
+
+    errors = validate_repository_artifacts(root)
+
+    assert any("decision record digests have no corresponding records" in error for error in errors)
+
+
 def test_binding_versions_can_form_a_single_supersession_chain(tmp_path: Path) -> None:
     root, registration = _repository_fixture(tmp_path)
     first = _implementation_binding(registration, "implementation-a")

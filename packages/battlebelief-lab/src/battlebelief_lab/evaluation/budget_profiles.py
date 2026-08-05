@@ -62,6 +62,46 @@ class CalibrationSpecification:
     forbidden_quality_measurements: tuple[str, ...]
 
     def __post_init__(self) -> None:
+        environment = self.reference_environment_specification
+        if isinstance(environment, Mapping):
+            environment_items = tuple(environment.items())
+        elif isinstance(environment, (tuple, list)):
+            environment_items = tuple(environment)
+        else:
+            raise ValueError("reference environment must be a mapping or pair sequence")
+        normalized_environment: list[tuple[str, str]] = []
+        for pair in environment_items:
+            if (
+                not isinstance(pair, (tuple, list))
+                or len(pair) != 2
+                or type(pair[0]) is not str
+                or not pair[0]
+                or type(pair[1]) is not str
+                or not pair[1]
+            ):
+                raise ValueError("reference environment must contain string pairs")
+            normalized_environment.append((pair[0], pair[1]))
+        if len({key for key, _ in normalized_environment}) != len(normalized_environment):
+            raise ValueError("reference environment must not contain duplicate keys")
+        object.__setattr__(
+            self,
+            "reference_environment_specification",
+            tuple(sorted(normalized_environment)),
+        )
+        if isinstance(self.ordered_work_grid, (tuple, list)):
+            object.__setattr__(self, "ordered_work_grid", tuple(self.ordered_work_grid))
+        else:
+            raise ValueError("ordered work grid must be a tuple or list")
+        for name in (
+            "required_measurement_ids",
+            "allowed_runtime_measurements",
+            "forbidden_quality_measurements",
+        ):
+            values = getattr(self, name)
+            if isinstance(values, (tuple, list)):
+                object.__setattr__(self, name, tuple(values))
+            else:
+                raise ValueError(f"{name} must contain non-empty string IDs")
         if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported calibration specification schema version")
         if type(self.spec_id) is not str or not self.spec_id:
