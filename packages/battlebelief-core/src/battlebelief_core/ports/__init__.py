@@ -2,6 +2,13 @@
 
 from battlebelief_core.ports.random_source import RandomStream
 from battlebelief_core.ports.trace_sink import ClosableTraceSink, NullTraceSink, TraceSink
-from battlebelief_core.ports.transition_model import TransitionModel
+from battlebelief_core.ports.transition_model import EngineBackendHealth, TransitionModel
 
-__all__ = ["ClosableTraceSink", "NullTraceSink", "RandomStream", "TraceSink", "TransitionModel"]
+__all__ = [
+    "ClosableTraceSink",
+    "EngineBackendHealth",
+    "NullTraceSink",
+    "RandomStream",
+    "TraceSink",
+    "TransitionModel",
+]

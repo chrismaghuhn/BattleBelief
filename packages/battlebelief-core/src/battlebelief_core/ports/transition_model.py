@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from fractions import Fraction
 from typing import Literal, Protocol, TypeVar, runtime_checkable
 
@@ -10,11 +11,19 @@ from battlebelief_core.domain.search import (
     PlayerView,
     PreparedRootIdentity,
     PreparedWorld,
+    SearchAction,
     TransitionOutcome,
 )
 
 WorldT = TypeVar("WorldT")
-ActionT = TypeVar("ActionT")
+ActionT = TypeVar("ActionT", bound=SearchAction)
+
+
+class EngineBackendHealth(StrEnum):
+    """Closed health state exposed by an engine-neutral transition backend."""
+
+    HEALTHY = "healthy"
+    UNHEALTHY = "unhealthy"
 
 
 @runtime_checkable
@@ -25,10 +34,14 @@ class TransitionModel(Protocol[WorldT, ActionT]):
     def backend_identity_digest(self) -> str: ...
 
     @property
-    def backend_health(self) -> str: ...
+    def backend_health(self) -> EngineBackendHealth: ...
 
     def prepare_root(
-        self, world: WorldT, root_identity: PreparedRootIdentity
+        self,
+        world: WorldT,
+        *,
+        root_identity: PreparedRootIdentity,
+        root_actions: tuple[ActionT, ...],
     ) -> PreparedWorld[WorldT]: ...
 
     def player_view(
@@ -52,4 +65,4 @@ class TransitionModel(Protocol[WorldT, ActionT]):
     ) -> Fraction | None: ...
 
 
-__all__ = ["ActionT", "TransitionModel", "WorldT"]
+__all__ = ["ActionT", "EngineBackendHealth", "TransitionModel", "WorldT"]

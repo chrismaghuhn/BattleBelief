@@ -65,6 +65,38 @@ def test_core_cannot_call_builtin_filesystem_open(tmp_path: Path, body: str) -> 
     assert any("forbidden builtin call open" in error for error in errors)
 
 
+@pytest.mark.parametrize(
+    "body",
+    (
+        "def search(world):\n    return world._opaque\n",
+        "def search(world):\n    return getattr(world, '_opaque')\n",
+        "def search(world):\n    return world.__getattribute__('_opaque')\n",
+        "def search(world):\n    return object.__getattribute__(world, '_opaque')\n",
+    ),
+)
+def test_core_search_cannot_read_the_prepared_world_payload(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core/search", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden private attribute _opaque" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import dataclasses\ndef search(world):\n    return dataclasses.asdict(world)\n",
+        "from dataclasses import astuple as project\ndef search(world):\n    return project(world)\n",
+    ),
+)
+def test_core_cannot_generically_serialize_dataclass_payloads(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core/search", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call dataclasses." in error for error in errors)
+
+
 def test_runtime_cannot_import_process_primitives(tmp_path: Path) -> None:
     write_module(tmp_path, "battlebelief_runtime", "from subprocess import Popen\n")
     errors = scan_tree(tmp_path, ImportRule.runtime())

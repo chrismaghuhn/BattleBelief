@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Literal, Self
+from collections.abc import MutableMapping, MutableSequence, MutableSet
+from dataclasses import dataclass, field, fields, is_dataclass
+from decimal import Decimal
+from enum import Enum
+from fractions import Fraction
+from typing import Literal, Self, cast
 
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_core.domain.engine_capabilities import CapabilityId
@@ -13,6 +17,38 @@ _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _INTERNAL_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$")
 _PLAYERS = frozenset({"p1", "p2"})
 _ACTION_KINDS = frozenset({"move", "switch", "pass"})
+_MUTABLE_OPAQUE_TYPES = (MutableMapping, MutableSequence, MutableSet, bytearray)
+
+
+def _require_deeply_immutable_payload(value: object, seen: frozenset[int] = frozenset()) -> None:
+    """Accept only recursively immutable adapter values without exposing their contents."""
+
+    if isinstance(value, _MUTABLE_OPAQUE_TYPES):
+        raise ValueError("prepared world payload must be a deeply immutable adapter value")
+    if type(value) in {type(None), bool, int, float, complex, str, bytes, Decimal, Fraction}:
+        return
+    if isinstance(value, Enum):
+        _require_deeply_immutable_payload(value.value, seen)
+        return
+    identity = id(value)
+    if identity in seen:
+        raise ValueError("prepared world payload must not contain reference cycles")
+    nested_seen = seen | {identity}
+    if type(value) is tuple:
+        for item in cast(tuple[object, ...], value):
+            _require_deeply_immutable_payload(item, nested_seen)
+        return
+    if type(value) is frozenset:
+        for item in cast(frozenset[object], value):
+            _require_deeply_immutable_payload(item, nested_seen)
+        return
+    if is_dataclass(value) and not isinstance(value, type):
+        parameters = getattr(type(value), "__dataclass_params__", None)
+        if parameters is not None and parameters.frozen:
+            for item in fields(value):
+                _require_deeply_immutable_payload(getattr(value, item.name), nested_seen)
+            return
+    raise ValueError("prepared world payload must be a deeply immutable adapter value")
 
 
 def _digest(value: object, name: str) -> str:
@@ -115,14 +151,34 @@ class PreparedRootIdentity:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class PreparedWorld[WorldT]:
-    world: WorldT = field(repr=False)
+    """Opaque adapter-owned world bound to one immutable prepared root."""
+
+    _opaque: WorldT = field(repr=False, compare=False)
     root_identity: PreparedRootIdentity
+    root_actions: tuple[SearchAction, ...] = field(repr=False)
     required_capabilities: tuple[CapabilityId, ...]
 
     def __post_init__(self) -> None:
+        _require_deeply_immutable_payload(self._opaque)
         if not isinstance(self.root_identity, PreparedRootIdentity):
             raise ValueError("root_identity must be a PreparedRootIdentity")
+        if type(self.root_actions) is not tuple or any(
+            not isinstance(action, SearchAction) for action in self.root_actions
+        ):
+            raise ValueError("root_actions must be a tuple of SearchAction values")
+        for index, action in enumerate(self.root_actions):
+            if action.root_identity != self.root_identity or action.root_submission_index != index:
+                raise ValueError("root_actions must be canonical root actions for this root")
         _capabilities(self.required_capabilities, self.root_identity.capability_catalog_digest)
+
+    def public_summary(self) -> dict[str, object]:
+        """Return the canonical public identity without serializing the payload."""
+
+        return {
+            "prepared_root_digest": self.root_identity.prepared_root_digest,
+            "root_action_count": len(self.root_actions),
+            "required_capability_count": len(self.required_capabilities),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,6 +304,19 @@ class TransitionOutcome[WorldT]:
             "work_units": self.work.units,
             "required_capability_count": len(self.required_capabilities),
         }
+
+    def require_preflight_subset(self, preflight_capabilities: tuple[CapabilityId, ...]) -> None:
+        """Fail closed unless runtime requirements were statically preflighted.
+
+        Preflight construction is intentionally outside this value object: it must
+        not require a transition outcome. This method is runtime conformance only.
+        """
+
+        root_catalog_digest = self.successors[0].world.root_identity.capability_catalog_digest
+        _capabilities(preflight_capabilities, root_catalog_digest)
+        preflight = frozenset(preflight_capabilities)
+        if not frozenset(self.required_capabilities).issubset(preflight):
+            raise ValueError("transition outcome requires an unpreflighted capability")
 
 
 @dataclass(frozen=True, slots=True)

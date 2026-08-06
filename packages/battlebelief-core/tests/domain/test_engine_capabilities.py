@@ -52,9 +52,17 @@ def _binding() -> EngineEnvironmentBinding:
     )
 
 
-def _evidence() -> CapabilityEvidenceRef:
+def _evidence(capability_value: str = "gen9.battle.damage") -> CapabilityEvidenceRef:
     binding = _binding()
+    catalog = _catalog()
     return CapabilityEvidenceRef(
+        evidence_id=("fixture-evidence" if capability_value.endswith("damage") else "fixture-turn"),
+        evidence_digest=_digest("f" if capability_value.endswith("damage") else "0"),
+        catalog_id=catalog.catalog_id,
+        catalog_version=catalog.catalog_version,
+        capability_id=catalog.id_for(capability_value),
+        catalog_digest=catalog.catalog_digest,
+        canonicalization_contract_digest=catalog.canonicalization_contract_digest,
         environment_cell_id=binding.environment_cell_id,
         engine_source_manifest_digest=_digest("1"),
         engine_build_manifest_digest=binding.engine_build_manifest_digest,
@@ -69,6 +77,8 @@ def _evidence() -> CapabilityEvidenceRef:
         oracle_build_manifest_digest=_digest("9"),
         ruleset_digest=_digest("b"),
         corpus_digest=_digest("c"),
+        runner_source_digest=_digest("e"),
+        classifier_source_digest=_digest("a"),
         qualification_result_schema_id="urn:battlebelief:schema:fixture-result:v1",
         qualification_result_digest=_digest("d"),
     )
@@ -95,6 +105,8 @@ def _manifest(
         oracle_build_manifest_digest=_digest("9"),
         ruleset_digest=_digest("b"),
         corpus_digest=_digest("c"),
+        runner_source_digest=_digest("e"),
+        classifier_source_digest=_digest("a"),
         evidence_set_digest=(
             EngineCapabilityManifest.evidence_set_digest_for(evidence_refs)
             if evidence_set_digest is None
@@ -181,6 +193,14 @@ class TestCapabilityCatalog:
         with pytest.raises(ValueError):
             dataclasses.replace(_manifest(), manifest_id="Private Manifest")
 
+    def test_evidence_document_rejects_non_integer_schema_version(self) -> None:
+        document: dict[str, object] = _evidence().document()
+        document.pop("evidence_digest")
+        document["schema_version"] = True
+
+        with pytest.raises(ValueError, match="schema version 1"):
+            CapabilityEvidenceRef.from_document(document, _catalog())
+
 
 class TestCapabilityClaims:
     def test_status_requirements_and_evidence_binding(self) -> None:
@@ -191,8 +211,13 @@ class TestCapabilityClaims:
         bounded = CapabilityClaim(
             catalog.id_for("gen9.battle.turn"),
             CapabilityStatus.BOUNDED_APPROXIMATION,
-            evidence_refs=(evidence,),
-            approximation=CapabilityApproximation(bound="at most 1 HP", condition="fixed corpus"),
+            evidence_refs=(_evidence("gen9.battle.turn"),),
+            approximation=CapabilityApproximation(
+                metric_id="absolute-error",
+                maximum="1",
+                unit_id="hp",
+                condition_id="fixed-corpus",
+            ),
         )
         manifest = _manifest(exact, bounded)
 
@@ -203,6 +228,31 @@ class TestCapabilityClaims:
             CapabilityClaim(capability, CapabilityStatus.EXACT, evidence_refs=())
         with pytest.raises(ValueError):
             CapabilityClaim(capability, CapabilityStatus.UNSUPPORTED, evidence_refs=(evidence,))
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("metric_id", "Free prose"),
+            ("maximum", "01"),
+            ("maximum", "1.0"),
+            ("maximum", "-1"),
+            ("unit_id", "HP points"),
+            ("condition_id", "fixed corpus"),
+        ],
+    )
+    def test_approximation_requires_machine_readable_metric_maximum_unit_and_condition(
+        self, field: str, value: str
+    ) -> None:
+        values = {
+            "metric_id": "absolute-error",
+            "maximum": "1",
+            "unit_id": "hp",
+            "condition_id": "fixed-corpus",
+        }
+        values[field] = value
+
+        with pytest.raises(ValueError):
+            CapabilityApproximation(**values)
 
     def test_rejects_evidence_for_another_engine_environment(self) -> None:
         catalog = _catalog()
@@ -263,6 +313,8 @@ class TestCapabilityClaims:
             "oracle_build_manifest_digest",
             "ruleset_digest",
             "corpus_digest",
+            "runner_source_digest",
+            "classifier_source_digest",
         ],
     )
     def test_qualifying_evidence_mismatch_fails_closed(self, field: str) -> None:

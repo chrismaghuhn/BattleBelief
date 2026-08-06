@@ -20,6 +20,7 @@ _SCHEMA_ID_RE = re.compile(
 )
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _FORMAT = "gen9ou"
+_CANONICAL_DECIMAL_RE = re.compile(r"^(?:0|[1-9][0-9]*(?:\.[0-9]*[1-9])?)$")
 
 
 def _nonempty(value: object, name: str) -> str:
@@ -271,12 +272,56 @@ class CapabilityStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class CapabilityApproximation:
-    bound: str
-    condition: str
+    metric_id: str
+    maximum: str
+    unit_id: str
+    condition_id: str
 
     def __post_init__(self) -> None:
-        _nonempty(self.bound, "bound")
-        _nonempty(self.condition, "condition")
+        _canonical_id(self.metric_id, "metric_id")
+        if type(self.maximum) is not str or not _CANONICAL_DECIMAL_RE.fullmatch(self.maximum):
+            raise ValueError("maximum must be a canonical non-negative decimal")
+        _canonical_id(self.unit_id, "unit_id")
+        _canonical_id(self.condition_id, "condition_id")
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilityMigrationClosure:
+    """A digest-bound, deterministic record of a fail-closed v1 to v2 migration."""
+
+    source_schema_id: str = field(repr=False)
+    source_digest: str = field(repr=False)
+    migrator_id: str = field(repr=False)
+    migrator_version: str = field(repr=False)
+    loss_codes: tuple[str, ...] = field(repr=False)
+    loss_report_digest: str = field(repr=False)
+
+    def __post_init__(self) -> None:
+        _schema_id(self.source_schema_id, "source_schema_id")
+        _digest(self.source_digest, "source_digest")
+        _nonempty(self.migrator_id, "migrator_id")
+        _nonempty(self.migrator_version, "migrator_version")
+        if (
+            type(self.loss_codes) is not tuple
+            or not self.loss_codes
+            or any(type(code) is not str for code in self.loss_codes)
+            or self.loss_codes != tuple(sorted(self.loss_codes))
+            or len(set(self.loss_codes)) != len(self.loss_codes)
+        ):
+            raise ValueError("loss_codes must be a non-empty uniquely sorted tuple")
+        for code in self.loss_codes:
+            _canonical_id(code, "loss_code")
+        _digest(self.loss_report_digest, "loss_report_digest")
+
+    def document(self) -> dict[str, object]:
+        return {
+            "source_schema_id": self.source_schema_id,
+            "source_digest": self.source_digest,
+            "migrator_id": self.migrator_id,
+            "migrator_version": self.migrator_version,
+            "loss_codes": list(self.loss_codes),
+            "loss_report_digest": self.loss_report_digest,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,6 +340,13 @@ class EngineEnvironmentBinding:
 
 @dataclass(frozen=True, slots=True)
 class CapabilityEvidenceRef:
+    evidence_id: str = field(repr=False)
+    evidence_digest: str = field(repr=False)
+    catalog_id: str = field(repr=False)
+    catalog_version: str = field(repr=False)
+    capability_id: CapabilityId = field(repr=False)
+    catalog_digest: str = field(repr=False)
+    canonicalization_contract_digest: str = field(repr=False)
     environment_cell_id: str = field(repr=False)
     engine_source_manifest_digest: str = field(repr=False)
     engine_build_manifest_digest: str = field(repr=False)
@@ -309,10 +361,22 @@ class CapabilityEvidenceRef:
     oracle_build_manifest_digest: str = field(repr=False)
     ruleset_digest: str = field(repr=False)
     corpus_digest: str = field(repr=False)
+    runner_source_digest: str = field(repr=False)
+    classifier_source_digest: str = field(repr=False)
     qualification_result_schema_id: str = field(repr=False)
     qualification_result_digest: str = field(repr=False)
 
     def __post_init__(self) -> None:
+        _canonical_id(self.evidence_id, "evidence_id")
+        _digest(self.evidence_digest, "evidence_digest")
+        _canonical_id(self.catalog_id, "catalog_id")
+        _nonempty(self.catalog_version, "catalog_version")
+        if not isinstance(self.capability_id, CapabilityId):
+            raise ValueError("capability_id must be a catalog-bound CapabilityId")
+        _digest(self.catalog_digest, "catalog_digest")
+        if self.capability_id.catalog_digest != self.catalog_digest:
+            raise ValueError("capability_id must be issued by the evidence catalog")
+        _digest(self.canonicalization_contract_digest, "canonicalization_contract_digest")
         _environment_cell_id(self.environment_cell_id)
         _canonical_id(self.transition_adapter_id, "transition_adapter_id")
         _nonempty(self.transition_adapter_version, "transition_adapter_version")
@@ -321,10 +385,76 @@ class CapabilityEvidenceRef:
             _digest(getattr(self, name), name)
 
     def document(self) -> dict[str, str]:
-        return {name: getattr(self, name) for name in _EVIDENCE_FIELDS}
+        return {
+            name: (self.capability_id.value if name == "capability_id" else getattr(self, name))
+            for name in _EVIDENCE_REF_FIELDS
+        }
+
+    @classmethod
+    def from_document(cls, document: Mapping[str, object], catalog: CapabilityCatalog) -> Self:
+        """Create a reference bound to the canonical digest of an evidence document."""
+
+        if not isinstance(document, Mapping) or set(document) != set(_EVIDENCE_DOCUMENT_FIELDS):
+            raise ValueError("evidence document has an invalid shape")
+        if type(document["schema_version"]) is not int or document["schema_version"] != 1:
+            raise ValueError("evidence document must use schema version 1")
+        if (
+            document["catalog_id"] != catalog.catalog_id
+            or document["catalog_version"] != catalog.catalog_version
+            or document["catalog_digest"] != catalog.catalog_digest
+            or document["canonicalization_contract_digest"]
+            != catalog.canonicalization_contract_digest
+        ):
+            raise ValueError("evidence document catalog identity does not match its catalog")
+        capability_value = document["capability_id"]
+        if type(capability_value) is not str:
+            raise ValueError("evidence document capability_id must be a string")
+        values: dict[str, str] = {}
+        for name in _EVIDENCE_DOCUMENT_FIELDS:
+            if name in {"schema_version", "capability_id"}:
+                continue
+            value = document[name]
+            if type(value) is not str:
+                raise ValueError("evidence document identity fields must be strings")
+            values[name] = value
+        try:
+            return cls(
+                evidence_id=values["evidence_id"],
+                evidence_digest=manifest_digest(dict(document)),
+                catalog_id=values["catalog_id"],
+                catalog_version=values["catalog_version"],
+                capability_id=catalog.id_for(capability_value),
+                catalog_digest=values["catalog_digest"],
+                canonicalization_contract_digest=values["canonicalization_contract_digest"],
+                environment_cell_id=values["environment_cell_id"],
+                engine_source_manifest_digest=values["engine_source_manifest_digest"],
+                engine_build_manifest_digest=values["engine_build_manifest_digest"],
+                artifact_index_digest=values["artifact_index_digest"],
+                wheel_digest=values["wheel_digest"],
+                transition_adapter_id=values["transition_adapter_id"],
+                transition_adapter_version=values["transition_adapter_version"],
+                transition_adapter_source_digest=values["transition_adapter_source_digest"],
+                transition_model_contract_digest=values["transition_model_contract_digest"],
+                transition_adapter_conformance_digest=values[
+                    "transition_adapter_conformance_digest"
+                ],
+                oracle_source_manifest_digest=values["oracle_source_manifest_digest"],
+                oracle_build_manifest_digest=values["oracle_build_manifest_digest"],
+                ruleset_digest=values["ruleset_digest"],
+                corpus_digest=values["corpus_digest"],
+                runner_source_digest=values["runner_source_digest"],
+                classifier_source_digest=values["classifier_source_digest"],
+                qualification_result_schema_id=values["qualification_result_schema_id"],
+                qualification_result_digest=values["qualification_result_digest"],
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"evidence document is invalid: {error}") from error
 
 
 _EVIDENCE_DIGEST_FIELDS = (
+    "evidence_digest",
+    "catalog_digest",
+    "canonicalization_contract_digest",
     "engine_source_manifest_digest",
     "engine_build_manifest_digest",
     "artifact_index_digest",
@@ -336,9 +466,17 @@ _EVIDENCE_DIGEST_FIELDS = (
     "oracle_build_manifest_digest",
     "ruleset_digest",
     "corpus_digest",
+    "runner_source_digest",
+    "classifier_source_digest",
     "qualification_result_digest",
 )
-_EVIDENCE_FIELDS = (
+_EVIDENCE_DOCUMENT_FIELDS = (
+    "schema_version",
+    "evidence_id",
+    "catalog_id",
+    "catalog_version",
+    "catalog_digest",
+    "capability_id",
     "environment_cell_id",
     "engine_source_manifest_digest",
     "engine_build_manifest_digest",
@@ -353,6 +491,36 @@ _EVIDENCE_FIELDS = (
     "oracle_build_manifest_digest",
     "ruleset_digest",
     "corpus_digest",
+    "runner_source_digest",
+    "classifier_source_digest",
+    "qualification_result_schema_id",
+    "qualification_result_digest",
+    "canonicalization_contract_digest",
+)
+_EVIDENCE_REF_FIELDS = (
+    "evidence_id",
+    "evidence_digest",
+    "catalog_id",
+    "catalog_version",
+    "capability_id",
+    "catalog_digest",
+    "canonicalization_contract_digest",
+    "environment_cell_id",
+    "engine_source_manifest_digest",
+    "engine_build_manifest_digest",
+    "artifact_index_digest",
+    "wheel_digest",
+    "transition_adapter_id",
+    "transition_adapter_version",
+    "transition_adapter_source_digest",
+    "transition_model_contract_digest",
+    "transition_adapter_conformance_digest",
+    "oracle_source_manifest_digest",
+    "oracle_build_manifest_digest",
+    "ruleset_digest",
+    "corpus_digest",
+    "runner_source_digest",
+    "classifier_source_digest",
     "qualification_result_schema_id",
     "qualification_result_digest",
 )
@@ -374,6 +542,8 @@ class CapabilityClaim:
             not isinstance(ref, CapabilityEvidenceRef) for ref in self.evidence_refs
         ):
             raise ValueError("evidence_refs must be a tuple of CapabilityEvidenceRef values")
+        if any(ref.capability_id != self.capability_id for ref in self.evidence_refs):
+            raise ValueError("evidence reference capability must match its claim")
         cells = tuple(ref.environment_cell_id for ref in self.evidence_refs)
         if cells != tuple(sorted(cells)) or len(set(cells)) != len(cells):
             raise ValueError("evidence_refs must be uniquely sorted by environment cell id")
@@ -404,8 +574,11 @@ class EngineCapabilityManifest:
     oracle_build_manifest_digest: str | None = field(default=None, repr=False)
     ruleset_digest: str | None = field(default=None, repr=False)
     corpus_digest: str | None = field(default=None, repr=False)
+    runner_source_digest: str | None = field(default=None, repr=False)
+    classifier_source_digest: str | None = field(default=None, repr=False)
     evidence_set_digest: str | None = field(default=None, repr=False)
     canonicalization_contract_digest: str = field(default="", repr=False)
+    migration: CapabilityMigrationClosure | None = field(default=None, repr=False)
     claims: tuple[CapabilityClaim, ...] = ()
 
     def __post_init__(self) -> None:
@@ -433,6 +606,10 @@ class EngineCapabilityManifest:
             "canonicalization_contract_digest",
         ):
             _digest(getattr(self, name), name)
+        if self.migration is not None and not isinstance(
+            self.migration, CapabilityMigrationClosure
+        ):
+            raise ValueError("migration must be a CapabilityMigrationClosure or None")
         if type(self.environment_bindings) is not tuple or any(
             not isinstance(item, EngineEnvironmentBinding) for item in self.environment_bindings
         ):
@@ -469,6 +646,10 @@ class EngineCapabilityManifest:
             if claim.status in {CapabilityStatus.EXACT, CapabilityStatus.BOUNDED_APPROXIMATION}
         )
         refs = tuple(dict.fromkeys(ref for claim in self.claims for ref in claim.evidence_refs))
+        if len({ref.evidence_id for ref in refs}) != len(refs):
+            raise ValueError("evidence references must have unique evidence IDs")
+        if len({ref.evidence_digest for ref in refs}) != len(refs):
+            raise ValueError("evidence references must have unique evidence digests")
         expected_evidence_set = self.evidence_set_digest_for(refs)
         if qualifying_claims:
             if (
@@ -521,7 +702,8 @@ class EngineCapabilityManifest:
         ):
             raise ValueError("evidence_refs must be a tuple of CapabilityEvidenceRef values")
         keyed_refs = tuple(
-            (tuple(ref.document()[name] for name in _EVIDENCE_FIELDS), ref) for ref in evidence_refs
+            (tuple(ref.document()[name] for name in _EVIDENCE_REF_FIELDS), ref)
+            for ref in evidence_refs
         )
         keys = tuple(key for key, _ in keyed_refs)
         if len(set(keys)) != len(keys):
@@ -549,6 +731,13 @@ class EngineCapabilityManifest:
             or ref.wheel_digest != cell.wheel_digest
         ):
             raise ValueError("evidence does not match its environment cell")
+        if (
+            ref.catalog_id != self.catalog.catalog_id
+            or ref.catalog_version != self.catalog.catalog_version
+            or ref.catalog_digest != self.catalog.catalog_digest
+            or ref.canonicalization_contract_digest != self.canonicalization_contract_digest
+        ):
+            raise ValueError("evidence does not match manifest catalog identity")
         for name in _GLOBAL_EVIDENCE_FIELDS:
             if getattr(ref, name) != getattr(self, name):
                 raise ValueError("evidence does not match manifest provenance")
@@ -603,6 +792,8 @@ _OPTIONAL_CLOSURE_DIGEST_FIELDS = (
     "oracle_build_manifest_digest",
     "ruleset_digest",
     "corpus_digest",
+    "runner_source_digest",
+    "classifier_source_digest",
     "evidence_set_digest",
 )
 _GLOBAL_EVIDENCE_FIELDS = (
@@ -617,6 +808,8 @@ _GLOBAL_EVIDENCE_FIELDS = (
     "oracle_build_manifest_digest",
     "ruleset_digest",
     "corpus_digest",
+    "runner_source_digest",
+    "classifier_source_digest",
 )
 
 
@@ -627,6 +820,7 @@ __all__ = [
     "CapabilityDefinition",
     "CapabilityEvidenceRef",
     "CapabilityId",
+    "CapabilityMigrationClosure",
     "CapabilityStatus",
     "EngineCapabilityManifest",
     "EngineEnvironmentBinding",

@@ -35,6 +35,7 @@ CORE_FORBIDDEN = frozenset(
 )
 RUNTIME_FORBIDDEN = frozenset({"battlebelief_lab", "torch", "duckdb", "pyarrow", "subprocess"})
 CORE_FORBIDDEN_BUILTIN_CALLS = frozenset({"open"})
+CORE_FORBIDDEN_PRIVATE_ATTRIBUTES = frozenset({"_opaque"})
 PROCESS_SPAWN_CALLS = frozenset(
     {
         ("asyncio", "create_subprocess_exec"),
@@ -54,6 +55,7 @@ PROCESS_SPAWN_CALLS = frozenset(
         ("os", "system"),
     }
 )
+CORE_FORBIDDEN_PROJECTION_CALLS = frozenset({("dataclasses", "asdict"), ("dataclasses", "astuple")})
 LAB_RUNTIME_ALLOWED = (
     "battlebelief_runtime.adapters",
     "battlebelief_runtime.testing",
@@ -68,13 +70,19 @@ class ImportRule:
     forbidden_calls: frozenset[tuple[str, str]] = frozenset()
     forbidden_builtin_calls: frozenset[str] = frozenset()
     native_import_prefix: str | None = None
+    forbidden_private_attributes: frozenset[str] = frozenset()
+    private_attribute_scope_allowlist: tuple[tuple[str, str, str], ...] = ()
 
     @classmethod
     def core(cls) -> ImportRule:
         return cls(
             CORE_FORBIDDEN,
-            forbidden_calls=PROCESS_SPAWN_CALLS,
+            forbidden_calls=PROCESS_SPAWN_CALLS | CORE_FORBIDDEN_PROJECTION_CALLS,
             forbidden_builtin_calls=CORE_FORBIDDEN_BUILTIN_CALLS,
+            forbidden_private_attributes=CORE_FORBIDDEN_PRIVATE_ATTRIBUTES,
+            private_attribute_scope_allowlist=(
+                ("battlebelief_core/domain/search.py", "PreparedWorld", "__post_init__"),
+            ),
         )
 
     @classmethod
@@ -198,6 +206,77 @@ def forbidden_builtin_calls(path: Path, rule: ImportRule) -> list[tuple[int, str
     return calls
 
 
+def forbidden_private_attribute_accesses(
+    path: Path, root: Path, rule: ImportRule
+) -> list[tuple[int, str]]:
+    if not rule.forbidden_private_attributes:
+        return []
+    relative_path = path.relative_to(root).as_posix()
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    accesses: list[tuple[int, str]] = []
+
+    class Visitor(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.class_name = ""
+            self.function_name = ""
+
+        def _allowed(self) -> bool:
+            return (
+                relative_path,
+                self.class_name,
+                self.function_name,
+            ) in rule.private_attribute_scope_allowlist
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:
+            previous = self.class_name
+            self.class_name = node.name
+            self.generic_visit(node)
+            self.class_name = previous
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            previous = self.function_name
+            self.function_name = node.name
+            self.generic_visit(node)
+            self.function_name = previous
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_Attribute(self, node: ast.Attribute) -> None:
+            if node.attr in rule.forbidden_private_attributes and not self._allowed():
+                accesses.append((node.lineno, node.attr))
+            self.generic_visit(node)
+
+        def visit_Call(self, node: ast.Call) -> None:
+            direct_getattr = (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "getattr"
+                and len(node.args) >= 2
+                and isinstance(node.args[1], ast.Constant)
+                and node.args[1].value in rule.forbidden_private_attributes
+            )
+            reflective_getattribute = (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "__getattribute__"
+                and any(
+                    isinstance(argument, ast.Constant)
+                    and argument.value in rule.forbidden_private_attributes
+                    for argument in node.args
+                )
+            )
+            if (direct_getattr or reflective_getattribute) and not self._allowed():
+                attribute = next(
+                    str(argument.value)
+                    for argument in node.args
+                    if isinstance(argument, ast.Constant)
+                    and argument.value in rule.forbidden_private_attributes
+                )
+                accesses.append((node.lineno, attribute))
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+    return accesses
+
+
 def has_root(module: str, root: str) -> bool:
     return module == root or module.startswith(root + ".")
 
@@ -222,9 +301,13 @@ def scan_tree(root: Path, rule: ImportRule) -> list[str]:
             ):
                 errors.append(f"{path.relative_to(root)}:{line}: forbidden import {module}")
         for line, call in forbidden_process_calls(path, rule):
-            errors.append(f"{path.relative_to(root)}:{line}: forbidden process call {call}")
+            errors.append(f"{path.relative_to(root)}:{line}: forbidden call {call}")
         for line, call in forbidden_builtin_calls(path, rule):
             errors.append(f"{path.relative_to(root)}:{line}: forbidden builtin call {call}")
+        for line, attribute in forbidden_private_attribute_accesses(path, root, rule):
+            errors.append(
+                f"{path.relative_to(root)}:{line}: forbidden private attribute {attribute}"
+            )
     return sorted(set(errors))
 
 
