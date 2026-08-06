@@ -107,8 +107,9 @@ Create real expected package and extension files under `tmp_path`. Monkeypatch
 `native_probe.importlib.import_module` to return objects whose `__file__`
 attributes point at those files. Monkeypatch `Path.resolve` so the first
 resolution of `package_root / "__init__.py"` succeeds and the second raises
-`PermissionError("private native path")`. Call
-`_import_verified_native(verified)` and assert:
+`PermissionError("private native path")`. Add path-and-occurrence cases that
+raise a path-bearing `RuntimeError` from the actual and expected package and
+extension resolutions. Call `_import_verified_native(verified)` and assert:
 
 ```python
 assert caught.value.failure_class is EngineFailureClass.IMPORT_FAILED
@@ -131,7 +132,7 @@ try:
     extension_path = Path(extension_origin).resolve(strict=True)
     expected_package_path = (verified.package_root / "__init__.py").resolve(strict=True)
     expected_extension_path = verified.extension_path.resolve(strict=True)
-except (OSError, TypeError):
+except (OSError, RuntimeError, TypeError):
     _fail(EngineFailureClass.IMPORT_FAILED)
 if package_path != expected_package_path or extension_path != expected_extension_path:
     _fail(EngineFailureClass.IMPORT_FAILED)
@@ -152,8 +153,9 @@ Run the command from Step 2 with a fresh basetemp. Expected: all native-probe te
 Use `_installation(tmp_path)` and `monkeypatch.syspath_prepend(str(site))`.
 Wrap `PathFinder.find_spec` to set a flag, then wrap `Path.resolve`; after the
 spec lookup, allow the first resolution of
-`site / "poke_engine" / "__init__.py"` and raise
-`PermissionError("private installed path")` on the second. Call
+`site / "poke_engine" / "__init__.py"` and raise either
+`PermissionError("private installed path")` or a path-bearing `RuntimeError`
+for a CPython 3.12 symlink loop on the second. Call
 `verify_installed_artifact(...)` and assert:
 
 ```python
@@ -181,7 +183,7 @@ Change the final origin check to:
 try:
     origin = Path(spec.origin).resolve(strict=True)
     expected_origin = expected_package.resolve(strict=True)
-except OSError:
+except (OSError, RuntimeError):
     _fail(EngineFailureClass.ARTIFACT_MISMATCH)
 if origin != expected_origin:
     _fail(EngineFailureClass.ARTIFACT_MISMATCH)

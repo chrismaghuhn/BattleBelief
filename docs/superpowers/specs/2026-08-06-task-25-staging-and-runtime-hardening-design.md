@@ -115,9 +115,11 @@ Sentinel fixture tests cover `NaN`, `Infinity`, and `-Infinity` in
 `gen9_transition.json` and require only `sentinel_failed` to escape. A digest
 canonicalization failure is separately converted to `sentinel_failed`.
 
-Path-resolution tests force the expected-path resolution, after successful
+Path-resolution tests force expected-path resolution, after successful
 actual-path resolution, to raise `PermissionError` or `FileNotFoundError`.
-They require `artifact_mismatch` for installation verification and
+They also cover the path-bearing `RuntimeError` used for symlink loops by
+supported CPython 3.12, including all four actual and expected native paths.
+The tests require `artifact_mismatch` for installation verification and
 `import_failed` for native import verification, and assert that neither the
 exception text nor an absolute path appears in the public result.
 
