@@ -3,9 +3,12 @@ from __future__ import annotations
 import base64
 import csv
 import hashlib
+import importlib.machinery
 import importlib.metadata
 import json
+from collections.abc import Sequence
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -331,6 +334,54 @@ def test_installed_file_read_error_is_sanitized(
 
     assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
     assert str(caught.value) == "artifact_mismatch"
+
+
+def test_expected_package_resolution_error_is_sanitized_after_origin_resolution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, site, distribution, index_digest = _installation(tmp_path)
+    monkeypatch.syspath_prepend(str(site))
+    expected_package = site / "poke_engine" / "__init__.py"
+    original_find_spec = importlib.machinery.PathFinder.find_spec
+    original_resolve = Path.resolve
+    post_spec = False
+    expected_resolve_count = 0
+
+    def mark_post_spec(
+        fullname: str,
+        path: Sequence[str] | None = None,
+        target: ModuleType | None = None,
+    ) -> importlib.machinery.ModuleSpec | None:
+        nonlocal post_spec
+        spec = original_find_spec(fullname, path, target)
+        if fullname == "poke_engine":
+            post_spec = True
+        return spec
+
+    def fail_second_expected_resolution(path: Path, *, strict: bool = False) -> Path:
+        nonlocal expected_resolve_count
+        if post_spec and path == expected_package:
+            expected_resolve_count += 1
+            if expected_resolve_count == 2:
+                raise PermissionError("private expected package resolution detail")
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(importlib.machinery.PathFinder, "find_spec", mark_post_spec)
+    monkeypatch.setattr(Path, "resolve", fail_second_expected_resolution)
+
+    with pytest.raises(EngineArtifactError) as caught:
+        verify_installed_artifact(
+            data_root=data_root,
+            expected_index_digest=index_digest,
+            environment=_environment(),
+            distribution=distribution,
+        )
+
+    assert expected_resolve_count == 2
+    assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
+    assert str(caught.value) == "artifact_mismatch"
+    assert "private expected package resolution detail" not in str(caught.value)
+    assert str(tmp_path) not in str(caught.value)
 
 
 def test_missing_extra_is_classified_without_raw_exception(

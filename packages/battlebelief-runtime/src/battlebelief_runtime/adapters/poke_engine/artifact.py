@@ -585,9 +585,10 @@ def _verify_installation(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     try:
         origin = Path(spec.origin).resolve(strict=True)
+        expected_origin = expected_package.resolve(strict=True)
     except OSError:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
-    if origin != expected_package.resolve(strict=True):
+    if origin != expected_origin:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     return root / "poke_engine", extension_candidates[0]
 
