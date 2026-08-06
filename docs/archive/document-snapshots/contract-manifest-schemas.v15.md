@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 16
+version: 15
 applies_to:
   - manifests
   - release
@@ -42,8 +42,6 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Kalibrierzustandsmanifest v1/v2 | [`calibration-state-manifest-v1.schema.json`](../../schemas/manifests/calibration-state-manifest-v1.schema.json), [`calibration-state-manifest-v2.schema.json`](../../schemas/manifests/calibration-state-manifest-v2.schema.json) |
 | Deklarative Search-Ausführungsspezifikation v2/v3/v4 | [`search-execution-spec.schema.json`](../../schemas/manifests/search-execution-spec.schema.json), [`search-execution-spec-v3.schema.json`](../../schemas/manifests/search-execution-spec-v3.schema.json), [`search-execution-spec-v4.schema.json`](../../schemas/manifests/search-execution-spec-v4.schema.json) |
 | Synthetisches Fixture-Manifest v2/v3 | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json), [`synthetic-fixture-manifest-v3.schema.json`](../../schemas/manifests/synthetic-fixture-manifest-v3.schema.json) |
-| Lokale Showdown-Oracle-Quelle v1 | [`showdown-oracle-source.schema.json`](../../schemas/manifests/showdown-oracle-source.schema.json) |
-| Lokaler Showdown-Oracle-Build v1 | [`showdown-oracle-build.schema.json`](../../schemas/manifests/showdown-oracle-build.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
 | Decision-Record-Payload v2 | [`decision-record-payload-v2.schema.json`](../../schemas/records/decision-record-payload-v2.schema.json) |
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
@@ -53,15 +51,6 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 
 Beispieldateien unter `/schemas/examples` sind Test-Fixtures und müssen im
 `pr-gate` gegen das zugehörige Schema validieren.
-Das Showdown-Oracle-Quellbeispiel bindet den vollständigen historischen
-Git-Baum der ausgewählten Revision. Das positive Build-Beispiel ist ein real
-erzeugter, verifizierter Windows-Record. Es bindet die vollständige, aus dem
-gebauten offiziellen Dex extrahierte Gen-9-OU-Format-/Ruleset-Closure; deren
-Digestfelder dürfen nicht ohne das auflösbare Snapshot-Objekt stehen. Ein
-solcher Build-Record bindet außerdem die vollständige plattformspezifische
-`node_modules`-Runtime-Closure als kanonische reguläre Dateien und relative
-POSIX-Symlinks sowie den unveränderbaren Extractor-Digest. Er ist weder eine
-Engine-Qualifikation noch ein Parity- oder Strength-Claim.
 
 ## Canonicalization und Hashbildung
 

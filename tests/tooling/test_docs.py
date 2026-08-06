@@ -23,7 +23,7 @@ def test_contract_snapshot_is_checked_without_becoming_a_current_document(
     shutil.copytree(ROOT / "tests", tmp_path / "tests")
     shutil.copytree(ROOT / "wiki", tmp_path / "wiki")
     snapshot_root = tmp_path / "docs/archive/document-snapshots"
-    snapshot_root.mkdir(parents=True)
+    snapshot_root.mkdir(parents=True, exist_ok=True)
     source = tmp_path / "docs/evaluation/metrics.md"
     snapshot = snapshot_root / "evaluation-metrics.v4.md"
     snapshot.write_bytes(b"historical bytes without current frontmatter\n[broken](missing.md)\n")
@@ -65,7 +65,7 @@ def test_current_and_snapshot_same_version_may_have_distinct_digests(tmp_path: P
     shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     snapshot_root = tmp_path / "docs/archive/document-snapshots"
-    snapshot_root.mkdir(parents=True)
+    snapshot_root.mkdir(parents=True, exist_ok=True)
     source = tmp_path / "docs/evaluation/metrics.md"
     snapshot = snapshot_root / "evaluation-metrics.v4.md"
     snapshot.write_bytes(source.read_bytes() + b"\nchanged historical bytes\n")
@@ -94,7 +94,7 @@ def test_duplicate_snapshot_identity_includes_digest(tmp_path: Path) -> None:
     shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     snapshot_root = tmp_path / "docs/archive/document-snapshots"
-    snapshot_root.mkdir(parents=True)
+    snapshot_root.mkdir(parents=True, exist_ok=True)
     snapshot_bytes = b"same immutable bytes\n"
     digest = "sha256:" + hashlib.sha256(snapshot_bytes).hexdigest()
     for name in ("example-doc.v1", "example-doc-copy.v1"):
