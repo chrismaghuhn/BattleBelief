@@ -42,8 +42,15 @@ def _strict_fixture(path: Path) -> dict[str, Any]:
             result[key] = value
         return result
 
+    def reject_nonfinite_constant(_: str) -> NoReturn:
+        _fail(EngineFailureClass.SENTINEL_FAILED)
+
     try:
-        value = json.loads(path.read_bytes(), object_pairs_hook=reject_duplicates)
+        value = json.loads(
+            path.read_bytes(),
+            object_pairs_hook=reject_duplicates,
+            parse_constant=reject_nonfinite_constant,
+        )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         _fail(EngineFailureClass.SENTINEL_FAILED)
     if not isinstance(value, dict):
@@ -81,12 +88,17 @@ def load_fixture_bundle(fixture_root: Path = _DEFAULT_FIXTURE_ROOT) -> FixtureBu
         "gen9_tera_transition": tera_transition,
         "minimal_search": search,
     }
+    try:
+        fixture_digest = manifest_digest(fixture_document)
+        configuration_digest = manifest_digest(search)
+    except (TypeError, ValueError):
+        _fail(EngineFailureClass.SENTINEL_FAILED)
     return FixtureBundle(
         transition=transition,
         tera_transition=tera_transition,
         search=search,
-        fixture_digest=manifest_digest(fixture_document),
-        configuration_digest=manifest_digest(search),
+        fixture_digest=fixture_digest,
+        configuration_digest=configuration_digest,
     )
 
 
@@ -255,11 +267,13 @@ def _import_verified_native(verified: VerifiedEngineArtifact) -> ModuleType:
     try:
         package_path = Path(package_origin).resolve(strict=True)
         extension_path = Path(extension_origin).resolve(strict=True)
+        expected_package_path = (verified.package_root / "__init__.py").resolve(
+            strict=True
+        )
+        expected_extension_path = verified.extension_path.resolve(strict=True)
     except (OSError, TypeError):
         _fail(EngineFailureClass.IMPORT_FAILED)
-    if package_path != (verified.package_root / "__init__.py").resolve(strict=True) or (
-        extension_path != verified.extension_path.resolve(strict=True)
-    ):
+    if package_path != expected_package_path or extension_path != expected_extension_path:
         _fail(EngineFailureClass.IMPORT_FAILED)
     if extension_spec is None or not isinstance(
         extension_spec.loader, importlib.machinery.ExtensionFileLoader

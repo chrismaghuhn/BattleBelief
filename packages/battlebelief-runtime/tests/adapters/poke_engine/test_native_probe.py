@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import copy
+import importlib
+import importlib.machinery
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
+import battlebelief_runtime.adapters.poke_engine.native_probe as native_probe
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_runtime.adapters.poke_engine.artifact import VerifiedEngineArtifact
 from battlebelief_runtime.adapters.poke_engine.errors import (
@@ -205,3 +208,100 @@ def test_native_probe_rejects_a_non_exact_iteration_count() -> None:
         execute_native_probe(_native(total_visits=999), bundle)
 
     assert unhealthy.value.failure_class is EngineFailureClass.NATIVE_UNHEALTHY
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_strict_fixture_rejects_nonfinite_json_constants_at_parse_boundary(
+    tmp_path: Path, constant: str
+) -> None:
+    fixture = tmp_path / "nonfinite.json"
+    fixture.write_text(f'{{"value": {constant}}}', encoding="utf-8")
+
+    with pytest.raises(EngineArtifactError) as failure:
+        native_probe._strict_fixture(fixture)
+
+    assert str(failure.value) == "sentinel_failed"
+    assert str(tmp_path) not in str(failure.value)
+
+
+@pytest.mark.parametrize(
+    ("failure_call", "error_type"),
+    [(1, ValueError), (2, TypeError)],
+)
+def test_load_fixture_bundle_sanitizes_digest_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    failure_call: int,
+    error_type: type[Exception],
+) -> None:
+    calls = 0
+
+    def failing_digest(document: object) -> str:
+        nonlocal calls
+        calls += 1
+        if calls == failure_call:
+            raise error_type("C:\\Users\\alice\\private fixture digest failure")
+        return manifest_digest(document)
+
+    monkeypatch.setattr(native_probe, "manifest_digest", failing_digest)
+
+    with pytest.raises(EngineArtifactError) as failure:
+        load_fixture_bundle(FIXTURE_ROOT)
+
+    assert str(failure.value) == "sentinel_failed"
+    assert "alice" not in str(failure.value)
+    assert "private" not in str(failure.value)
+
+
+def test_import_verified_native_sanitizes_expected_path_resolution_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package_root = tmp_path / "poke_engine"
+    package_root.mkdir()
+    package_file = package_root / "__init__.py"
+    package_file.touch()
+    extension_path = package_root / "poke_engine.pyd"
+    extension_path.touch()
+    verified = VerifiedEngineArtifact(
+        identity=_identity(
+            fixture_digest=DIGEST,
+            result_digest=DIGEST,
+            config_digest=DIGEST,
+        ),
+        package_root=package_root,
+        extension_path=extension_path,
+    )
+    native = SimpleNamespace(__file__=str(package_file))
+    extension = SimpleNamespace(
+        __file__=str(extension_path),
+        __spec__=SimpleNamespace(
+            loader=importlib.machinery.ExtensionFileLoader(
+                "poke_engine.poke_engine", str(extension_path)
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: native if name == "poke_engine" else extension,
+    )
+    original_resolve = Path.resolve
+    package_resolve_calls = 0
+
+    def reject_expected_resolve(path: Path, *, strict: bool = False) -> Path:
+        nonlocal package_resolve_calls
+        if path == package_file:
+            package_resolve_calls += 1
+        if path == package_file and package_resolve_calls == 2:
+            raise PermissionError("C:\\Users\\alice\\private expected path")
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", reject_expected_resolve)
+
+    with pytest.raises(EngineArtifactError) as failure:
+        native_probe._import_verified_native(verified)
+
+    assert package_resolve_calls == 2
+    assert str(failure.value) == "import_failed"
+    assert str(tmp_path) not in str(failure.value)
+    assert "alice" not in str(failure.value)
+    assert "private" not in str(failure.value)
