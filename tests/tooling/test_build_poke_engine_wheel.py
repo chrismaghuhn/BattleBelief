@@ -58,6 +58,7 @@ def test_controlled_build_environment_excludes_ambient_build_configuration(
     monkeypatch.setenv("CARGO_BUILD_TARGET", "attacker-target")
     monkeypatch.setenv("CC", "attacker-compiler")
     monkeypatch.setenv("GITHUB_TOKEN", "secret")
+    monkeypatch.setenv("ProgramFiles(x86)", r"C:\Program Files (x86)")
     monkeypatch.setenv("PATH", os.pathsep.join((str(tmp_path / "ambient"), "base")))
     cargo = tmp_path / ".cargo" / "bin" / "cargo"
     rustc = tmp_path / ".rust" / "bin" / "rustc"
@@ -74,6 +75,7 @@ def test_controlled_build_environment_excludes_ambient_build_configuration(
     assert environment["PYTHONUTF8"] == "1"
     assert environment["SOURCE_DATE_EPOCH"] == "1784471591"
     assert environment["PATH"].split(os.pathsep)[:2] == [str(cargo.parent), str(rustc.parent)]
+    assert environment["ProgramFiles(x86)"] == r"C:\Program Files (x86)"
     assert "RUSTFLAGS" not in environment
     assert "CARGO_BUILD_TARGET" not in environment
     assert "CC" not in environment

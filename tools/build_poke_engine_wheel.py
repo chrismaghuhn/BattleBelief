@@ -146,7 +146,17 @@ def _controlled_build_environment(
         "PYTHONUTF8": "1",
         "SOURCE_DATE_EPOCH": SOURCE_DATE_EPOCH,
     }
-    for name in ("COMSPEC", "PATHEXT", "SYSTEMROOT", "SystemRoot", "TEMP", "TMP"):
+    for name in (
+        "COMSPEC",
+        "PATHEXT",
+        "ProgramData",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "ProgramW6432",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+    ):
         value = os.environ.get(name)
         if value:
             environment[name] = value
