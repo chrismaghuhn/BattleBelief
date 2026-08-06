@@ -74,7 +74,7 @@ class CapabilityId:
 @dataclass(frozen=True, slots=True)
 class CapabilityDefinition:
     value: str
-    description: str = ""
+    description: str
 
     def __post_init__(self) -> None:
         if (
@@ -342,14 +342,17 @@ class CapabilityMigrationClosure:
     """A digest-bound, deterministic record of a fail-closed v1 to v2 migration."""
 
     source_schema_id: str = field(repr=False)
+    source_document_id: str = field(repr=False)
     source_digest: str = field(repr=False)
     migrator_id: str = field(repr=False)
     migrator_version: str = field(repr=False)
     loss_codes: tuple[str, ...] = field(repr=False)
+    loss_report_id: str = field(repr=False)
     loss_report_digest: str = field(repr=False)
 
     def __post_init__(self) -> None:
         _schema_id(self.source_schema_id, "source_schema_id")
+        _canonical_id(self.source_document_id, "source_document_id")
         _digest(self.source_digest, "source_digest")
         _nonempty(self.migrator_id, "migrator_id")
         _nonempty(self.migrator_version, "migrator_version")
@@ -363,15 +366,18 @@ class CapabilityMigrationClosure:
             raise ValueError("loss_codes must be a non-empty uniquely sorted tuple")
         for code in self.loss_codes:
             _canonical_id(code, "loss_code")
+        _canonical_id(self.loss_report_id, "loss_report_id")
         _digest(self.loss_report_digest, "loss_report_digest")
 
     def document(self) -> dict[str, object]:
         return {
             "source_schema_id": self.source_schema_id,
+            "source_document_id": self.source_document_id,
             "source_digest": self.source_digest,
             "migrator_id": self.migrator_id,
             "migrator_version": self.migrator_version,
             "loss_codes": list(self.loss_codes),
+            "loss_report_id": self.loss_report_id,
             "loss_report_digest": self.loss_report_digest,
         }
 

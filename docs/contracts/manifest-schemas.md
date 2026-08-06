@@ -33,6 +33,7 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Engine-Capability catalog v1 | [`engine-capability-catalog-v1.schema.json`](../../schemas/catalogs/engine-capability-catalog-v1.schema.json) |
 | Engine-Capability manifest v2 | [`engine-capability-v2.schema.json`](../../schemas/manifests/engine-capability-v2.schema.json) |
 | Engine-Capability evidence v1 | [`engine-capability-evidence.schema.json`](../../schemas/manifests/engine-capability-evidence.schema.json) |
+| Engine-Capability migration loss report v1 | [`engine-capability-migration-loss-report.schema.json`](../../schemas/manifests/engine-capability-migration-loss-report.schema.json) |
 | Evaluation-Claim | [`evaluation-claim.schema.json`](../../schemas/manifests/evaluation-claim.schema.json) |
 | Ruleset-Snapshot | [`ruleset-snapshot.schema.json`](../../schemas/manifests/ruleset-snapshot.schema.json) |
 | Dataset-Provenance | [`dataset-manifest.schema.json`](../../schemas/manifests/dataset-manifest.schema.json) |
@@ -130,7 +131,9 @@ artifact, and environment binding is supplied by the caller; unbound adapter,
 oracle, ruleset, corpus, runner, classifier, and evidence fields remain `null`,
 so the candidate is not search-qualified. A migrated target additionally binds
 its deterministic loss-report projection through the optional v2 `migration`
-closure; the report in turn binds the target digest.
+closure; the report in turn binds the target digest. The repository validator
+resolves the source document and loss report by their IDs under the registered
+migration directories before accepting the closure.
 
 Canonical arrays, including catalog definitions, environment bindings, claims,
 and claim evidence, use their contractually specified lexicographic order.

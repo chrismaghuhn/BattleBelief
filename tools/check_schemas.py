@@ -57,6 +57,7 @@ EXAMPLE_SCHEMA_MAP = {
     "engine-capability-catalog-v1.example.json": "engine-capability-catalog-v1.schema.json",
     "engine-capability-v2.example.json": "engine-capability-v2.schema.json",
     "engine-capability-evidence.example.json": "engine-capability-evidence.schema.json",
+    "engine-capability-migration-loss-report.example.json": "engine-capability-migration-loss-report.schema.json",
     "engine-source.example.json": "engine-source.schema.json",
     "engine-build.example.json": "engine-build.schema.json",
     "engine-artifact-index.example.json": "engine-artifact-index.schema.json",
@@ -324,10 +325,12 @@ def _validate_capability_manifest(
                 if document["migration"] is None
                 else CapabilityMigrationClosure(
                     source_schema_id=document["migration"]["source_schema_id"],
+                    source_document_id=document["migration"]["source_document_id"],
                     source_digest=document["migration"]["source_digest"],
                     migrator_id=document["migration"]["migrator_id"],
                     migrator_version=document["migration"]["migrator_version"],
                     loss_codes=tuple(document["migration"]["loss_codes"]),
+                    loss_report_id=document["migration"]["loss_report_id"],
                     loss_report_digest=document["migration"]["loss_report_digest"],
                 )
             ),
@@ -342,6 +345,22 @@ def _validate_capability_manifest(
     except (KeyError, TypeError, ValueError) as error:
         return [f"capability manifest semantic validation failed: {error}"]
     return []
+
+
+def _migration_report_projection(document: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "report_id": document["report_id"],
+        "source_document_id": document["source_document_id"],
+        "source_schema_id": document["source_schema_id"],
+        "source_digest": document["source_digest"],
+        "migrator_id": document["migrator_id"],
+        "migrator_version": document["migrator_version"],
+        "loss_codes": document["loss_codes"],
+        "loss": document["loss"],
+    }
+
+
+_V1_CAPABILITY_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
 
 
 def _load_capability_evidence_documents(
@@ -398,12 +417,72 @@ def _discover_capability_evidence_paths(capability_root: Path) -> tuple[Path, ..
     return tuple(sorted(evidence_directory.glob("*.json")))
 
 
+def _validate_migration_provenance(
+    root: Path,
+    manifest_path: Path,
+    manifest_document: Mapping[str, Any],
+    source_documents: Mapping[str, Mapping[str, Any]],
+    report_documents: Mapping[str, Mapping[str, Any]],
+) -> list[str]:
+    migration = manifest_document["migration"]
+    if migration is None:
+        return []
+    errors: list[str] = []
+    source_id = migration["source_document_id"]
+    report_id = migration["loss_report_id"]
+    if migration["source_schema_id"] != _V1_CAPABILITY_SCHEMA_ID:
+        errors.append("migration source schema must be engine-capability v1")
+    source = source_documents.get(source_id)
+    report = report_documents.get(report_id)
+    if source is None:
+        errors.append(f"migration source document is missing for {source_id}")
+    if report is None:
+        errors.append(f"migration loss report is missing for {report_id}")
+    if source is not None:
+        if source.get("manifest_id") != source_id:
+            errors.append("migration source document ID does not match its manifest ID")
+        if manifest_digest(source) != migration["source_digest"]:
+            errors.append("migration source digest does not match source document")
+    if report is not None:
+        if report.get("report_id") != report_id:
+            errors.append("migration loss report ID does not match its file identity")
+        for name in (
+            "source_document_id",
+            "source_schema_id",
+            "source_digest",
+            "migrator_id",
+            "migrator_version",
+            "loss_codes",
+        ):
+            if report.get(name) != migration[name]:
+                errors.append(f"migration loss report {name} does not match manifest closure")
+        if report.get("loss_report_digest") != migration["loss_report_digest"]:
+            errors.append("migration loss report digest does not match manifest closure")
+        if manifest_digest(_migration_report_projection(report)) != migration["loss_report_digest"]:
+            errors.append("migration loss report digest does not match report projection")
+        if report.get("target_digest") != manifest_digest(manifest_document):
+            errors.append("migration loss report target digest does not match manifest")
+    return [f"{manifest_path.relative_to(root)}: {error}" for error in errors]
+
+
 def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     errors: list[str] = []
     schema_root = root / "schemas"
     catalog_path = root / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
     capability_root = root / "artifacts/gen9ou/m2/engine-capabilities"
     manifest_paths = tuple(sorted(capability_root.glob("engine-capability-v2-*.json")))
+    migration_source_directory = capability_root / "migration-sources"
+    migration_report_directory = capability_root / "migration-reports"
+    migration_source_paths = (
+        tuple(sorted(migration_source_directory.glob("*.json")))
+        if migration_source_directory.is_dir()
+        else ()
+    )
+    migration_report_paths = (
+        tuple(sorted(migration_report_directory.glob("*.json")))
+        if migration_report_directory.is_dir()
+        else ()
+    )
     engine_root = root / "artifacts/gen9ou/m2/engine"
     source_path = engine_root / "engine-source.json"
     index_path = engine_root / "engine-artifact-index.json"
@@ -415,6 +494,8 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     approved_paths = set(manifest_paths)
     if evidence_directory.is_dir():
         approved_paths.update(evidence_directory.glob("*.json"))
+    approved_paths.update(migration_source_paths)
+    approved_paths.update(migration_report_paths)
     for path in sorted(capability_root.rglob("*.json")):
         if path not in approved_paths:
             errors.append(
@@ -432,9 +513,15 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     source_document = load_document(source_path)
     index_document = load_document(index_path)
     manifest_documents = [(path, load_document(path)) for path in manifest_paths]
+    migration_source_documents = [(path, load_document(path)) for path in migration_source_paths]
+    migration_report_documents = [(path, load_document(path)) for path in migration_report_paths]
     if any(document is None for document in (catalog_document, source_document, index_document)):
         return errors
     if any(document is None for _, document in manifest_documents):
+        return errors
+    if any(document is None for _, document in migration_source_documents):
+        return errors
+    if any(document is None for _, document in migration_report_documents):
         return errors
 
     structural_errors: list[str] = []
@@ -445,6 +532,14 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         *[
             (path, "engine-capability-v2.schema.json", document)
             for path, document in manifest_documents
+        ],
+        *[
+            (path, "engine-capability.schema.json", document)
+            for path, document in migration_source_documents
+        ],
+        *[
+            (path, "engine-capability-migration-loss-report.schema.json", document)
+            for path, document in migration_report_documents
         ],
     ]
     for path, schema_name, document in structural_documents:
@@ -459,6 +554,39 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     # being replaced by a secondary KeyError.
     if structural_errors:
         return errors
+    source_documents_by_id = {
+        path.stem: document
+        for path, document in migration_source_documents
+        if isinstance(document, dict)
+    }
+    report_documents_by_id = {
+        path.stem: document
+        for path, document in migration_report_documents
+        if isinstance(document, dict)
+    }
+    referenced_source_ids: set[str] = set()
+    referenced_report_ids: set[str] = set()
+    for manifest_path, manifest_document in manifest_documents:
+        assert manifest_document is not None
+        migration = manifest_document["migration"]
+        if migration is not None:
+            referenced_source_ids.add(migration["source_document_id"])
+            referenced_report_ids.add(migration["loss_report_id"])
+            errors.extend(
+                _validate_migration_provenance(
+                    root,
+                    manifest_path,
+                    manifest_document,
+                    source_documents_by_id,
+                    report_documents_by_id,
+                )
+            )
+    for path in migration_source_paths:
+        if path.stem not in referenced_source_ids:
+            errors.append(f"unreferenced migration source document {path.relative_to(root)}")
+    for path in migration_report_paths:
+        if path.stem not in referenced_report_ids:
+            errors.append(f"unreferenced migration loss report {path.relative_to(root)}")
     catalog, catalog_errors = _validate_capability_catalog(catalog_document)
     errors.extend(f"{catalog_path.relative_to(root)}: {error}" for error in catalog_errors)
     errors.extend(
@@ -474,7 +602,7 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         )
         errors.extend(evidence_errors)
         all_referenced_ids: set[str] = set()
-        exact_closure_manifest_seen = False
+        evidence_reference_counts: dict[str, int] = {}
         for manifest_path, manifest_document in manifest_documents:
             assert manifest_document is not None
             errors.extend(
@@ -483,30 +611,30 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
                     manifest_document, catalog, evidence_documents
                 )
             )
+            qualifying_claims = {
+                claim["capability_id"]
+                for claim in manifest_document["claims"]
+                if claim["status"] in {"exact", "bounded_approximation"}
+            }
             referenced_ids = {
                 reference["evidence_id"]
                 for claim in manifest_document["claims"]
+                if claim["capability_id"] in qualifying_claims
                 for reference in claim["evidence_refs"]
             }
             all_referenced_ids.update(referenced_ids)
-            enforce_exact_closure = (
-                bool(manifest_document["claims"])
-                or manifest_path.name != "engine-capability-v2-unqualified.json"
-            )
-            if enforce_exact_closure:
-                exact_closure_manifest_seen = True
-                for evidence_id, evidence_path in sorted(evidence_paths.items()):
-                    if evidence_id not in referenced_ids:
-                        errors.append(
-                            f"{manifest_path.relative_to(root)}: unreferenced evidence document "
-                            f"{evidence_path.relative_to(root)}"
-                        )
-        if evidence_paths and not exact_closure_manifest_seen:
-            for evidence_id, evidence_path in sorted(evidence_paths.items()):
-                if evidence_id not in all_referenced_ids:
-                    errors.append(
-                        f"unreferenced evidence document {evidence_path.relative_to(root)}"
-                    )
+            for evidence_id in referenced_ids:
+                evidence_reference_counts[evidence_id] = (
+                    evidence_reference_counts.get(evidence_id, 0) + 1
+                )
+        for evidence_id, evidence_path in sorted(evidence_paths.items()):
+            if evidence_id not in all_referenced_ids:
+                errors.append(f"unreferenced evidence document {evidence_path.relative_to(root)}")
+            elif evidence_reference_counts[evidence_id] != 1:
+                errors.append(
+                    f"evidence document {evidence_path.relative_to(root)} must be referenced by "
+                    "exactly one qualifying manifest"
+                )
     assert isinstance(source_document, dict)
     assert isinstance(index_document, dict)
     source_digest = manifest_digest(source_document)

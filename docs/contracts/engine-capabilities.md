@@ -88,10 +88,19 @@ artifact is explicitly unqualified: every catalog ID is effectively `unknown`,
 and there is no `exact` or `bounded_approximation` evidence.
 
 A migrated v2 document binds an optional `migration` closure containing source
-schema and digest, migrator ID/version, deterministic loss codes, and the
-digest of a deterministic loss-report projection. The report binds the target
-digest. This acyclic pair prevents a loose report from being substituted; an
-ordinary unqualified initial manifest has `migration: null`.
+schema/document identity and digest, migrator ID/version, deterministic loss
+codes, loss-report identity, and the digest of a deterministic loss-report
+projection. Source v1 documents resolve as
+`artifacts/gen9ou/m2/engine-capabilities/migration-sources/<source-document-id>.json`;
+loss reports resolve as
+`artifacts/gen9ou/m2/engine-capabilities/migration-reports/<loss-report-id>.json`
+under the versioned
+`urn:battlebelief:schema:manifest:engine-capability-migration-loss-report:v1`
+schema. Repository validation loads both documents, recomputes the source and
+loss-report digests, checks migrator/loss-code identity, and compares the
+report's target digest with the manifest digest. This acyclic pair prevents a
+loose source, report, or target from being substituted; an ordinary
+unqualified initial manifest has `migration: null`.
 
 ### Eligibility before each search
 

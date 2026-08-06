@@ -22,6 +22,9 @@ SOURCE_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
 _ROOT = Path(__file__).resolve().parents[1]
 _V1_SCHEMA = _ROOT / "schemas/manifests/engine-capability.schema.json"
 _V2_SCHEMA = _ROOT / "schemas/manifests/engine-capability-v2.schema.json"
+_LOSS_REPORT_SCHEMA = (
+    _ROOT / "schemas/manifests/engine-capability-migration-loss-report.schema.json"
+)
 _BINDING_FIELDS = frozenset(
     {
         "engine_source_manifest_digest",
@@ -85,6 +88,9 @@ def migrate_v1_document(
     source: Mapping[str, object],
     catalog: Mapping[str, object],
     unqualified_target_binding: Mapping[str, object],
+    *,
+    source_document_id: str | None = None,
+    loss_report_id: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Produce a Core-valid, explicitly unqualified v2 target and loss report."""
 
@@ -93,12 +99,25 @@ def migrate_v1_document(
     source_digest, index_digest, environment_bindings, canonicalization_digest = _require_binding(
         unqualified_target_binding, catalog_value
     )
+    source_document_id = (
+        str(source_document_id)
+        if source_document_id is not None
+        else str(source_document["manifest_id"])
+    )
+    target_manifest_id = f"{source_document['manifest_id']}-v2-unqualified"
+    loss_report_id = (
+        str(loss_report_id)
+        if loss_report_id is not None
+        else f"{target_manifest_id}-loss-report-v1"
+    )
     loss = {
         name: len(source_document[name])
         for name in ("exact", "approximated", "unsupported", "known_divergences")
     }
     loss_codes = ("approximated", "exact", "known-divergences", "unsupported")
     report_projection = {
+        "report_id": loss_report_id,
+        "source_document_id": source_document_id,
         "source_schema_id": SOURCE_SCHEMA_ID,
         "source_digest": manifest_digest(source_document),
         "migrator_id": MIGRATOR_ID,
@@ -109,7 +128,7 @@ def migrate_v1_document(
     loss_report_digest = manifest_digest(report_projection)
     target: dict[str, Any] = {
         "schema_version": 2,
-        "manifest_id": f"{source_document['manifest_id']}-v2-unqualified",
+        "manifest_id": target_manifest_id,
         "catalog_id": catalog_value.catalog_id,
         "catalog_version": catalog_value.catalog_version,
         "catalog_digest": catalog_value.catalog_digest,
@@ -140,10 +159,12 @@ def migrate_v1_document(
         "canonicalization_contract_digest": canonicalization_digest,
         "migration": {
             "source_schema_id": SOURCE_SCHEMA_ID,
+            "source_document_id": source_document_id,
             "source_digest": report_projection["source_digest"],
             "migrator_id": MIGRATOR_ID,
             "migrator_version": MIGRATOR_VERSION,
             "loss_codes": list(loss_codes),
+            "loss_report_id": loss_report_id,
             "loss_report_digest": loss_report_digest,
         },
         "claims": [],
@@ -174,10 +195,12 @@ def migrate_v1_document(
             canonicalization_contract_digest=canonicalization_digest,
             migration=CapabilityMigrationClosure(
                 source_schema_id=SOURCE_SCHEMA_ID,
+                source_document_id=source_document_id,
                 source_digest=report_projection["source_digest"],
                 migrator_id=MIGRATOR_ID,
                 migrator_version=MIGRATOR_VERSION,
                 loss_codes=loss_codes,
+                loss_report_id=loss_report_id,
                 loss_report_digest=loss_report_digest,
             ),
             claims=(),
@@ -185,8 +208,11 @@ def migrate_v1_document(
     except ValueError as error:
         raise ValueError(f"migrated target fails Core validation: {error}") from error
     report = {
+        "schema_version": 1,
         **report_projection,
         "loss_report_digest": loss_report_digest,
         "target_digest": manifest_digest(target),
     }
+    if _schema_errors(_LOSS_REPORT_SCHEMA, report):
+        raise ValueError("migration loss report fails its schema")
     return target, report
