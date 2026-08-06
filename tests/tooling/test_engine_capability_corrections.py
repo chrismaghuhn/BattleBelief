@@ -67,7 +67,7 @@ def test_migration_requires_valid_v1_source_catalog_and_complete_unqualified_bin
 
     bool_source = copy.deepcopy(source)
     bool_source["schema_version"] = True
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="engine-capability v1 document"):
         migrate_v1_document(bool_source, catalog, _target_binding())
 
     malformed_catalog = copy.deepcopy(catalog)
@@ -115,7 +115,6 @@ def test_evidence_is_not_a_claim_and_uses_project_schema_urn() -> None:
     schema = _document(SCHEMAS / "manifests/engine-capability-evidence.schema.json")
     evidence = _document(SCHEMAS / "examples/engine-capability-evidence.example.json")
 
-    evidence.pop("status", None)
     assert "status" not in evidence
     assert list(Draft202012Validator(schema).iter_errors(evidence)) == []
     assert evidence["qualification_result_schema_id"].startswith("urn:battlebelief:schema:")
@@ -127,15 +126,16 @@ def test_evidence_context_rejects_catalog_and_capability_mismatches() -> None:
     catalog = CapabilityCatalog.from_document(_document(CATALOG_PATH))
     evidence = _document(SCHEMAS / "examples/engine-capability-evidence.example.json")
     assert _validate_capability_evidence(evidence, catalog) == []
-    for name, replacement in (
-        ("catalog_id", "other-catalog"),
-        ("catalog_version", "2"),
-        ("catalog_digest", "sha256:" + "0" * 64),
-        ("capability_id", "gen9.not.in-catalog"),
+    for name, replacement, expected in (
+        ("catalog_id", "other-catalog", "catalog identity"),
+        ("catalog_version", "2", "catalog identity"),
+        ("catalog_digest", "sha256:" + "0" * 64, "catalog identity"),
+        ("capability_id", "gen9.not.in-catalog", "not defined by this catalog"),
     ):
         mismatched = copy.deepcopy(evidence)
         mismatched[name] = replacement
-        assert _validate_capability_evidence(mismatched, catalog)
+        errors = _validate_capability_evidence(mismatched, catalog)
+        assert any(expected in error for error in errors)
 
 
 def test_catalog_contract_bindings_resolve_exact_document_bytes(tmp_path: Path) -> None:
@@ -170,7 +170,7 @@ def test_catalog_semantics_reject_duplicate_capability_values_with_distinct_desc
 
     assert list(Draft202012Validator(schema).iter_errors(duplicate)) == []
     _, errors = _validate_capability_catalog(duplicate)
-    assert errors
+    assert any("uniquely sorted by value" in error for error in errors)
 
 
 def test_v2_digest_ignores_object_key_order_but_core_rejects_noncanonical_arrays() -> None:
@@ -214,6 +214,9 @@ def test_task25_closure_rejects_stale_source_index_and_environment_cells(tmp_pat
     shutil.copy2(CATALOG_PATH, artifact_root / CATALOG_PATH.name)
     (artifact_root / "engine-capabilities").mkdir()
     target = artifact_root / "engine-capabilities/engine-capability-v2-unqualified.json"
+
+    target.write_text(MANIFEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    assert _validate_engine_capability_artifacts(tmp_path) == []
 
     for mutation in (
         lambda document: document.__setitem__(
@@ -311,7 +314,7 @@ def test_evidence_reference_is_derived_from_the_complete_evidence_document() -> 
     )
 
 
-def test_qualifying_manifest_requires_the_referenced_evidence_document(tmp_path: Path) -> None:
+def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path: Path) -> None:
     artifact_root = tmp_path / "artifacts/gen9ou/m2"
     shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
@@ -351,6 +354,7 @@ def test_qualifying_manifest_requires_the_referenced_evidence_document(tmp_path:
         references.append(reference)
     manifest.update(
         {
+            "manifest_id": "poke-engine-gen9ou-capabilities-v2-qualified",
             "transition_adapter_id": evidence["transition_adapter_id"],
             "transition_adapter_version": evidence["transition_adapter_version"],
             "transition_adapter_source_digest": evidence["transition_adapter_source_digest"],
@@ -375,15 +379,58 @@ def test_qualifying_manifest_requires_the_referenced_evidence_document(tmp_path:
         }
     )
     manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
-    manifest_path = artifact_root / "engine-capabilities/engine-capability-v2-unqualified.json"
+    manifest_path = artifact_root / "engine-capabilities/engine-capability-v2-qualified.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     assert _validate_engine_capability_artifacts(tmp_path)
-    for index, document in enumerate(evidence_documents, start=1):
-        (evidence_dir / f"evidence-{index}.json").write_text(json.dumps(document), encoding="utf-8")
+    for document in evidence_documents:
+        (evidence_dir / f"{document['evidence_id']}.json").write_text(
+            json.dumps(document), encoding="utf-8"
+        )
     assert _validate_engine_capability_artifacts(tmp_path) == []
+
+    missing_path = evidence_dir / f"{evidence_documents[0]['evidence_id']}.json"
+    missing_path.unlink()
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("referenced evidence document" in error for error in errors)
+    missing_path.write_text(json.dumps(evidence_documents[0]), encoding="utf-8")
+
+    extra = copy.deepcopy(evidence_documents[0])
+    extra["evidence_id"] = "unreferenced-evidence"
+    extra_path = evidence_dir / "unreferenced-evidence.json"
+    extra_path.write_text(json.dumps(extra), encoding="utf-8")
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("unreferenced evidence" in error for error in errors)
+    extra_path.unlink()
+
+    duplicate_id = copy.deepcopy(evidence_documents[0])
+    duplicate_id_path = evidence_dir / "zzz-duplicate-evidence.json"
+    duplicate_id_path.write_text(json.dumps(duplicate_id), encoding="utf-8")
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("duplicate evidence_id" in error for error in errors)
+    duplicate_id_path.unlink()
+
+    duplicate_digest = copy.deepcopy(manifest)
+    duplicate_digest["claims"][0]["evidence_refs"][1]["evidence_digest"] = duplicate_digest[
+        "claims"
+    ][0]["evidence_refs"][0]["evidence_digest"]
+    manifest_path.write_text(json.dumps(duplicate_digest), encoding="utf-8")
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("unique evidence digests" in error for error in errors)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    wrong_cell = copy.deepcopy(evidence_documents[0])
+    wrong_cell["environment_cell_id"] = "wrong-cell"
+    missing_path.write_text(json.dumps(wrong_cell), encoding="utf-8")
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any(
+        "referenced evidence document does not match evidence_ref" in error for error in errors
+    )
+    missing_path.write_text(json.dumps(evidence_documents[0]), encoding="utf-8")
+
     evidence_documents[0]["capability_id"] = "gen9.legality.terastallization.activation"
-    (evidence_dir / "evidence-1.json").write_text(
+    (evidence_dir / f"{evidence_documents[0]['evidence_id']}.json").write_text(
         json.dumps(evidence_documents[0]), encoding="utf-8"
     )
-    assert _validate_engine_capability_artifacts(tmp_path)
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("capability" in error and "evidence" in error for error in errors)

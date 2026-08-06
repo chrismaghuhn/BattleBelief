@@ -33,7 +33,7 @@ def _copy_engine_artifacts(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_artifact_validator_discovers_qualified_manifest_and_task29_evidence_file(
+def test_artifact_validator_rejects_legacy_task29_evidence_file_outside_closure(
     tmp_path: Path,
 ) -> None:
     root = _copy_engine_artifacts(tmp_path)
@@ -52,20 +52,51 @@ def test_artifact_validator_discovers_qualified_manifest_and_task29_evidence_fil
 
     errors = _validate_engine_capability_artifacts(root)
 
-    assert any("capability-evidence-v1.json" in error for error in errors)
+    assert any("outside approved evidence directory" in error for error in errors)
 
 
 def test_artifact_validator_reports_malformed_discovered_evidence_without_exception(
     tmp_path: Path,
 ) -> None:
     root = _copy_engine_artifacts(tmp_path)
-    evidence_path = root / "artifacts/gen9ou/m2/engine-capabilities/capability-evidence-v1.json"
+    evidence_dir = root / "artifacts/gen9ou/m2/engine-capabilities/evidence"
+    evidence_dir.mkdir()
+    evidence_path = evidence_dir / "broken.json"
     evidence_path.write_text('{"broken": true}', encoding="utf-8")
 
     errors = _validate_engine_capability_artifacts(root)
 
     assert errors
-    assert any("capability-evidence-v1.json" in error for error in errors)
+    assert any("broken.json" in error and "evidence document" in error for error in errors)
+
+
+def test_artifact_validator_requires_evidence_filename_to_match_evidence_id(
+    tmp_path: Path,
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    evidence_dir = root / "artifacts/gen9ou/m2/engine-capabilities/evidence"
+    evidence_dir.mkdir()
+    evidence = _document(ROOT / "schemas/examples/engine-capability-evidence.example.json")
+    (evidence_dir / "wrong-name.json").write_text(json.dumps(evidence), encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert any("filename must match evidence_id" in error for error in errors)
+
+
+def test_artifact_validator_rejects_evidence_without_a_qualifying_manifest_reference(
+    tmp_path: Path,
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    evidence_dir = root / "artifacts/gen9ou/m2/engine-capabilities/evidence"
+    evidence_dir.mkdir()
+    evidence = _document(ROOT / "schemas/examples/engine-capability-evidence.example.json")
+    evidence_path = evidence_dir / f"{evidence['evidence_id']}.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert any("unreferenced evidence document" in error for error in errors)
 
 
 def test_artifact_validator_reports_manifest_schema_errors_without_keyerror(tmp_path: Path) -> None:

@@ -380,6 +380,8 @@ def _load_capability_evidence_documents(
                 item.evidence_digest == reference.evidence_digest for item in documents.values()
             ):
                 raise ValueError("duplicate evidence_digest")
+            if path.name != f"{reference.evidence_id}.json":
+                raise ValueError("evidence filename must match evidence_id")
             documents[reference.evidence_id] = reference
             document_paths[reference.evidence_id] = path
         except (TypeError, ValueError) as error:
@@ -388,16 +390,12 @@ def _load_capability_evidence_documents(
 
 
 def _discover_capability_evidence_paths(capability_root: Path) -> tuple[Path, ...]:
-    """Discover both the Task-26 evidence directory and the Task-29 closure file."""
+    """Discover the single approved Task-29 evidence directory."""
 
-    paths: list[Path] = []
     evidence_directory = capability_root / "evidence"
-    if evidence_directory.is_dir():
-        paths.extend(evidence_directory.glob("*.json"))
-    task29_evidence = capability_root / "capability-evidence-v1.json"
-    if task29_evidence.is_file():
-        paths.append(task29_evidence)
-    return tuple(sorted(set(paths)))
+    if not evidence_directory.is_dir():
+        return ()
+    return tuple(sorted(evidence_directory.glob("*.json")))
 
 
 def _validate_engine_capability_artifacts(root: Path) -> list[str]:
@@ -413,6 +411,15 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         path.is_file() for path in (catalog_path, source_path, index_path)
     ):
         return ["engine capability catalog or initial v2 manifest is missing"]
+    evidence_directory = capability_root / "evidence"
+    approved_paths = set(manifest_paths)
+    if evidence_directory.is_dir():
+        approved_paths.update(evidence_directory.glob("*.json"))
+    for path in sorted(capability_root.rglob("*.json")):
+        if path not in approved_paths:
+            errors.append(
+                f"{path.relative_to(root)}: evidence document is outside approved evidence directory"
+            )
 
     def load_document(path: Path) -> Any | None:
         try:
@@ -466,6 +473,8 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
             _discover_capability_evidence_paths(capability_root), catalog, evidence_schema
         )
         errors.extend(evidence_errors)
+        all_referenced_ids: set[str] = set()
+        exact_closure_manifest_seen = False
         for manifest_path, manifest_document in manifest_documents:
             assert manifest_document is not None
             errors.extend(
@@ -479,17 +488,25 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
                 for claim in manifest_document["claims"]
                 for reference in claim["evidence_refs"]
             }
+            all_referenced_ids.update(referenced_ids)
             enforce_exact_closure = (
                 bool(manifest_document["claims"])
                 or manifest_path.name != "engine-capability-v2-unqualified.json"
             )
             if enforce_exact_closure:
+                exact_closure_manifest_seen = True
                 for evidence_id, evidence_path in sorted(evidence_paths.items()):
                     if evidence_id not in referenced_ids:
                         errors.append(
                             f"{manifest_path.relative_to(root)}: unreferenced evidence document "
                             f"{evidence_path.relative_to(root)}"
                         )
+        if evidence_paths and not exact_closure_manifest_seen:
+            for evidence_id, evidence_path in sorted(evidence_paths.items()):
+                if evidence_id not in all_referenced_ids:
+                    errors.append(
+                        f"unreferenced evidence document {evidence_path.relative_to(root)}"
+                    )
     assert isinstance(source_document, dict)
     assert isinstance(index_document, dict)
     source_digest = manifest_digest(source_document)
