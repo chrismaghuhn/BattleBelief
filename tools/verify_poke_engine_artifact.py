@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import stat
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -38,6 +40,50 @@ def _fail(message: str) -> NoReturn:
 
 def _reject_nonfinite(_value: str) -> NoReturn:
     raise ValueError("non-finite JSON constant")
+
+
+_STAGED_WHEELHOUSE_CLOSURE_ERROR = "staged wheelhouse closure differs"
+
+
+def _is_link_or_reparse_entry(path: Path, metadata: os.stat_result) -> bool:
+    if stat.S_ISLNK(metadata.st_mode):
+        return True
+    reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    if getattr(metadata, "st_file_attributes", 0) & reparse_point:
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction()) if callable(is_junction) else False
+
+
+def _normalized_absolute_path(path: Path) -> str:
+    return os.path.normcase(os.path.abspath(path))
+
+
+def verify_staged_wheelhouse_closure(wheel_path: Path) -> None:
+    """Require the staged wheelhouse to contain exactly the supplied regular wheel."""
+
+    try:
+        wheelhouse = wheel_path.parent
+        wheelhouse_metadata = wheelhouse.lstat()
+        if (
+            not stat.S_ISDIR(wheelhouse_metadata.st_mode)
+            or _is_link_or_reparse_entry(wheelhouse, wheelhouse_metadata)
+        ):
+            _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
+        entries = list(wheelhouse.iterdir())
+        if len(entries) != 1:
+            _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
+        wheel_entry = entries[0]
+        if _normalized_absolute_path(wheel_entry) != _normalized_absolute_path(wheel_path):
+            _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
+        wheel_metadata = wheel_entry.lstat()
+        if (
+            not stat.S_ISREG(wheel_metadata.st_mode)
+            or _is_link_or_reparse_entry(wheel_entry, wheel_metadata)
+        ):
+            _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
+    except OSError:
+        _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
 
 
 def _canonical_document(path: Path, schema_name: str) -> dict[str, Any]:
@@ -86,6 +132,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--checkout", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        verify_staged_wheelhouse_closure(args.wheel)
         source = _canonical_document(args.source_manifest, "engine-source.schema.json")
         build = _canonical_document(args.build_manifest, "engine-build.schema.json")
         validate_pinned_source_manifest(source)
