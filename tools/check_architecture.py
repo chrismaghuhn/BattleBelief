@@ -17,9 +17,24 @@ CORE_FORBIDDEN = frozenset(
         "websockets",
         "poke_engine",
         "subprocess",
+        "os",
+        "pathlib",
+        "shutil",
+        "tempfile",
+        "glob",
+        "time",
+        "socket",
+        "urllib",
+        "http",
+        "requests",
+        "httpx",
+        "aiohttp",
+        "random",
+        "secrets",
     }
 )
 RUNTIME_FORBIDDEN = frozenset({"battlebelief_lab", "torch", "duckdb", "pyarrow", "subprocess"})
+CORE_FORBIDDEN_BUILTIN_CALLS = frozenset({"open"})
 PROCESS_SPAWN_CALLS = frozenset(
     {
         ("asyncio", "create_subprocess_exec"),
@@ -51,11 +66,16 @@ class ImportRule:
     forbidden_roots: frozenset[str]
     runtime_allowlist: tuple[str, ...] = ()
     forbidden_calls: frozenset[tuple[str, str]] = frozenset()
+    forbidden_builtin_calls: frozenset[str] = frozenset()
     native_import_prefix: str | None = None
 
     @classmethod
     def core(cls) -> ImportRule:
-        return cls(CORE_FORBIDDEN, forbidden_calls=PROCESS_SPAWN_CALLS)
+        return cls(
+            CORE_FORBIDDEN,
+            forbidden_calls=PROCESS_SPAWN_CALLS,
+            forbidden_builtin_calls=CORE_FORBIDDEN_BUILTIN_CALLS,
+        )
 
     @classmethod
     def runtime(cls) -> ImportRule:
@@ -145,6 +165,39 @@ def forbidden_process_calls(path: Path, rule: ImportRule) -> list[tuple[int, str
     return calls
 
 
+def forbidden_builtin_calls(path: Path, rule: ImportRule) -> list[tuple[int, str]]:
+    if not rule.forbidden_builtin_calls:
+        return []
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    builtins_modules: set[str] = {"builtins"}
+    direct_aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "builtins":
+                    builtins_modules.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "builtins":
+            for alias in node.names:
+                direct_aliases[alias.asname or alias.name] = alias.name
+
+    calls: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        target: str | None = None
+        if isinstance(node.func, ast.Name):
+            target = direct_aliases.get(node.func.id, node.func.id)
+        elif (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in builtins_modules
+        ):
+            target = node.func.attr
+        if target in rule.forbidden_builtin_calls:
+            calls.append((node.lineno, target))
+    return calls
+
+
 def has_root(module: str, root: str) -> bool:
     return module == root or module.startswith(root + ".")
 
@@ -170,6 +223,8 @@ def scan_tree(root: Path, rule: ImportRule) -> list[str]:
                 errors.append(f"{path.relative_to(root)}:{line}: forbidden import {module}")
         for line, call in forbidden_process_calls(path, rule):
             errors.append(f"{path.relative_to(root)}:{line}: forbidden process call {call}")
+        for line, call in forbidden_builtin_calls(path, rule):
+            errors.append(f"{path.relative_to(root)}:{line}: forbidden builtin call {call}")
     return sorted(set(errors))
 
 

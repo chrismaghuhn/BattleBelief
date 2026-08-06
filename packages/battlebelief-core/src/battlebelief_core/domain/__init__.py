@@ -1,3 +1,14 @@
+from battlebelief_core.domain.engine_capabilities import (
+    CapabilityApproximation,
+    CapabilityCatalog,
+    CapabilityClaim,
+    CapabilityDefinition,
+    CapabilityEvidenceRef,
+    CapabilityId,
+    CapabilityStatus,
+    EngineCapabilityManifest,
+    EngineEnvironmentBinding,
+)
 from battlebelief_core.domain.records import (
     DecisionRecord,
     DecisionRecordErrorCode,
@@ -7,13 +18,42 @@ from battlebelief_core.domain.records import (
     RunContextPayload,
     RunScopePayload,
 )
+from battlebelief_core.domain.search import (
+    InformationStateKey,
+    PlayerView,
+    PreparedRootIdentity,
+    PreparedWorld,
+    SearchAction,
+    TransitionOutcome,
+    TransitionSuccessor,
+    TransitionWork,
+    WorldDistributionIdentity,
+)
 
 __all__ = [
+    "CapabilityApproximation",
+    "CapabilityCatalog",
+    "CapabilityClaim",
+    "CapabilityDefinition",
+    "CapabilityEvidenceRef",
+    "CapabilityId",
+    "CapabilityStatus",
     "DecisionRecord",
     "DecisionRecordErrorCode",
     "DecisionRecordStatus",
+    "EngineCapabilityManifest",
+    "EngineEnvironmentBinding",
+    "InformationStateKey",
     "MeasurementRunContext",
+    "PlayerView",
+    "PreparedRootIdentity",
+    "PreparedWorld",
     "ResolvedDecisionRecordBinding",
     "RunContextPayload",
     "RunScopePayload",
+    "SearchAction",
+    "TransitionOutcome",
+    "TransitionSuccessor",
+    "TransitionWork",
+    "WorldDistributionIdentity",
 ]
