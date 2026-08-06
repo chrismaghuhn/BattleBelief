@@ -101,7 +101,7 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     diagnostic = next(
         step for step in steps if step.get("name") == "Diagnose a failed Maturin build"
     )
-    assert diagnostic["if"] == "steps.engine_build.outcome == 'failure'"
+    assert diagnostic["if"] == "failure() && steps.engine_build.outcome == 'failure'"
     assert diagnostic["shell"] == "pwsh"
     assert diagnostic["env"] == {
         "CARGO_INCREMENTAL": "false",

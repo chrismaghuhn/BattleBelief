@@ -271,7 +271,7 @@ jobs:
         id: engine_build
         run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
       - name: Diagnose a failed Maturin build
-        if: steps.engine_build.outcome == 'failure'
+        if: failure() && steps.engine_build.outcome == 'failure'
         shell: pwsh
         env:
           CARGO_INCREMENTAL: "false"
