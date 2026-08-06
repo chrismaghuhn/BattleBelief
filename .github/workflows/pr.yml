@@ -471,12 +471,12 @@ jobs:
         run: uv run python tools/verify_published_engine_release.py --release-metadata "${{ runner.temp }}/engine-release.json" --bundle-root "${{ runner.temp }}/publication" --manifest-root artifacts/gen9ou/m2/engine --expected-tag "${{ env.ENGINE_RELEASE_TAG }}" --expected-repository "${{ github.repository }}"
       - name: Validate published index schema
         run: uv run python -c "import json; from pathlib import Path; from jsonschema import Draft202012Validator,FormatChecker; root=Path('.'); schema=json.loads((root/'schemas/manifests/engine-artifact-index.schema.json').read_bytes()); value=json.loads(Path(r'${{ runner.temp }}/publication/engine-artifact-index.json').read_bytes()); errors=list(Draft202012Validator(schema,format_checker=FormatChecker()).iter_errors(value)); assert not errors, errors"
-      - name: Verify every published wheel without native import
+      - name: Verify every published wheel manifest without native import
         shell: bash
         run: |
           for manifest in "${RUNNER_TEMP}"/publication/engine-build-*.json; do
             wheel="$(uv run python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["wheel"]["filename"])' "$manifest")"
-            uv run python tools/verify_poke_engine_artifact.py \
+            uv run python tools/verify_published_wheel_manifest.py \
               --source-manifest "${RUNNER_TEMP}/publication/engine-source.json" \
               --build-manifest "$manifest" \
               --wheel "${RUNNER_TEMP}/publication/$wheel"

@@ -41,6 +41,13 @@ digest. Such a build is never substituted for the published artifact; the
 release API digest, `SHA256SUMS`, committed manifests, and published-wheel
 verification must all agree.
 
+The v1 records do not bind the exact Visual Studio/MSVC toolset, Windows SDK,
+resolved `link.exe`, or complete runner-image identity. They therefore do not
+claim a fully reconstructible original Windows build environment. The exact
+guarantee and the restricted meaning of "no ambient build overrides" are
+recorded in
+[`ADR-0005`](../../../../docs/adr/ADR-0005-task-25-v1-windows-provenance-boundary.md).
+
 Linux wheel markers can identify CPython, `linux`, and `x86_64`, but not
 Ubuntu 24.04. Installation on another x86-64 Linux distribution therefore
 does not imply support. The Runtime verifies the actual OS release before any

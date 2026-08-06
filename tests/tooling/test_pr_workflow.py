@@ -206,6 +206,24 @@ def test_artifact_index_closes_the_immutable_published_release() -> None:
     assert "engine-artifact-index.schema.json" in schema["run"]
     assert "publication/engine-artifact-index.json" in schema["run"]
 
+    published_wheels = next(
+        step for step in steps if "publication/engine-build-*.json" in step.get("run", "")
+    )
+    assert published_wheels["name"] == (
+        "Verify every published wheel manifest without native import"
+    )
+    assert "tools/verify_published_wheel_manifest.py" in published_wheels["run"]
+    assert "tools/verify_poke_engine_artifact.py" not in published_wheels["run"]
+    assert "--checkout" not in published_wheels["run"]
+
+    staged_wheel = next(
+        step
+        for step in workflow["jobs"]["artifact-build"]["steps"]
+        if step.get("name") == "Verify the staged wheel without import"
+    )
+    assert "tools/verify_poke_engine_artifact.py" in staged_wheel["run"]
+    assert "--checkout" in staged_wheel["run"]
+
     commands = "\n".join(step.get("run", "") for step in steps)
     assert "git rev-parse" in commands
     assert "ENGINE_RELEASE_COMMIT" in commands
