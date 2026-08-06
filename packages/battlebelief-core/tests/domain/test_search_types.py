@@ -235,6 +235,50 @@ class TestPreparedSearchValues:
 
 
 class TestTransitionOutcome:
+    def test_successor_root_actions_must_match_the_source_world(self) -> None:
+        root = _root()
+        source_action = SearchAction(
+            action_id="root.source", kind="move", root_submission_index=0, root_identity=root
+        )
+        source = PreparedWorld(
+            _opaque=_FrozenWorld(),
+            root_identity=root,
+            root_actions=(source_action,),
+            required_capabilities=(),
+        )
+        matching = TransitionOutcome(
+            successors=(TransitionSuccessor("outcome.match", source, 1),),
+            probability_denominator=1,
+            work=TransitionWork(1),
+            required_capabilities=(),
+        )
+        matching.validate_against_source(source)
+
+        substituted_action = SearchAction(
+            action_id="root.substituted",
+            kind="move",
+            root_submission_index=0,
+            root_identity=root,
+        )
+        substituted_successor = PreparedWorld(
+            _opaque=_FrozenWorld(),
+            root_identity=root,
+            root_actions=(substituted_action,),
+            required_capabilities=(),
+        )
+        substituted = TransitionOutcome(
+            successors=(
+                TransitionSuccessor("outcome.match", source, 1),
+                TransitionSuccessor("outcome.substituted", substituted_successor, 1),
+            ),
+            probability_denominator=2,
+            work=TransitionWork(1),
+            required_capabilities=(),
+        )
+
+        with pytest.raises(ValueError, match="root action"):
+            substituted.validate_against_source(source)
+
     def test_validates_canonical_probability_distribution_and_hides_ids(self) -> None:
         catalog = _catalog()
         outcome = TransitionOutcome(

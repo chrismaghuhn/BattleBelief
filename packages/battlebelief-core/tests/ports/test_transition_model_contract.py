@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import assert_type
+from typing import Literal, cast
 
 import pytest
 
@@ -65,7 +65,10 @@ class FakeTransitionModel:
         del world
         if player not in {"p1", "p2"}:
             raise ValueError("invalid player")
-        return PlayerView(player=player, view_digest=_digest("c" if player == "p1" else "d"))
+        return PlayerView(
+            player=cast(Literal["p1", "p2"], player),
+            view_digest=_digest("c" if player == "p1" else "d"),
+        )
 
     def information_state_key(self, view: PlayerView) -> InformationStateKey:
         return InformationStateKey(player=view.player, information_state_digest=view.view_digest)
@@ -106,6 +109,9 @@ class FakeTransitionModel:
         return Fraction(-1)
 
 
+_TRANSITION_MODEL_CONFORMANCE: TransitionModel[_FakeWorld, SearchAction] = FakeTransitionModel()
+
+
 def _root() -> PreparedRootIdentity:
     return PreparedRootIdentity.create(
         request_identity_digest=_digest("1"),
@@ -134,7 +140,6 @@ def _root_actions(
 
 def test_fake_conforms_and_requires_joint_actions() -> None:
     model = FakeTransitionModel()
-    assert_type(model, TransitionModel[_FakeWorld, SearchAction])
     root = _root()
     root_actions = _root_actions(root, model)
     prepared = model.prepare_root(_FakeWorld(), root_identity=root, root_actions=root_actions)

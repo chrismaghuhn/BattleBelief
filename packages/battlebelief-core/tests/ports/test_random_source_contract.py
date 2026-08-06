@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from typing import assert_type
 
 import pytest
 
@@ -34,9 +33,11 @@ def _digest(letter: str) -> str:
     return f"sha256:{letter * 64}"
 
 
+_RANDOM_STREAM_CONFORMANCE: RandomStream = FakeRandomStream(_digest("a"))
+
+
 def test_random_stream_contract_separates_domain_derivation_without_parent_consumption() -> None:
     stream = FakeRandomStream(_digest("a"))
-    assert_type(stream, RandomStream)
     child = stream.derive("search.rollout")
 
     assert stream.state == 0

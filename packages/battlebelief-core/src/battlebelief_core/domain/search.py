@@ -305,6 +305,17 @@ class TransitionOutcome[WorldT]:
             "required_capability_count": len(self.required_capabilities),
         }
 
+    def validate_against_source(self, source_world: PreparedWorld[WorldT]) -> None:
+        """Fail closed unless successors preserve the source root action set."""
+
+        if not isinstance(source_world, PreparedWorld):
+            raise ValueError("source_world must be a PreparedWorld")
+        for successor in self.successors:
+            if successor.world.root_identity != source_world.root_identity:
+                raise ValueError("transition successor does not preserve the source root")
+            if successor.world.root_actions != source_world.root_actions:
+                raise ValueError("transition successor does not preserve source root actions")
+
     def require_preflight_subset(self, preflight_capabilities: tuple[CapabilityId, ...]) -> None:
         """Fail closed unless runtime requirements were statically preflighted.
 
