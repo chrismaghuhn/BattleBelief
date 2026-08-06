@@ -50,6 +50,18 @@ def test_runtime_native_import_is_confined_to_poke_engine_adapter(
     assert any("poke_engine" in error for error in errors)
 
 
+def test_submodule_importlib_binding_still_detects_dynamic_native_import(
+    tmp_path: Path,
+) -> None:
+    write_module(
+        tmp_path,
+        "battlebelief_runtime/composition",
+        "import importlib.metadata\nimportlib.import_module('poke_engine')\n",
+    )
+
+    assert any("poke_engine" in error for error in scan_tree(tmp_path, ImportRule.runtime()))
+
+
 def test_native_import_is_allowed_inside_poke_engine_adapter(tmp_path: Path) -> None:
     write_module(
         tmp_path,

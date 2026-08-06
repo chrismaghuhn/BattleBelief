@@ -32,12 +32,19 @@ def _fail(message: str) -> NoReturn:
     raise ArtifactVerificationError(message)
 
 
+def _reject_nonfinite(_value: str) -> NoReturn:
+    raise ValueError("non-finite JSON constant")
+
+
 def _canonical_document(path: Path, schema_name: str) -> dict[str, Any]:
     try:
         raw = path.read_bytes()
-        document = json.loads(raw)
-        schema = json.loads((ROOT / "schemas/manifests" / schema_name).read_bytes())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        document = json.loads(raw, parse_constant=_reject_nonfinite)
+        schema = json.loads(
+            (ROOT / "schemas/manifests" / schema_name).read_bytes(),
+            parse_constant=_reject_nonfinite,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
         _fail("artifact input is unreadable")
     if not isinstance(document, dict) or raw != canonicalize(document) + b"\n":
         _fail("artifact input is not canonical")

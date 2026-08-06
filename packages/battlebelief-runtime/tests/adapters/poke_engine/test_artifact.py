@@ -302,6 +302,33 @@ def test_verified_installation_returns_only_sanitized_identity(
     assert str(tmp_path) not in str(verified.identity.to_dict())
 
 
+def test_installed_file_read_error_is_sanitized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, site, distribution, index_digest = _installation(tmp_path)
+    monkeypatch.syspath_prepend(str(site))
+    blocked = site / "poke_engine" / "__init__.py"
+    original_read_bytes = Path.read_bytes
+
+    def fail_one_read(path: Path) -> bytes:
+        if path == blocked:
+            raise PermissionError("private local path detail")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", fail_one_read)
+
+    with pytest.raises(EngineArtifactError) as caught:
+        verify_installed_artifact(
+            data_root=data_root,
+            expected_index_digest=index_digest,
+            environment=_environment(),
+            distribution=distribution,
+        )
+
+    assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
+    assert str(caught.value) == "artifact_mismatch"
+
+
 def test_missing_extra_is_classified_without_raw_exception(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

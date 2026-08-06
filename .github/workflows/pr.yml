@@ -268,9 +268,10 @@ jobs:
       - name: Fetch locked Cargo dependencies before the offline build
         run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"
       - name: Build and bind one wheel cell
+        id: engine_build
         run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
       - name: Diagnose a failed Maturin build
-        if: failure()
+        if: steps.engine_build.outcome == 'failure'
         shell: pwsh
         env:
           CARGO_INCREMENTAL: "false"
@@ -384,10 +385,18 @@ jobs:
           uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
           uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
       - name: Create isolated sentinel environment
+        shell: pwsh
+        env:
+          BATTLEBELIEF_WHEEL_ROOT: ${{ runner.temp }}/battlebelief-wheels
+          ENGINE_WHEEL_PATH: ${{ runner.temp }}/engine-cell/${{ env.ENGINE_WHEEL }}
+          SENTINEL_ENV: ${{ runner.temp }}/sentinel-env
         run: |
-          uv venv "${{ runner.temp }}/sentinel-env" --python python --seed
-          uv pip install --python "${{ runner.temp }}/sentinel-env" --only-binary :all: rfc8785==0.1.4
-          uv pip install --python "${{ runner.temp }}/sentinel-env" --no-deps "${{ runner.temp }}/battlebelief-wheels/battlebelief_core-0.2.0-py3-none-any.whl" "${{ runner.temp }}/battlebelief-wheels/battlebelief_runtime-0.2.0-py3-none-any.whl" "${{ runner.temp }}/engine-cell/${{ env.ENGINE_WHEEL }}"
+          $coreWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_core-*.whl' -File)
+          $runtimeWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_runtime-*.whl' -File)
+          if ($coreWheels.Count -ne 1 -or $runtimeWheels.Count -ne 1) { throw 'BattleBelief wheel closure differs' }
+          uv venv $env:SENTINEL_ENV --python python --seed
+          uv pip install --python $env:SENTINEL_ENV --only-binary :all: rfc8785==0.1.4
+          uv pip install --python $env:SENTINEL_ENV --no-deps $coreWheels[0].FullName $runtimeWheels[0].FullName $env:ENGINE_WHEEL_PATH
       - name: Resolve isolated Python on Linux
         if: runner.os != 'Windows'
         shell: bash
@@ -506,10 +515,18 @@ jobs:
           uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
           uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
       - name: Create isolated final sentinel environment
+        shell: pwsh
+        env:
+          BATTLEBELIEF_WHEEL_ROOT: ${{ runner.temp }}/battlebelief-wheels
+          ENGINE_WHEEL_PATH: ${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}
+          SENTINEL_ENV: ${{ runner.temp }}/sentinel-env
         run: |
-          uv venv "${{ runner.temp }}/sentinel-env" --python python --seed
-          uv pip install --python "${{ runner.temp }}/sentinel-env" --only-binary :all: rfc8785==0.1.4
-          uv pip install --python "${{ runner.temp }}/sentinel-env" --no-deps "${{ runner.temp }}/battlebelief-wheels/battlebelief_core-0.2.0-py3-none-any.whl" "${{ runner.temp }}/battlebelief-wheels/battlebelief_runtime-0.2.0-py3-none-any.whl" "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}"
+          $coreWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_core-*.whl' -File)
+          $runtimeWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_runtime-*.whl' -File)
+          if ($coreWheels.Count -ne 1 -or $runtimeWheels.Count -ne 1) { throw 'BattleBelief wheel closure differs' }
+          uv venv $env:SENTINEL_ENV --python python --seed
+          uv pip install --python $env:SENTINEL_ENV --only-binary :all: rfc8785==0.1.4
+          uv pip install --python $env:SENTINEL_ENV --no-deps $coreWheels[0].FullName $runtimeWheels[0].FullName $env:ENGINE_WHEEL_PATH
       - name: Resolve isolated Python on Linux
         if: runner.os != 'Windows'
         shell: bash

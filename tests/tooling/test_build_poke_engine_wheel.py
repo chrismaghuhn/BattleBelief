@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
 import pytest
+import tools.build_poke_engine_wheel as build_tool
 from tools.build_poke_engine_wheel import (
     BuildPokeEngineError,
     acquire_pinned_source,
@@ -22,6 +25,71 @@ from tools.build_poke_engine_wheel import (
 )
 
 FEATURES = ("poke-engine/gen9", "poke-engine/terastallization")
+
+
+def test_controlled_command_times_out_with_a_stable_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build_tool, "COMMAND_TIMEOUT_SECONDS", 0.01)
+
+    with pytest.raises(BuildPokeEngineError, match="exceeded its time bound"):
+        build_tool._run(
+            (sys.executable, "-c", "import time; time.sleep(1)"),
+            cwd=tmp_path,
+        )
+
+
+def test_controlled_command_stops_at_the_output_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build_tool, "MAX_COMMAND_OUTPUT_BYTES", 8)
+
+    with pytest.raises(BuildPokeEngineError, match="output exceeds the safety bound"):
+        build_tool._run(
+            (sys.executable, "-c", "import sys; sys.stdout.write('x' * 9)"),
+            cwd=tmp_path,
+        )
+
+
+def test_controlled_build_environment_excludes_ambient_build_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RUSTFLAGS", "--cfg injected")
+    monkeypatch.setenv("CARGO_BUILD_TARGET", "attacker-target")
+    monkeypatch.setenv("CC", "attacker-compiler")
+    monkeypatch.setenv("GITHUB_TOKEN", "secret")
+    monkeypatch.setenv("PATH", os.pathsep.join((str(tmp_path / "ambient"), "base")))
+    cargo = tmp_path / ".cargo" / "bin" / "cargo"
+    rustc = tmp_path / ".rust" / "bin" / "rustc"
+
+    environment = build_tool._controlled_build_environment(
+        cargo_executable=cargo,
+        rustc_executable=rustc,
+    )
+
+    assert environment["CARGO_INCREMENTAL"] == "false"
+    assert environment["CARGO_NET_OFFLINE"] == "true"
+    assert environment["CARGO_PROFILE_RELEASE_DEBUG"] == "0"
+    assert environment["PYTHONUTF8"] == "1"
+    assert environment["SOURCE_DATE_EPOCH"] == "1784471591"
+    assert environment["PATH"].split(os.pathsep)[:2] == [str(cargo.parent), str(rustc.parent)]
+    assert "RUSTFLAGS" not in environment
+    assert "CARGO_BUILD_TARGET" not in environment
+    assert "CC" not in environment
+    assert "GITHUB_TOKEN" not in environment
+
+
+@pytest.mark.parametrize(
+    ("command", "message"),
+    [
+        ("acquire", "PASS: pinned poke-engine source acquired"),
+        ("source", "PASS: pinned poke-engine source manifest created"),
+        ("verify-source", "PASS: pinned poke-engine source provenance verified"),
+        ("build", "PASS: controlled poke-engine wheel built and bound"),
+    ],
+)
+def test_success_message_describes_the_completed_subcommand(command: str, message: str) -> None:
+    assert build_tool._success_message(command) == message
 
 
 def test_source_acquisition_refuses_an_existing_target(tmp_path: Path) -> None:
@@ -50,6 +118,8 @@ def _source_repository(tmp_path: Path) -> Path:
         cwd=repository,
         check=True,
     )
+    subprocess.run(("git", "config", "commit.gpgSign", "false"), cwd=repository, check=True)
+    subprocess.run(("git", "config", "tag.gpgSign", "false"), cwd=repository, check=True)
     (repository / "Cargo.lock").write_bytes(b"lock\n")
     (repository / "Cargo.toml").write_text(
         '[workspace]\nmembers = ["poke-engine-py"]\n', encoding="utf-8"
@@ -293,8 +363,18 @@ def test_build_manifest_binds_exact_cell_without_operational_paths() -> None:
         "platform_tag": "win_amd64",
     }
     assert manifest["features"] == list(FEATURES)
-    rendered = str(manifest)
-    assert "C:\\Users" not in rendered
-    assert "/home/" not in rendered
-    assert "GITHUB_TOKEN" not in rendered
-    assert "SOURCE_DATE_EPOCH" in rendered
+
+    def string_values(value: object) -> list[str]:
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, dict):
+            return [item for child in value.values() for item in string_values(child)]
+        if isinstance(value, list):
+            return [item for child in value for item in string_values(child)]
+        return []
+
+    values = string_values(manifest)
+    assert all("C:\\Users" not in value for value in values)
+    assert all("/home/" not in value for value in values)
+    assert all("GITHUB_TOKEN" not in value for value in values)
+    assert "SOURCE_DATE_EPOCH" in values

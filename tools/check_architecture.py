@@ -90,6 +90,8 @@ def dynamically_imported_modules(path: Path) -> list[tuple[int, str]]:
             for alias in node.names:
                 if alias.name == "importlib":
                     module_aliases.add(alias.asname or "importlib")
+                elif alias.name.startswith("importlib.") and alias.asname is None:
+                    module_aliases.add("importlib")
         elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
             for alias in node.names:
                 if alias.name == "import_module":

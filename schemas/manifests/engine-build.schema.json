@@ -142,6 +142,7 @@
       "properties": {
         "allowlist": {
           "type": "array",
+          "minItems": 5,
           "maxItems": 5,
           "uniqueItems": true,
           "items": {

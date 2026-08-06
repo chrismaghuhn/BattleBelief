@@ -101,7 +101,7 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     diagnostic = next(
         step for step in steps if step.get("name") == "Diagnose a failed Maturin build"
     )
-    assert diagnostic["if"] == "failure()"
+    assert diagnostic["if"] == "steps.engine_build.outcome == 'failure'"
     assert diagnostic["shell"] == "pwsh"
     assert diagnostic["env"] == {
         "CARGO_INCREMENTAL": "false",
@@ -119,6 +119,27 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     assert "--no-default-features" in command
     assert "poke-engine/gen9,poke-engine/terastallization" in command
     assert "Get-ChildItem Env:" not in command
+
+
+def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_literals() -> None:
+    workflow = _load_workflow()
+    for job_name in ("artifact-stage-sentinel", "artifact-final-sentinel"):
+        steps = workflow["jobs"][job_name]["steps"]
+        install = next(
+            step
+            for step in steps
+            if step.get("name")
+            in {
+                "Create isolated sentinel environment",
+                "Create isolated final sentinel environment",
+            }
+        )
+        command = install["run"]
+        assert "battlebelief_core-0.2.0" not in command
+        assert "battlebelief_runtime-0.2.0" not in command
+        assert "Get-ChildItem" in command
+        assert "battlebelief_core-*.whl" in command
+        assert "battlebelief_runtime-*.whl" in command
 
 
 def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:

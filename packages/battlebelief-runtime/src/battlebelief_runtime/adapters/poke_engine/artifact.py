@@ -367,6 +367,13 @@ def _installed_path(root: Path, relative: str) -> Path:
     return candidate
 
 
+def _read_installed(path: Path) -> bytes:
+    try:
+        return path.read_bytes()
+    except OSError:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+
+
 def _decode_record_hash(value: str) -> str:
     try:
         algorithm, encoded = value.split("=", 1)
@@ -496,7 +503,7 @@ def _verify_installation(
     root, dist_info, distribution_paths = _distribution_root_and_info(distribution)
     record_relative = f"{dist_info}/RECORD"
     record_path = _installed_path(root, record_relative)
-    installed_record = _installed_record(record_path.read_bytes())
+    installed_record = _installed_record(_read_installed(record_path))
     if set(installed_record) != distribution_paths:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     wheel = build.get("wheel")
@@ -528,7 +535,7 @@ def _verify_installation(
             if (record_digest, record_size) != (None, None):
                 _fail(EngineFailureClass.ARTIFACT_MISMATCH)
             continue
-        content = path.read_bytes()
+        content = _read_installed(path)
         if record_digest != _sha256(content) or record_size != len(content):
             _fail(EngineFailureClass.ARTIFACT_MISMATCH)
         if relative in original and original[relative] != (record_digest, record_size):
@@ -549,16 +556,16 @@ def _verify_installation(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     metadata_path = _installed_path(root, f"{dist_info}/METADATA")
     wheel_path = _installed_path(root, f"{dist_info}/WHEEL")
-    if _sha256(metadata_path.read_bytes()) != wheel.get("metadata_sha256") or _sha256(
-        wheel_path.read_bytes()
+    if _sha256(_read_installed(metadata_path)) != wheel.get("metadata_sha256") or _sha256(
+        _read_installed(wheel_path)
     ) != wheel.get("wheel_metadata_sha256"):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     direct_url_path = _installed_path(root, f"{dist_info}/direct_url.json")
-    _verify_direct_url(direct_url_path.read_bytes(), cell=cell, staged_wheel=staged_wheel)
+    _verify_direct_url(_read_installed(direct_url_path), cell=cell, staged_wheel=staged_wheel)
     uv_cache_relative = f"{dist_info}/uv_cache.json"
     if uv_cache_relative in installed_record:
         uv_cache_path = _installed_path(root, uv_cache_relative)
-        _verify_uv_cache(uv_cache_path.read_bytes())
+        _verify_uv_cache(_read_installed(uv_cache_path))
     extension_candidates = sorted(
         _installed_path(root, path)
         for path in original

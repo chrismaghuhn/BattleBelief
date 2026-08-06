@@ -108,11 +108,10 @@ def _build_manifest(
             "python",
             "--target",
             target,
-            "--compatibility",
-            "linux" if not windows else "native",
             "--out",
             "wheelhouse",
-        ],
+        ]
+        + ([] if windows else ["--compatibility", "linux"]),
         "locked": True,
         "no_default_features": True,
         "features": FEATURES,
@@ -220,6 +219,10 @@ def _artifact_index() -> dict[str, Any]:
     [
         ("engine-source.schema.json", _source_manifest()),
         ("engine-build.schema.json", _build_manifest()),
+        (
+            "engine-build.schema.json",
+            _build_manifest(operating_system="windows-2025"),
+        ),
         ("engine-artifact-index.schema.json", _artifact_index()),
     ],
 )
@@ -264,6 +267,13 @@ def test_engine_build_schema_rejects_unqualified_build_configuration(
 def test_engine_build_schema_rejects_secrets_and_local_paths_in_environment() -> None:
     instance = _build_manifest()
     instance["build_environment"]["allowlist"].append({"name": "GITHUB_TOKEN", "value": "secret"})
+
+    assert _issues("engine-build.schema.json", instance)
+
+
+def test_engine_build_schema_requires_the_complete_environment_allowlist() -> None:
+    instance = _build_manifest()
+    instance["build_environment"]["allowlist"] = []
 
     assert _issues("engine-build.schema.json", instance)
 

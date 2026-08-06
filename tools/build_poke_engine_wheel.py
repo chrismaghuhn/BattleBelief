@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import csv
 import hashlib
 import io
@@ -16,11 +17,14 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import tomllib
 import zipfile
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from datetime import date
 from email.parser import Parser
+from io import BufferedReader
 from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
 
@@ -40,6 +44,8 @@ SOURCE_DATE_EPOCH = "1784471591"
 FEATURES = ("poke-engine/gen9", "poke-engine/terastallization")
 TARGETS = frozenset(("x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"))
 MAX_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024
+COMMAND_TIMEOUT_SECONDS = 60 * 60
+_COMMAND_READ_SIZE = 64 * 1024
 
 
 class BuildPokeEngineError(RuntimeError):
@@ -61,22 +67,108 @@ def _run(
     environment: Mapping[str, str] | None = None,
 ) -> bytes:
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             tuple(arguments),
             cwd=cwd,
             env=None if environment is None else dict(environment),
-            check=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
     except OSError:
         _fail("required build command is unavailable")
-    if len(completed.stdout) > MAX_COMMAND_OUTPUT_BYTES or len(completed.stderr) > (
-        MAX_COMMAND_OUTPUT_BYTES
-    ):
+    assert process.stdout is not None
+    assert process.stderr is not None
+    stdout = bytearray()
+    stderr = bytearray()
+    overflow = threading.Event()
+    read_failure = threading.Event()
+
+    def drain(stream: BufferedReader, output: bytearray) -> None:
+        try:
+            while chunk := stream.read(_COMMAND_READ_SIZE):
+                remaining = MAX_COMMAND_OUTPUT_BYTES - len(output)
+                if len(chunk) > remaining:
+                    output.extend(chunk[: max(remaining, 0)])
+                    overflow.set()
+                    with suppress(OSError):
+                        process.kill()
+                    return
+                output.extend(chunk)
+        except (OSError, ValueError):
+            read_failure.set()
+            with suppress(OSError):
+                process.kill()
+            return
+
+    readers = (
+        threading.Thread(target=drain, args=(process.stdout, stdout), daemon=True),
+        threading.Thread(target=drain, args=(process.stderr, stderr), daemon=True),
+    )
+    for reader in readers:
+        reader.start()
+    timed_out = False
+    try:
+        return_code = process.wait(timeout=COMMAND_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        return_code = process.wait()
+    finally:
+        if timed_out or overflow.is_set():
+            process.stdout.close()
+            process.stderr.close()
+        for reader in readers:
+            reader.join(timeout=5)
+    if timed_out:
+        _fail("controlled build command exceeded its time bound")
+    if overflow.is_set():
         _fail("build command output exceeds the safety bound")
-    if completed.returncode != 0:
+    if read_failure.is_set():
+        _fail("controlled build command output is unreadable")
+    if any(reader.is_alive() for reader in readers):
+        _fail("controlled build command output did not close")
+    if return_code != 0:
         _fail("controlled build command failed")
-    return completed.stdout
+    return bytes(stdout)
+
+
+def _controlled_build_environment(
+    *, cargo_executable: Path, rustc_executable: Path
+) -> dict[str, str]:
+    """Construct the explicit child environment for the native build."""
+
+    environment = {
+        "CARGO_INCREMENTAL": "false",
+        "CARGO_NET_OFFLINE": "true",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "PYTHONUTF8": "1",
+        "SOURCE_DATE_EPOCH": SOURCE_DATE_EPOCH,
+    }
+    for name in ("COMSPEC", "PATHEXT", "SYSTEMROOT", "SystemRoot", "TEMP", "TMP"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    tool_directories = tuple(
+        dict.fromkeys((str(cargo_executable.parent), str(rustc_executable.parent)))
+    )
+    ambient_path = os.environ.get("PATH")
+    environment["PATH"] = os.pathsep.join(
+        (*tool_directories, *((ambient_path,) if ambient_path else ()))
+    )
+    return environment
+
+
+def _success_message(command: str) -> str:
+    messages = {
+        "acquire": "PASS: pinned poke-engine source acquired",
+        "source": "PASS: pinned poke-engine source manifest created",
+        "verify-source": "PASS: pinned poke-engine source provenance verified",
+        "build": "PASS: controlled poke-engine wheel built and bound",
+    }
+    try:
+        return messages[command]
+    except KeyError:
+        _fail("build subcommand differs")
 
 
 def _git(checkout: Path, *arguments: str) -> bytes:
@@ -399,7 +491,7 @@ def _decode_record_digest(value: str) -> str:
     try:
         algorithm, encoded = value.split("=", 1)
         decoded = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
-    except (ValueError, base64.binascii.Error):
+    except (ValueError, binascii.Error):
         _fail("wheel RECORD digest is malformed")
     if algorithm != "sha256" or len(decoded) != 32:
         _fail("wheel RECORD digest algorithm differs")
@@ -433,6 +525,8 @@ def _wheel_record_entries(
             size = int(raw_size)
         except ValueError:
             _fail("wheel RECORD size is malformed")
+        if archive.getinfo(path).file_size != size:
+            _fail("wheel RECORD content differs")
         content = archive.read(path)
         digest = _decode_record_digest(raw_digest)
         if size != len(content) or digest != _sha256(content):
@@ -710,14 +804,10 @@ def build_one_wheel(
     actual_arguments[0] = str(maturin_executable)
     actual_arguments[actual_arguments.index("python")] = str(python_executable)
     actual_arguments[actual_arguments.index("wheelhouse")] = str(wheelhouse)
-    environment = dict(os.environ)
-    environment["CARGO_NET_OFFLINE"] = "true"
-    environment["CARGO_INCREMENTAL"] = "false"
-    environment["CARGO_PROFILE_RELEASE_DEBUG"] = "0"
-    environment["PYTHONUTF8"] = "1"
-    environment["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
-    tool_directories = [str(cargo_executable.parent), str(rustc_executable.parent)]
-    environment["PATH"] = os.pathsep.join((*tool_directories, environment.get("PATH", "")))
+    environment = _controlled_build_environment(
+        cargo_executable=cargo_executable,
+        rustc_executable=rustc_executable,
+    )
     _run(actual_arguments, cwd=checkout, environment=environment)
     if _git(checkout, "status", "--porcelain=v1", "--untracked-files=all"):
         _fail("source tree became dirty during build")
@@ -798,7 +888,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except BuildPokeEngineError as error:
         print(str(error), file=sys.stderr)
         return 1
-    print("PASS: pinned poke-engine source provenance verified")
+    print(_success_message(args.command))
     return 0
 
 
