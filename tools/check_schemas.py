@@ -345,18 +345,29 @@ def _validate_capability_manifest(
 
 
 def _load_capability_evidence_documents(
-    evidence_directory: Path, catalog: CapabilityCatalog, schema: dict[str, Any]
-) -> tuple[dict[str, CapabilityEvidenceRef], list[str]]:
-    """Load canonical evidence documents from the deterministic Task-26 directory."""
+    evidence_sources: Path | tuple[Path, ...],
+    catalog: CapabilityCatalog,
+    schema: dict[str, Any],
+) -> tuple[dict[str, CapabilityEvidenceRef], dict[str, Path], list[str]]:
+    """Load every approved evidence document without hiding malformed files."""
 
-    if not evidence_directory.exists():
-        return {}, []
-    if not evidence_directory.is_dir():
-        return {}, [f"{evidence_directory}: evidence path is not a directory"]
+    if isinstance(evidence_sources, Path):
+        if not evidence_sources.exists():
+            return {}, {}, []
+        if not evidence_sources.is_dir():
+            return {}, {}, [f"{evidence_sources}: evidence path is not a directory"]
+        paths = tuple(sorted(evidence_sources.glob("*.json")))
+    else:
+        paths = tuple(sorted(set(evidence_sources)))
     documents: dict[str, CapabilityEvidenceRef] = {}
+    document_paths: dict[str, Path] = {}
     errors: list[str] = []
-    for path in sorted(evidence_directory.glob("*.json")):
-        document = load_json_strict(path)
+    for path in paths:
+        try:
+            document = load_json_strict(path)
+        except (RegistrationValidationError, TypeError, ValueError) as error:
+            errors.append(f"{path}: evidence document could not be loaded: {error}")
+            continue
         errors.extend(
             f"{path}: {schema_issue_summary(issue)}"
             for issue in Draft202012Validator(schema).iter_errors(document)
@@ -370,34 +381,66 @@ def _load_capability_evidence_documents(
             ):
                 raise ValueError("duplicate evidence_digest")
             documents[reference.evidence_id] = reference
+            document_paths[reference.evidence_id] = path
         except (TypeError, ValueError) as error:
             errors.append(f"{path}: capability evidence semantic validation failed: {error}")
-    return documents, errors
+    return documents, document_paths, errors
+
+
+def _discover_capability_evidence_paths(capability_root: Path) -> tuple[Path, ...]:
+    """Discover both the Task-26 evidence directory and the Task-29 closure file."""
+
+    paths: list[Path] = []
+    evidence_directory = capability_root / "evidence"
+    if evidence_directory.is_dir():
+        paths.extend(evidence_directory.glob("*.json"))
+    task29_evidence = capability_root / "capability-evidence-v1.json"
+    if task29_evidence.is_file():
+        paths.append(task29_evidence)
+    return tuple(sorted(set(paths)))
 
 
 def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     errors: list[str] = []
     schema_root = root / "schemas"
     catalog_path = root / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
-    manifest_path = (
-        root / "artifacts/gen9ou/m2/engine-capabilities/engine-capability-v2-unqualified.json"
-    )
+    capability_root = root / "artifacts/gen9ou/m2/engine-capabilities"
+    manifest_paths = tuple(sorted(capability_root.glob("engine-capability-v2-*.json")))
     engine_root = root / "artifacts/gen9ou/m2/engine"
     source_path = engine_root / "engine-source.json"
     index_path = engine_root / "engine-artifact-index.json"
-    if not all(path.is_file() for path in (catalog_path, manifest_path, source_path, index_path)):
+    if not manifest_paths or not all(
+        path.is_file() for path in (catalog_path, source_path, index_path)
+    ):
         return ["engine capability catalog or initial v2 manifest is missing"]
-    catalog_document = load_json_strict(catalog_path)
-    manifest_document = load_json_strict(manifest_path)
-    source_document = load_json_strict(source_path)
-    index_document = load_json_strict(index_path)
+
+    def load_document(path: Path) -> Any | None:
+        try:
+            return load_json_strict(path)
+        except (RegistrationValidationError, TypeError, ValueError) as error:
+            errors.append(f"{path.relative_to(root)}: document could not be loaded: {error}")
+            return None
+
+    catalog_document = load_document(catalog_path)
+    source_document = load_document(source_path)
+    index_document = load_document(index_path)
+    manifest_documents = [(path, load_document(path)) for path in manifest_paths]
+    if any(document is None for document in (catalog_document, source_document, index_document)):
+        return errors
+    if any(document is None for _, document in manifest_documents):
+        return errors
+
     structural_errors: list[str] = []
-    for path, schema_name, document in (
+    structural_documents = [
         (catalog_path, "engine-capability-catalog-v1.schema.json", catalog_document),
-        (manifest_path, "engine-capability-v2.schema.json", manifest_document),
         (source_path, "engine-source.schema.json", source_document),
         (index_path, "engine-artifact-index.schema.json", index_document),
-    ):
+        *[
+            (path, "engine-capability-v2.schema.json", document)
+            for path, document in manifest_documents
+        ],
+    ]
+    for path, schema_name, document in structural_documents:
         schema = load_json_strict(_schema_path_for_example(schema_root, schema_name))
         structural_errors.extend(
             f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
@@ -419,22 +462,46 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         evidence_schema = load_json_strict(
             _schema_path_for_example(schema_root, "engine-capability-evidence.schema.json")
         )
-        evidence_documents, evidence_errors = _load_capability_evidence_documents(
-            manifest_path.parent / "evidence", catalog, evidence_schema
+        evidence_documents, evidence_paths, evidence_errors = _load_capability_evidence_documents(
+            _discover_capability_evidence_paths(capability_root), catalog, evidence_schema
         )
         errors.extend(evidence_errors)
-        errors.extend(
-            f"{manifest_path.relative_to(root)}: {error}"
-            for error in _validate_capability_manifest(
-                manifest_document, catalog, evidence_documents
+        for manifest_path, manifest_document in manifest_documents:
+            assert manifest_document is not None
+            errors.extend(
+                f"{manifest_path.relative_to(root)}: {error}"
+                for error in _validate_capability_manifest(
+                    manifest_document, catalog, evidence_documents
+                )
             )
-        )
+            referenced_ids = {
+                reference["evidence_id"]
+                for claim in manifest_document["claims"]
+                for reference in claim["evidence_refs"]
+            }
+            enforce_exact_closure = (
+                bool(manifest_document["claims"])
+                or manifest_path.name != "engine-capability-v2-unqualified.json"
+            )
+            if enforce_exact_closure:
+                for evidence_id, evidence_path in sorted(evidence_paths.items()):
+                    if evidence_id not in referenced_ids:
+                        errors.append(
+                            f"{manifest_path.relative_to(root)}: unreferenced evidence document "
+                            f"{evidence_path.relative_to(root)}"
+                        )
+    assert isinstance(source_document, dict)
+    assert isinstance(index_document, dict)
     source_digest = manifest_digest(source_document)
     index_digest = manifest_digest(index_document)
-    if manifest_document["engine_source_manifest_digest"] != source_digest:
-        errors.append(f"{manifest_path.relative_to(root)}: engine source digest does not match")
-    if manifest_document["artifact_index_digest"] != index_digest:
-        errors.append(f"{manifest_path.relative_to(root)}: artifact index digest does not match")
+    for manifest_path, manifest_document in manifest_documents:
+        assert manifest_document is not None
+        if manifest_document["engine_source_manifest_digest"] != source_digest:
+            errors.append(f"{manifest_path.relative_to(root)}: engine source digest does not match")
+        if manifest_document["artifact_index_digest"] != index_digest:
+            errors.append(
+                f"{manifest_path.relative_to(root)}: artifact index digest does not match"
+            )
     if index_document.get("source_manifest_digest") != source_digest:
         errors.append(
             f"{index_path.relative_to(root)}: source digest does not match source manifest"
@@ -465,8 +532,12 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         }
         for cell in sorted(index_document["cells"], key=lambda item: item["cell_id"])
     ]
-    if manifest_document["environment_bindings"] != expected_cells:
-        errors.append(f"{manifest_path.relative_to(root)}: environment bindings do not match index")
+    for manifest_path, manifest_document in manifest_documents:
+        assert manifest_document is not None
+        if manifest_document["environment_bindings"] != expected_cells:
+            errors.append(
+                f"{manifest_path.relative_to(root)}: environment bindings do not match index"
+            )
     adapter_fields = (
         "transition_adapter_id",
         "transition_adapter_version",
@@ -474,12 +545,14 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         "transition_model_contract_digest",
         "transition_adapter_conformance_digest",
     )
-    if not manifest_document["claims"] and any(
-        manifest_document[name] is not None for name in adapter_fields
-    ):
-        errors.append(
-            f"{manifest_path.relative_to(root)}: initial artifact must not bind an adapter"
-        )
+    for manifest_path, manifest_document in manifest_documents:
+        assert manifest_document is not None
+        if not manifest_document["claims"] and any(
+            manifest_document[name] is not None for name in adapter_fields
+        ):
+            errors.append(
+                f"{manifest_path.relative_to(root)}: initial artifact must not bind an adapter"
+            )
     return errors
 
 

@@ -116,6 +116,7 @@ def test_evidence_is_not_a_claim_and_uses_project_schema_urn() -> None:
     evidence = _document(SCHEMAS / "examples/engine-capability-evidence.example.json")
 
     evidence.pop("status", None)
+    assert "status" not in evidence
     assert list(Draft202012Validator(schema).iter_errors(evidence)) == []
     assert evidence["qualification_result_schema_id"].startswith("urn:battlebelief:schema:")
 
@@ -178,8 +179,10 @@ def test_v2_digest_ignores_object_key_order_but_core_rejects_noncanonical_arrays
     manifest = _document(MANIFEST_PATH)
     assert manifest_digest(manifest) == manifest_digest(dict(reversed(list(manifest.items()))))
     catalog = CapabilityCatalog.from_document(_document(CATALOG_PATH))
-    manifest["environment_bindings"] = list(reversed(manifest["environment_bindings"]))
-    assert _validate_capability_manifest(manifest, catalog)
+    reordered = copy.deepcopy(manifest)
+    reordered["environment_bindings"] = list(reversed(reordered["environment_bindings"]))
+    assert manifest_digest(reordered) != manifest_digest(manifest)
+    assert _validate_capability_manifest(reordered, catalog)
 
 
 @pytest.mark.parametrize("value", ["gen9.x.y", "gen9.a.b.c.d.e.f.g"])

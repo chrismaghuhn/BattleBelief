@@ -22,6 +22,7 @@ def _document(path: Path) -> dict[str, object]:
 
 
 def _copy_engine_artifacts(tmp_path: Path) -> Path:
+    shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     artifact_root = tmp_path / "artifacts/gen9ou/m2"
     shutil.copytree(ROOT / "artifacts/gen9ou/m2/engine", artifact_root / "engine")
@@ -30,6 +31,41 @@ def _copy_engine_artifacts(tmp_path: Path) -> Path:
     capability_root.mkdir()
     shutil.copy2(MANIFEST_PATH, capability_root / MANIFEST_PATH.name)
     return tmp_path
+
+
+def test_artifact_validator_discovers_qualified_manifest_and_task29_evidence_file(
+    tmp_path: Path,
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    capability_root = root / "artifacts/gen9ou/m2/engine-capabilities"
+    qualified = _document(capability_root / MANIFEST_PATH.name)
+    qualified["manifest_id"] = "poke-engine-gen9ou-capabilities-v2-qualified"
+    qualified_path = capability_root / "engine-capability-v2-qualified.json"
+    qualified_path.write_text(json.dumps(qualified), encoding="utf-8")
+    evidence_path = capability_root / "capability-evidence-v1.json"
+    evidence_path.write_text(
+        (ROOT / "schemas/examples/engine-capability-evidence.example.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert any("capability-evidence-v1.json" in error for error in errors)
+
+
+def test_artifact_validator_reports_malformed_discovered_evidence_without_exception(
+    tmp_path: Path,
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    evidence_path = root / "artifacts/gen9ou/m2/engine-capabilities/capability-evidence-v1.json"
+    evidence_path.write_text('{"broken": true}', encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert errors
+    assert any("capability-evidence-v1.json" in error for error in errors)
 
 
 def test_artifact_validator_reports_manifest_schema_errors_without_keyerror(tmp_path: Path) -> None:
