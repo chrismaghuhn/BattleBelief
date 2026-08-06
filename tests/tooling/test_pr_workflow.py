@@ -62,6 +62,11 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
         "dependency-review",
         "protocol-smoke",
         "safety-smoke",
+        "artifact-build",
+        "artifact-candidate-index",
+        "artifact-stage-sentinel",
+        "artifact-index",
+        "artifact-final-sentinel",
     ]
     assert "permissions" not in gate
     assert all("uses" not in step for step in gate["steps"])
@@ -72,6 +77,11 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert '"$PROTOCOL_SMOKE"' in gate_step["run"]
     assert '"$SAFETY_SMOKE"' in gate_step["run"]
     assert '"$ORACLE_SMOKE"' in gate_step["run"]
+    assert '"$ARTIFACT_BUILD"' in gate_step["run"]
+    assert '"$ARTIFACT_CANDIDATE_INDEX"' in gate_step["run"]
+    assert '"$ARTIFACT_STAGE_SENTINEL"' in gate_step["run"]
+    assert '"$ARTIFACT_INDEX"' in gate_step["run"]
+    assert '"$ARTIFACT_FINAL_SENTINEL"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
 
 

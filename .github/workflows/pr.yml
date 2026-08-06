@@ -208,6 +208,301 @@ jobs:
       - name: Run safety smoke
         run: uv run pytest tests/smokes/test_safety_smoke.py -v
 
+  artifact-build:
+    name: engine-build-${{ matrix.os }}-py${{ matrix.python }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+    runs-on: ${{ matrix.os }}
+    env:
+      ENGINE_TARGET: ${{ matrix.target }}
+      ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install exact Python tooling
+        run: |
+          python -m pip install uv==0.12.0
+          uv sync --frozen --all-packages --group dev
+          uv venv "${{ runner.temp }}/maturin-env" --python python
+          uv pip install --python "${{ runner.temp }}/maturin-env" maturin==1.7.1
+      - name: Install exact Rust toolchain
+        run: |
+          rustup toolchain install 1.83.0 --profile minimal --target "${{ env.ENGINE_TARGET }}"
+          rustup default 1.83.0
+      - name: Resolve controlled executables on Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "ENGINE_PYTHON=$(command -v python)" >> "$GITHUB_ENV"
+          echo "ENGINE_RUSTC=$(command -v rustc)" >> "$GITHUB_ENV"
+          echo "ENGINE_CARGO=$(command -v cargo)" >> "$GITHUB_ENV"
+          echo "ENGINE_MATURIN=${RUNNER_TEMP}/maturin-env/bin/maturin" >> "$GITHUB_ENV"
+      - name: Resolve controlled executables on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "ENGINE_PYTHON=$((Get-Command python.exe).Source)" >> $env:GITHUB_ENV
+          "ENGINE_RUSTC=$((Get-Command rustc.exe).Source)" >> $env:GITHUB_ENV
+          "ENGINE_CARGO=$((Get-Command cargo.exe).Source)" >> $env:GITHUB_ENV
+          "ENGINE_MATURIN=$env:RUNNER_TEMP\maturin-env\Scripts\maturin.exe" >> $env:GITHUB_ENV
+      - name: Acquire and verify exact upstream source
+        run: |
+          uv run python tools/build_poke_engine_wheel.py acquire --checkout "${{ runner.temp }}/poke-engine"
+          uv run python tools/build_poke_engine_wheel.py verify-source --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json
+      - name: Fetch locked Cargo dependencies before the offline build
+        run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml" --target "${{ env.ENGINE_TARGET }}"
+      - name: Build and bind one wheel cell
+        run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
+      - name: Verify the staged wheel without import
+        run: uv run python tools/verify_poke_engine_artifact.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --wheel "${{ runner.temp }}/engine-wheel/poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl" --checkout "${{ runner.temp }}/poke-engine"
+      - name: Stage the cell artifact
+        run: uv run python -c "from pathlib import Path; import shutil; stage=Path(r'${{ runner.temp }}/engine-cell'); stage.mkdir(); shutil.copy2(Path(r'${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json'), stage); [shutil.copy2(path, stage) for path in Path(r'${{ runner.temp }}/engine-wheel').glob('*.whl')]"
+      - name: Upload temporary cell artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-build-${{ env.ENGINE_CELL }}
+          path: ${{ runner.temp }}/engine-cell
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  artifact-candidate-index:
+    name: engine-candidate-index
+    needs: [artifact-build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install locked tooling
+        run: |
+          python -m pip install uv==0.12.0
+          uv sync --frozen --all-packages --group dev
+      - name: Download all cell artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: engine-build-*
+          path: ${{ runner.temp }}/engine-builds
+          merge-multiple: true
+      - name: Create candidate index
+        run: uv run python tools/create_engine_artifact_index.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --input-root "${{ runner.temp }}/engine-builds" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status candidate --output "${{ runner.temp }}/engine-data/engine-artifact-index.json"
+      - name: Assemble candidate sidecars
+        run: uv run python -c "from pathlib import Path; import shutil; data=Path(r'${{ runner.temp }}/engine-data'); shutil.copy2(Path('artifacts/gen9ou/m2/engine/engine-source.json'), data); [shutil.copy2(path, data) for path in Path(r'${{ runner.temp }}/engine-builds').glob('engine-build-*.json')]"
+      - name: Upload candidate index and sidecars
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-candidate-index
+          path: ${{ runner.temp }}/engine-data
+          if-no-files-found: error
+          retention-days: 7
+
+  artifact-stage-sentinel:
+    name: engine-stage-sentinel-${{ matrix.os }}-py${{ matrix.python }}
+    needs: [artifact-build, artifact-candidate-index]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, platform_tag: win_amd64}
+    runs-on: ${{ matrix.os }}
+    env:
+      ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
+      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Download candidate sidecars
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engine-candidate-index
+          path: ${{ runner.temp }}/engine-data
+      - name: Download matching wheel cell
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engine-build-${{ env.ENGINE_CELL }}
+          path: ${{ runner.temp }}/engine-cell
+      - name: Build base BattleBelief wheels
+        run: |
+          uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+          uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+      - name: Create isolated sentinel environment
+        run: |
+          uv venv "${{ runner.temp }}/sentinel-env" --python python --seed
+          uv pip install --python "${{ runner.temp }}/sentinel-env" --only-binary :all: rfc8785==0.1.4
+          uv pip install --python "${{ runner.temp }}/sentinel-env" --no-deps "${{ runner.temp }}/battlebelief-wheels/battlebelief_core-0.2.0-py3-none-any.whl" "${{ runner.temp }}/battlebelief-wheels/battlebelief_runtime-0.2.0-py3-none-any.whl" "${{ runner.temp }}/engine-cell/${{ env.ENGINE_WHEEL }}"
+      - name: Resolve isolated Python on Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: echo "SENTINEL_PYTHON=${RUNNER_TEMP}/sentinel-env/bin/python" >> "$GITHUB_ENV"
+      - name: Resolve isolated Python on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "SENTINEL_PYTHON=$env:RUNNER_TEMP\sentinel-env\Scripts\python.exe" >> $env:GITHUB_ENV
+      - name: Run real staged native sentinel
+        shell: pwsh
+        run: '& "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/engine-data" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/engine-cell/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/sentinel-${{ env.ENGINE_CELL }}.json"'
+      - name: Upload sentinel evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-sentinel-${{ env.ENGINE_CELL }}
+          path: ${{ runner.temp }}/sentinel-${{ env.ENGINE_CELL }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  artifact-index:
+    name: engine-artifact-index-closure
+    needs: [artifact-build, artifact-stage-sentinel]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install locked tooling
+        run: |
+          python -m pip install uv==0.12.0
+          uv sync --frozen --all-packages --group dev
+      - name: Download all cell artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: engine-build-*
+          path: ${{ runner.temp }}/engine-builds
+          merge-multiple: true
+      - name: Download all sentinel evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: engine-sentinel-*
+          path: ${{ runner.temp }}/engine-evidence
+          merge-multiple: true
+      - name: Create available artifact index
+        run: uv run python tools/create_engine_artifact_index.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --input-root "${{ runner.temp }}/engine-builds" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status available --evidence-root "${{ runner.temp }}/engine-evidence" --output "${{ runner.temp }}/publication/engine-artifact-index.json"
+      - name: Acquire the bound license
+        run: |
+          uv run python tools/build_poke_engine_wheel.py acquire --checkout "${{ runner.temp }}/poke-engine"
+          uv run python tools/build_poke_engine_wheel.py verify-source --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json
+      - name: Assemble publication bundle and checksums
+        run: uv run python -c "from pathlib import Path; import hashlib,shutil; bundle=Path(r'${{ runner.temp }}/publication'); builds=Path(r'${{ runner.temp }}/engine-builds'); shutil.copy2(Path('artifacts/gen9ou/m2/engine/engine-source.json'), bundle); shutil.copy2(Path(r'${{ runner.temp }}/poke-engine/LICENSE'), bundle/'poke-engine-LICENSE-MIT.txt'); [shutil.copy2(path, bundle) for path in builds.iterdir()]; assets=sorted(path for path in bundle.iterdir() if path.is_file()); assert len(assets)==15; lines=[f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}' for path in assets]; (bundle/'SHA256SUMS').write_text('\n'.join(lines)+'\n', encoding='ascii')"
+      - name: Validate available index schema
+        run: uv run python -c "import json; from pathlib import Path; from jsonschema import Draft202012Validator,FormatChecker; root=Path('.'); schema=json.loads((root/'schemas/manifests/engine-artifact-index.schema.json').read_bytes()); value=json.loads(Path(r'${{ runner.temp }}/publication/engine-artifact-index.json').read_bytes()); errors=list(Draft202012Validator(schema,format_checker=FormatChecker()).iter_errors(value)); assert not errors, errors"
+      - name: Compare committed staging manifests when present
+        shell: bash
+        run: |
+          committed=artifacts/gen9ou/m2/engine/engine-artifact-index.json
+          if [[ -f "$committed" ]]; then
+            cmp "$committed" "${RUNNER_TEMP}/publication/engine-artifact-index.json"
+            for manifest in "${RUNNER_TEMP}"/publication/engine-build-*.json; do
+              cmp "artifacts/gen9ou/m2/engine/$(basename "$manifest")" "$manifest"
+            done
+          fi
+      - name: Upload publication bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-publication-bundle
+          path: ${{ runner.temp }}/publication
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  artifact-final-sentinel:
+    name: engine-final-sentinel-${{ matrix.os }}-py${{ matrix.python }}
+    needs: [artifact-index]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, platform_tag: win_amd64}
+    runs-on: ${{ matrix.os }}
+    env:
+      ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
+      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl
+    steps:
+      - name: Check out BattleBelief
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Download publication bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engine-publication-bundle
+          path: ${{ runner.temp }}/publication
+      - name: Build base BattleBelief wheels
+        run: |
+          uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+          uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+      - name: Create isolated final sentinel environment
+        run: |
+          uv venv "${{ runner.temp }}/sentinel-env" --python python --seed
+          uv pip install --python "${{ runner.temp }}/sentinel-env" --only-binary :all: rfc8785==0.1.4
+          uv pip install --python "${{ runner.temp }}/sentinel-env" --no-deps "${{ runner.temp }}/battlebelief-wheels/battlebelief_core-0.2.0-py3-none-any.whl" "${{ runner.temp }}/battlebelief-wheels/battlebelief_runtime-0.2.0-py3-none-any.whl" "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}"
+      - name: Resolve isolated Python on Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: echo "SENTINEL_PYTHON=${RUNNER_TEMP}/sentinel-env/bin/python" >> "$GITHUB_ENV"
+      - name: Resolve isolated Python on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "SENTINEL_PYTHON=$env:RUNNER_TEMP\sentinel-env\Scripts\python.exe" >> $env:GITHUB_ENV
+      - name: Run final sentinel twice
+        shell: pwsh
+        run: |
+          & "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/publication" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/final-sentinel-1.json"
+          & "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/publication" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/final-sentinel-2.json"
+          & "${{ env.SENTINEL_PYTHON }}" -c "from pathlib import Path; assert Path(r'${{ runner.temp }}/final-sentinel-1.json').read_bytes() == Path(r'${{ runner.temp }}/final-sentinel-2.json').read_bytes()"
+
   dependency-review:
     name: dependency-review
     if: github.event_name == 'pull_request'
@@ -229,6 +524,11 @@ jobs:
       - dependency-review
       - protocol-smoke
       - safety-smoke
+      - artifact-build
+      - artifact-candidate-index
+      - artifact-stage-sentinel
+      - artifact-index
+      - artifact-final-sentinel
     runs-on: ubuntu-24.04
     steps:
       - name: Evaluate required jobs
@@ -239,9 +539,14 @@ jobs:
           DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
           PROTOCOL_SMOKE: ${{ needs['protocol-smoke'].result }}
           SAFETY_SMOKE: ${{ needs['safety-smoke'].result }}
+          ARTIFACT_BUILD: ${{ needs['artifact-build'].result }}
+          ARTIFACT_CANDIDATE_INDEX: ${{ needs['artifact-candidate-index'].result }}
+          ARTIFACT_STAGE_SENTINEL: ${{ needs['artifact-stage-sentinel'].result }}
+          ARTIFACT_INDEX: ${{ needs['artifact-index'].result }}
+          ARTIFACT_FINAL_SENTINEL: ${{ needs['artifact-final-sentinel'].result }}
         shell: bash
         run: |
-          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE"; do
+          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE" "$ARTIFACT_BUILD" "$ARTIFACT_CANDIDATE_INDEX" "$ARTIFACT_STAGE_SENTINEL" "$ARTIFACT_INDEX" "$ARTIFACT_FINAL_SENTINEL"; do
             case "$result" in
               success|skipped) ;;
               *) echo "Required job result: $result"; exit 1 ;;
