@@ -387,12 +387,46 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
     manifest_path = artifact_root / "engine-capabilities/engine-capability-v2-qualified.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    migrated_unqualified = copy.deepcopy(_document(MANIFEST_PATH))
+    migrated_unqualified["manifest_id"] = "poke-engine-gen9ou-capabilities-v2-migrated"
+    migrated_path = artifact_root / "engine-capabilities/engine-capability-v2-migrated.json"
+    migrated_path.write_text(json.dumps(migrated_unqualified), encoding="utf-8")
 
     assert _validate_engine_capability_artifacts(tmp_path)
     for document in evidence_documents:
         (evidence_dir / f"{document['evidence_id']}.json").write_text(
             json.dumps(document), encoding="utf-8"
         )
+    assert _validate_engine_capability_artifacts(tmp_path) == []
+
+    second_documents: list[dict[str, object]] = []
+    second_references: list[dict[str, object]] = []
+    for index, document in enumerate(evidence_documents, start=1):
+        second_document = copy.deepcopy(document)
+        second_document["evidence_id"] = f"second-fixture-evidence-{index}"
+        second_document["capability_id"] = "gen9.transition.order.speed"
+        second_documents.append(second_document)
+        second_reference = {**second_document, "evidence_digest": manifest_digest(second_document)}
+        second_reference.pop("schema_version")
+        second_references.append(second_reference)
+        (evidence_dir / f"{second_document['evidence_id']}.json").write_text(
+            json.dumps(second_document), encoding="utf-8"
+        )
+    second_manifest = copy.deepcopy(manifest)
+    second_manifest["manifest_id"] = "poke-engine-gen9ou-capabilities-v2-qualified-second"
+    second_manifest["claims"] = [
+        {
+            "capability_id": "gen9.transition.order.speed",
+            "status": "exact",
+            "evidence_refs": second_references,
+            "approximation": None,
+        }
+    ]
+    second_manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": second_references})
+    second_manifest_path = (
+        artifact_root / "engine-capabilities/engine-capability-v2-qualified-second.json"
+    )
+    second_manifest_path.write_text(json.dumps(second_manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
 
     unsupported_evidence = copy.deepcopy(evidence_documents[0])
@@ -403,6 +437,9 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     errors = _validate_engine_capability_artifacts(tmp_path)
     assert any("unreferenced evidence" in error for error in errors)
     unsupported_path.unlink()
+    second_manifest_path.unlink()
+    for document in second_documents:
+        (evidence_dir / f"{document['evidence_id']}.json").unlink()
 
     missing_path = evidence_dir / f"{evidence_documents[0]['evidence_id']}.json"
     missing_path.unlink()

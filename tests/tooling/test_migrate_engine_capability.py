@@ -52,6 +52,8 @@ def test_v1_migration_is_fail_closed_and_records_deterministic_loss() -> None:
     assert migrated["claims"] == []
     assert report["migrator_id"] == "battlebelief.engine-capability-v1-to-v2"
     assert report["migrator_version"] == "1"
+    assert report["report_id"] == "poke-engine-gen9ou-example-v2-unqualified-loss-report-v1"
+    assert report["source_document_id"] == source["manifest_id"]
     assert report["loss"] == {
         "exact": len(source["exact"]),
         "approximated": len(source["approximated"]),
@@ -59,6 +61,9 @@ def test_v1_migration_is_fail_closed_and_records_deterministic_loss() -> None:
         "known_divergences": len(source["known_divergences"]),
     }
     assert set(report) == {
+        "schema_version",
+        "report_id",
+        "source_document_id",
         "source_schema_id",
         "migrator_id",
         "migrator_version",
@@ -73,7 +78,9 @@ def test_v1_migration_is_fail_closed_and_records_deterministic_loss() -> None:
     projection = {
         name: report[name]
         for name in (
+            "report_id",
             "source_schema_id",
+            "source_document_id",
             "source_digest",
             "migrator_id",
             "migrator_version",
@@ -97,6 +104,8 @@ def test_migration_closure_is_a_curated_immutable_core_value() -> None:
         migrator_id="battlebelief.engine-capability-v1-to-v2",
         migrator_version="1",
         loss_codes=("approximated", "exact", "known-divergences", "unsupported"),
+        source_document_id="source-v1",
+        loss_report_id="report-v1",
         loss_report_digest="sha256:" + "b" * 64,
     )
 

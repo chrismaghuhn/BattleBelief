@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import json
 from pathlib import Path
 
@@ -127,6 +128,13 @@ def _manifest(
 
 
 class TestCapabilityCatalog:
+    def test_definition_description_is_a_required_public_constructor_argument(self) -> None:
+        parameter = inspect.signature(CapabilityDefinition).parameters["description"]
+
+        assert parameter.default is inspect.Parameter.empty
+        with pytest.raises(TypeError, match="description"):
+            CapabilityDefinition(value="gen9.battle.damage")
+
     def test_issues_catalog_bound_ids_without_public_constructor(self) -> None:
         catalog = _catalog()
         capability = catalog.id_for("gen9.battle.damage")

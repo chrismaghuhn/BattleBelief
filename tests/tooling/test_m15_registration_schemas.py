@@ -14,6 +14,7 @@ EXAMPLE_SCHEMA_MAP = {
     "engine-build.example.json": "engine-build.schema.json",
     "engine-capability-catalog-v1.example.json": "engine-capability-catalog-v1.schema.json",
     "engine-capability-evidence.example.json": "engine-capability-evidence.schema.json",
+    "engine-capability-migration-loss-report.example.json": "engine-capability-migration-loss-report.schema.json",
     "engine-capability.example.json": "engine-capability.schema.json",
     "engine-capability-v2.example.json": "engine-capability-v2.schema.json",
     "engine-source.example.json": "engine-source.schema.json",
