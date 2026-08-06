@@ -121,6 +121,21 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     assert "Get-ChildItem Env:" not in command
 
 
+def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:
+    workflow = _load_workflow()
+    steps = workflow["jobs"]["artifact-build"]["steps"]
+    fetch = next(
+        step
+        for step in steps
+        if step.get("name") == "Fetch locked Cargo dependencies before the offline build"
+    )
+    assert fetch["run"] == (
+        "cargo fetch --locked --manifest-path "
+        '"${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
+    )
+    assert "--target" not in fetch["run"]
+
+
 def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
     workflow = _load_workflow()
     job = workflow["jobs"]["oracle-smoke"]

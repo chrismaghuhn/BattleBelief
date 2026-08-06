@@ -266,7 +266,7 @@ jobs:
           uv run python tools/build_poke_engine_wheel.py acquire --checkout "${{ runner.temp }}/poke-engine"
           uv run python tools/build_poke_engine_wheel.py verify-source --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json
       - name: Fetch locked Cargo dependencies before the offline build
-        run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml" --target "${{ env.ENGINE_TARGET }}"
+        run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"
       - name: Build and bind one wheel cell
         run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
       - name: Diagnose a failed Maturin build
