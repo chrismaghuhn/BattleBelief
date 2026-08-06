@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from unittest.mock import patch
 
+import pytest
+
 from battlebelief_runtime.adapters.poke_engine.artifact import RuntimeEnvironment
 from battlebelief_runtime.adapters.poke_engine.errors import (
     EngineArtifactError,
@@ -25,7 +27,9 @@ def test_public_sentinel_maps_artifact_failure_to_sanitized_availability() -> No
     }
 
 
-def test_unsupported_environment_stops_before_distribution_probe_or_build() -> None:
+def test_unsupported_environment_stops_before_distribution_probe_or_build(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     unsupported = RuntimeEnvironment(
         operating_system="unsupported",
         architecture="x86_64",
@@ -33,7 +37,7 @@ def test_unsupported_environment_stops_before_distribution_probe_or_build() -> N
         abi_tag="cp314",
         platform_tag="linux_x86_64",
     )
-    sys.modules.pop("poke_engine", None)
+    monkeypatch.delitem(sys.modules, "poke_engine", raising=False)
 
     with (
         patch(
