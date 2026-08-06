@@ -23,3 +23,9 @@ battlebelief-core = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/battlebelief_runtime"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"tests/fixtures/poke_engine" = "battlebelief_runtime/adapters/poke_engine/fixtures"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests/fixtures/poke_engine"]
