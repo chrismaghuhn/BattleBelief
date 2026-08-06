@@ -360,9 +360,7 @@ def test_import_verified_native_sanitizes_runtime_error_at_every_resolution(
         if path == target_path:
             target_resolve_calls += 1
             if target_resolve_calls == target_occurrence:
-                raise RuntimeError(
-                    f"{tmp_path}\\private native symlink resolution loop"
-                )
+                raise RuntimeError(f"{tmp_path}\\private native symlink resolution loop")
         return original_resolve(path, strict=strict)
 
     monkeypatch.setattr(Path, "resolve", reject_target_resolve)
