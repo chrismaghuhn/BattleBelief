@@ -68,6 +68,38 @@ def test_core_cannot_call_builtin_filesystem_open(tmp_path: Path, body: str) -> 
 @pytest.mark.parametrize(
     "body",
     (
+        "import io\nio.open('private-world.json')\n",
+        "from io import open as read_file\nread_file('private-world.json')\n",
+    ),
+)
+def test_core_cannot_call_io_open(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call io.open" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import datetime\ndatetime.datetime.now()\n",
+        "import datetime as dt\ndt.datetime.utcnow()\n",
+        "from datetime import datetime as Clock\nClock.now()\n",
+        "from datetime import date\ndate.today()\n",
+    ),
+)
+def test_core_cannot_read_wall_clock_datetime_values(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call datetime." in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
         "def search(world):\n    return world._opaque\n",
         "def search(world):\n    return getattr(world, '_opaque')\n",
         "def search(world):\n    return world.__getattribute__('_opaque')\n",

@@ -55,6 +55,14 @@ PROCESS_SPAWN_CALLS = frozenset(
         ("os", "system"),
     }
 )
+CORE_FORBIDDEN_IO_AND_CLOCK_CALLS = frozenset(
+    {
+        ("io", "open"),
+        ("datetime", "datetime.now"),
+        ("datetime", "datetime.utcnow"),
+        ("datetime", "date.today"),
+    }
+)
 CORE_FORBIDDEN_PROJECTION_CALLS = frozenset({("dataclasses", "asdict"), ("dataclasses", "astuple")})
 LAB_RUNTIME_ALLOWED = (
     "battlebelief_runtime.adapters",
@@ -77,7 +85,11 @@ class ImportRule:
     def core(cls) -> ImportRule:
         return cls(
             CORE_FORBIDDEN,
-            forbidden_calls=PROCESS_SPAWN_CALLS | CORE_FORBIDDEN_PROJECTION_CALLS,
+            forbidden_calls=(
+                PROCESS_SPAWN_CALLS
+                | CORE_FORBIDDEN_IO_AND_CLOCK_CALLS
+                | CORE_FORBIDDEN_PROJECTION_CALLS
+            ),
             forbidden_builtin_calls=CORE_FORBIDDEN_BUILTIN_CALLS,
             forbidden_private_attributes=CORE_FORBIDDEN_PRIVATE_ATTRIBUTES,
             private_attribute_scope_allowlist=(
@@ -157,17 +169,25 @@ def forbidden_process_calls(path: Path, rule: ImportRule) -> list[tuple[int, str
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             for alias in node.names:
                 direct_aliases[alias.asname or alias.name] = (node.module, alias.name)
+
+    def resolve_call_target(node: ast.expr) -> tuple[str, str] | None:
+        if isinstance(node, ast.Name):
+            if node.id in module_aliases:
+                return (module_aliases[node.id], "")
+            return direct_aliases.get(node.id)
+        if not isinstance(node, ast.Attribute):
+            return None
+        resolved = resolve_call_target(node.value)
+        if resolved is None:
+            return None
+        module, prefix = resolved
+        return (module, f"{prefix}.{node.attr}" if prefix else node.attr)
+
     calls: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        target: tuple[str, str] | None = None
-        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-            module = module_aliases.get(node.func.value.id)
-            if module is not None:
-                target = (module, node.func.attr)
-        elif isinstance(node.func, ast.Name):
-            target = direct_aliases.get(node.func.id)
+        target = resolve_call_target(node.func)
         if target in rule.forbidden_calls:
             calls.append((node.lineno, f"{target[0]}.{target[1]}"))
     return calls
