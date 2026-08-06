@@ -12,7 +12,10 @@ EXAMPLE_SCHEMA_MAP = {
     "dataset-manifest.example.json": "dataset-manifest.schema.json",
     "engine-artifact-index.example.json": "engine-artifact-index.schema.json",
     "engine-build.example.json": "engine-build.schema.json",
+    "engine-capability-catalog-v1.example.json": "engine-capability-catalog-v1.schema.json",
+    "engine-capability-evidence.example.json": "engine-capability-evidence.schema.json",
     "engine-capability.example.json": "engine-capability.schema.json",
+    "engine-capability-v2.example.json": "engine-capability-v2.schema.json",
     "engine-source.example.json": "engine-source.schema.json",
     "evaluation-claim.example.json": "evaluation-claim.schema.json",
     "ruleset-snapshot.example.json": "ruleset-snapshot.schema.json",
@@ -44,6 +47,7 @@ RECORD_SCHEMAS = frozenset(
         "measurement-run-result.schema.json",
     }
 )
+CATALOG_SCHEMAS = frozenset({"engine-capability-catalog-v1.schema.json"})
 
 
 def test_m15_examples_use_explicit_schema_mappings() -> None:
@@ -53,7 +57,12 @@ def test_m15_examples_use_explicit_schema_mappings() -> None:
     }
     for example_name, schema_name in EXAMPLE_SCHEMA_MAP.items():
         example = json.loads((schema_root / "examples" / example_name).read_text())
-        directory = "records" if schema_name in RECORD_SCHEMAS else "manifests"
+        if schema_name in RECORD_SCHEMAS:
+            directory = "records"
+        elif schema_name in CATALOG_SCHEMAS:
+            directory = "catalogs"
+        else:
+            directory = "manifests"
         schema = json.loads((schema_root / directory / schema_name).read_text())
         errors = list(
             Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(example)

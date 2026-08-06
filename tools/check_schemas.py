@@ -11,6 +11,15 @@ if str(_ROOT) not in sys.path:
 
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
+from battlebelief_core.domain.engine_capabilities import (  # noqa: E402
+    CapabilityApproximation,
+    CapabilityCatalog,
+    CapabilityClaim,
+    CapabilityEvidenceRef,
+    CapabilityStatus,
+    EngineCapabilityManifest,
+    EngineEnvironmentBinding,
+)
 from battlebelief_core.domain.records.decision_record import (  # noqa: E402
     RunScopePayload,
     derive_battle_id_digest,
@@ -41,6 +50,9 @@ from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E
 EXAMPLE_SCHEMA_MAP = {
     "dataset-manifest.example.json": "dataset-manifest.schema.json",
     "engine-capability.example.json": "engine-capability.schema.json",
+    "engine-capability-catalog-v1.example.json": "engine-capability-catalog-v1.schema.json",
+    "engine-capability-v2.example.json": "engine-capability-v2.schema.json",
+    "engine-capability-evidence.example.json": "engine-capability-evidence.schema.json",
     "engine-source.example.json": "engine-source.schema.json",
     "engine-build.example.json": "engine-build.schema.json",
     "engine-artifact-index.example.json": "engine-artifact-index.schema.json",
@@ -68,6 +80,9 @@ INVALID_EXAMPLE_SCHEMA_MAP = {
     "invalid/engine-source.invalid.json": "engine-source.schema.json",
     "invalid/engine-build.invalid.json": "engine-build.schema.json",
     "invalid/engine-artifact-index.invalid.json": "engine-artifact-index.schema.json",
+    "invalid/engine-capability-catalog-v1.invalid.json": "engine-capability-catalog-v1.schema.json",
+    "invalid/engine-capability-v2.invalid.json": "engine-capability-v2.schema.json",
+    "invalid/engine-capability-evidence.invalid.json": "engine-capability-evidence.schema.json",
     "invalid/showdown-oracle-source.invalid.json": "showdown-oracle-source.schema.json",
     "invalid/showdown-oracle-build.invalid.json": "showdown-oracle-build.schema.json",
 }
@@ -142,10 +157,202 @@ RECORD_SCHEMA_NAMES = frozenset(
     }
 )
 
+CATALOG_SCHEMA_NAMES = frozenset({"engine-capability-catalog-v1.schema.json"})
+
 
 def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
+    if schema_name in CATALOG_SCHEMA_NAMES:
+        return schema_root / "catalogs" / schema_name
     directory = "records" if schema_name in RECORD_SCHEMA_NAMES else "manifests"
     return schema_root / directory / schema_name
+
+
+def _validate_capability_catalog(
+    document: dict[str, Any],
+) -> tuple[CapabilityCatalog | None, list[str]]:
+    try:
+        catalog = CapabilityCatalog.from_document(document)
+    except (TypeError, ValueError) as error:
+        return None, [f"catalog reconstruction failed: {error}"]
+    return catalog, []
+
+
+def _validate_capability_evidence(
+    document: dict[str, Any], catalog: CapabilityCatalog
+) -> list[str]:
+    try:
+        if (
+            document["catalog_id"] != catalog.catalog_id
+            or document["catalog_version"] != catalog.catalog_version
+            or document["catalog_digest"] != catalog.catalog_digest
+            or document["canonicalization_contract_digest"]
+            != catalog.canonicalization_contract_digest
+        ):
+            raise ValueError("evidence catalog identity does not match the catalog")
+        catalog.id_for(document["capability_id"])
+        CapabilityEvidenceRef(
+            environment_cell_id=document["environment_cell_id"],
+            engine_source_manifest_digest=document["engine_source_manifest_digest"],
+            engine_build_manifest_digest=document["engine_build_manifest_digest"],
+            artifact_index_digest=document["artifact_index_digest"],
+            wheel_digest=document["wheel_digest"],
+            transition_adapter_id=document["transition_adapter_id"],
+            transition_adapter_version=document["transition_adapter_version"],
+            transition_adapter_source_digest=document["transition_adapter_source_digest"],
+            transition_model_contract_digest=document["transition_model_contract_digest"],
+            transition_adapter_conformance_digest=document["transition_adapter_conformance_digest"],
+            oracle_source_manifest_digest=document["oracle_source_manifest_digest"],
+            oracle_build_manifest_digest=document["oracle_build_manifest_digest"],
+            ruleset_digest=document["ruleset_digest"],
+            corpus_digest=document["corpus_digest"],
+            qualification_result_schema_id=document["qualification_result_schema_id"],
+            qualification_result_digest=document["qualification_result_digest"],
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        return [f"capability evidence semantic validation failed: {error}"]
+    return []
+
+
+def _validate_capability_manifest(
+    document: dict[str, Any], catalog: CapabilityCatalog
+) -> list[str]:
+    try:
+        if (
+            document["catalog_id"] != catalog.catalog_id
+            or document["catalog_version"] != catalog.catalog_version
+            or document["catalog_digest"] != catalog.catalog_digest
+        ):
+            raise ValueError("manifest catalog identity does not match the catalog")
+        if (
+            document["engine_source_manifest_digest"] is None
+            or document["artifact_index_digest"] is None
+        ):
+            raise ValueError("usable capability manifest requires engine source and artifact index")
+        bindings = tuple(
+            EngineEnvironmentBinding(**binding) for binding in document["environment_bindings"]
+        )
+        claims: list[CapabilityClaim] = []
+        for item in document["claims"]:
+            refs = tuple(CapabilityEvidenceRef(**ref) for ref in item["evidence_refs"])
+            approximation = item["approximation"]
+            claims.append(
+                CapabilityClaim(
+                    capability_id=catalog.id_for(item["capability_id"]),
+                    status=CapabilityStatus(item["status"]),
+                    evidence_refs=refs,
+                    approximation=(
+                        None if approximation is None else CapabilityApproximation(**approximation)
+                    ),
+                )
+            )
+        EngineCapabilityManifest(
+            manifest_id=document["manifest_id"],
+            catalog=catalog,
+            generation=document["generation"],
+            format=document["format"],
+            engine_source_manifest_digest=document["engine_source_manifest_digest"],
+            artifact_index_digest=document["artifact_index_digest"],
+            environment_bindings=bindings,
+            transition_adapter_id=document["transition_adapter_id"],
+            transition_adapter_version=document["transition_adapter_version"],
+            transition_adapter_source_digest=document["transition_adapter_source_digest"],
+            transition_model_contract_digest=document["transition_model_contract_digest"],
+            transition_adapter_conformance_digest=document["transition_adapter_conformance_digest"],
+            oracle_source_manifest_digest=document["oracle_source_manifest_digest"],
+            oracle_build_manifest_digest=document["oracle_build_manifest_digest"],
+            ruleset_digest=document["ruleset_digest"],
+            corpus_digest=document["corpus_digest"],
+            evidence_set_digest=document["evidence_set_digest"],
+            canonicalization_contract_digest=document["canonicalization_contract_digest"],
+            claims=tuple(claims),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        return [f"capability manifest semantic validation failed: {error}"]
+    return []
+
+
+def _validate_engine_capability_artifacts(root: Path) -> list[str]:
+    errors: list[str] = []
+    schema_root = root / "schemas"
+    catalog_path = root / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
+    manifest_path = (
+        root / "artifacts/gen9ou/m2/engine-capabilities/engine-capability-v2-unqualified.json"
+    )
+    engine_root = root / "artifacts/gen9ou/m2/engine"
+    source_path = engine_root / "engine-source.json"
+    index_path = engine_root / "engine-artifact-index.json"
+    if not all(path.is_file() for path in (catalog_path, manifest_path, source_path, index_path)):
+        return ["engine capability catalog or initial v2 manifest is missing"]
+    catalog_document = load_json_strict(catalog_path)
+    manifest_document = load_json_strict(manifest_path)
+    source_document = load_json_strict(source_path)
+    index_document = load_json_strict(index_path)
+    for path, schema_name, document in (
+        (catalog_path, "engine-capability-catalog-v1.schema.json", catalog_document),
+        (manifest_path, "engine-capability-v2.schema.json", manifest_document),
+    ):
+        schema = load_json_strict(_schema_path_for_example(schema_root, schema_name))
+        errors.extend(
+            f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
+            for issue in Draft202012Validator(schema).iter_errors(document)
+        )
+    catalog, catalog_errors = _validate_capability_catalog(catalog_document)
+    errors.extend(f"{catalog_path.relative_to(root)}: {error}" for error in catalog_errors)
+    if catalog is not None:
+        errors.extend(
+            f"{manifest_path.relative_to(root)}: {error}"
+            for error in _validate_capability_manifest(manifest_document, catalog)
+        )
+    source_digest = manifest_digest(source_document)
+    index_digest = manifest_digest(index_document)
+    if manifest_document["engine_source_manifest_digest"] != source_digest:
+        errors.append(f"{manifest_path.relative_to(root)}: engine source digest does not match")
+    if manifest_document["artifact_index_digest"] != index_digest:
+        errors.append(f"{manifest_path.relative_to(root)}: artifact index digest does not match")
+    if index_document.get("source_manifest_digest") != source_digest:
+        errors.append(
+            f"{index_path.relative_to(root)}: source digest does not match source manifest"
+        )
+    for cell in index_document["cells"]:
+        cell_id = cell["cell_id"]
+        build_path = engine_root / f"engine-build-{cell_id}.json"
+        if not build_path.is_file():
+            errors.append(f"{index_path.relative_to(root)}: build manifest missing for {cell_id}")
+            continue
+        build_document = load_json_strict(build_path)
+        if manifest_digest(build_document) != cell["build_manifest_digest"]:
+            errors.append(f"{build_path.relative_to(root)}: canonical digest does not match index")
+        if build_document.get("cell_id") != cell_id:
+            errors.append(f"{build_path.relative_to(root)}: cell ID does not match index")
+        if build_document.get("source_manifest_digest") != source_digest:
+            errors.append(
+                f"{build_path.relative_to(root)}: source digest does not match source manifest"
+            )
+        wheel = build_document.get("wheel")
+        if not isinstance(wheel, dict) or wheel.get("sha256") != cell["wheel_sha256"]:
+            errors.append(f"{build_path.relative_to(root)}: wheel digest does not match index")
+    expected_cells = [
+        {
+            "environment_cell_id": cell["cell_id"],
+            "engine_build_manifest_digest": cell["build_manifest_digest"],
+            "wheel_digest": cell["wheel_sha256"],
+        }
+        for cell in sorted(index_document["cells"], key=lambda item: item["cell_id"])
+    ]
+    if manifest_document["environment_bindings"] != expected_cells:
+        errors.append(f"{manifest_path.relative_to(root)}: environment bindings do not match index")
+    adapter_fields = (
+        "transition_adapter_id",
+        "transition_adapter_version",
+        "transition_adapter_source_digest",
+        "transition_model_contract_digest",
+        "transition_adapter_conformance_digest",
+    )
+    if any(manifest_document[name] is not None for name in adapter_fields):
+        errors.append(
+            f"{manifest_path.relative_to(root)}: initial artifact must not bind an adapter"
+        )
+    return errors
 
 
 def collect_schema_errors(root: Path) -> list[str]:
@@ -273,6 +480,23 @@ def collect_schema_errors(root: Path) -> list[str]:
         payload_schema = load_json_strict(schema_root / "records" / payload_schema_name)
         errors.extend(validate_decision_record_vector(vector, payload_schema))
     errors.extend(validate_repository_artifacts(root))
+    errors.extend(_validate_engine_capability_artifacts(root))
+    evidence_example_path = schema_root / "examples/engine-capability-evidence.example.json"
+    catalog_artifact_path = root / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
+    if evidence_example_path.is_file() and catalog_artifact_path.is_file():
+        catalog, catalog_errors = _validate_capability_catalog(
+            load_json_strict(catalog_artifact_path)
+        )
+        errors.extend(
+            f"{catalog_artifact_path.relative_to(root)}: {error}" for error in catalog_errors
+        )
+        if catalog is not None:
+            errors.extend(
+                f"{evidence_example_path.relative_to(root)}: {error}"
+                for error in _validate_capability_evidence(
+                    load_json_strict(evidence_example_path), catalog
+                )
+            )
     return sorted(errors)
 
 

@@ -19,6 +19,10 @@ def test_contract_snapshot_is_checked_without_becoming_a_current_document(
 ) -> None:
     shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "config", tmp_path / "config")
+    catalog = ROOT / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
+    copied_catalog = tmp_path / catalog.relative_to(ROOT)
+    copied_catalog.parent.mkdir(parents=True)
+    shutil.copy2(catalog, copied_catalog)
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     shutil.copytree(ROOT / "tests", tmp_path / "tests")
     shutil.copytree(ROOT / "wiki", tmp_path / "wiki")

@@ -109,6 +109,10 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [M1.5 Measurement Harness and Baseline Registration Evidence](operations/m1-5-measurement-harness-evidence.md)
 - [Decision-Record-Contract](contracts/decision-records.md)
 
+## Migrationen
+
+- [Engine-Capability-v1-to-v2 migration](migrations/engine-capability-v1-to-v2.md)
+
 ## Archiv
 
 - [Unveränderlicher Design-Freeze](archive/2026-07-29-design-freeze.md)

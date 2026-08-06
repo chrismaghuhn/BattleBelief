@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "catalog_id": "gen9ou-engine-capabilities",
+  "catalog_version": "1",
+  "generation": 9,
+  "format": "gen9ou",
+  "capability_contract_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "canonicalization_contract_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "definitions": [
+    {"value": "gen9.legality.move.selection", "description": "Select a legal move."},
+    {"value": "gen9.transition.terminal.value", "description": "Produce terminal value."}
+  ]
+}

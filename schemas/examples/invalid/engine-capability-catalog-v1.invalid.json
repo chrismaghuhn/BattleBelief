@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "catalog_id": "gen9ou-engine-capabilities",
+  "catalog_version": "1",
+  "generation": 9,
+  "format": "gen9ou",
+  "capability_contract_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "canonicalization_contract_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "definitions": [{"value": "gen10.legality.move.selection", "description": "Wrong generation."}]
+}
