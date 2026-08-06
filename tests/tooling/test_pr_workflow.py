@@ -104,6 +104,7 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     assert diagnostic["if"] == "failure() && steps.engine_build.outcome == 'failure'"
     assert diagnostic["shell"] == "pwsh"
     assert diagnostic["env"] == {
+        "CARGO_HOME": "${{ runner.temp }}/battlebelief-engine-cargo-home",
         "CARGO_INCREMENTAL": "false",
         "CARGO_NET_OFFLINE": "true",
         "CARGO_PROFILE_RELEASE_DEBUG": "0",
@@ -145,13 +146,25 @@ def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_li
 def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:
     workflow = _load_workflow()
     steps = workflow["jobs"]["artifact-build"]["steps"]
+    linux_resolution = next(
+        step for step in steps if step.get("name") == "Resolve controlled executables on Linux"
+    )
+    windows_resolution = next(
+        step for step in steps if step.get("name") == "Resolve controlled executables on Windows"
+    )
+    assert "rustup which --toolchain 1.83.0 rustc" in linux_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 cargo" in linux_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 rustc" in windows_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 cargo" in windows_resolution["run"]
     fetch = next(
         step
         for step in steps
         if step.get("name") == "Fetch locked Cargo dependencies before the offline build"
     )
+    assert fetch["shell"] == "pwsh"
+    assert fetch["env"] == {"CARGO_HOME": "${{ runner.temp }}/battlebelief-engine-cargo-home"}
     assert fetch["run"] == (
-        "cargo fetch --locked --manifest-path "
+        '& "${{ env.ENGINE_CARGO }}" fetch --locked --manifest-path '
         '"${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
     )
     assert "--target" not in fetch["run"]

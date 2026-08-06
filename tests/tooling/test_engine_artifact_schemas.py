@@ -150,6 +150,10 @@ def _build_manifest(
         },
         "build_environment": {
             "allowlist": [
+                {
+                    "name": "CARGO_HOME",
+                    "value": "../battlebelief-engine-cargo-home",
+                },
                 {"name": "CARGO_INCREMENTAL", "value": "false"},
                 {"name": "CARGO_NET_OFFLINE", "value": "true"},
                 {"name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0"},

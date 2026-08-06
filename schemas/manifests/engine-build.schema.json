@@ -142,11 +142,12 @@
       "properties": {
         "allowlist": {
           "type": "array",
-          "minItems": 5,
-          "maxItems": 5,
+          "minItems": 6,
+          "maxItems": 6,
           "uniqueItems": true,
           "items": {
             "oneOf": [
+              { "const": { "name": "CARGO_HOME", "value": "../battlebelief-engine-cargo-home" } },
               { "const": { "name": "CARGO_INCREMENTAL", "value": "false" } },
               { "const": { "name": "CARGO_NET_OFFLINE", "value": "true" } },
               { "const": { "name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0" } },

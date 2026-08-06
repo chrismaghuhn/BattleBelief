@@ -68,6 +68,7 @@ def test_controlled_build_environment_excludes_ambient_build_configuration(
     )
 
     assert environment["CARGO_INCREMENTAL"] == "false"
+    assert environment["CARGO_HOME"] == "../battlebelief-engine-cargo-home"
     assert environment["CARGO_NET_OFFLINE"] == "true"
     assert environment["CARGO_PROFILE_RELEASE_DEBUG"] == "0"
     assert environment["PYTHONUTF8"] == "1"
@@ -363,6 +364,10 @@ def test_build_manifest_binds_exact_cell_without_operational_paths() -> None:
         "platform_tag": "win_amd64",
     }
     assert manifest["features"] == list(FEATURES)
+    assert manifest["build_environment"]["allowlist"][0] == {
+        "name": "CARGO_HOME",
+        "value": "../battlebelief-engine-cargo-home",
+    }
 
     def string_values(value: object) -> list[str]:
         if isinstance(value, str):

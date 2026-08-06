@@ -250,23 +250,28 @@ jobs:
         shell: bash
         run: |
           echo "ENGINE_PYTHON=$(command -v python)" >> "$GITHUB_ENV"
-          echo "ENGINE_RUSTC=$(command -v rustc)" >> "$GITHUB_ENV"
-          echo "ENGINE_CARGO=$(command -v cargo)" >> "$GITHUB_ENV"
+          echo "ENGINE_RUSTC=$(rustup which --toolchain 1.83.0 rustc)" >> "$GITHUB_ENV"
+          echo "ENGINE_CARGO=$(rustup which --toolchain 1.83.0 cargo)" >> "$GITHUB_ENV"
           echo "ENGINE_MATURIN=${RUNNER_TEMP}/maturin-env/bin/maturin" >> "$GITHUB_ENV"
       - name: Resolve controlled executables on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $rustc = (& rustup which --toolchain 1.83.0 rustc).Trim()
+          $cargo = (& rustup which --toolchain 1.83.0 cargo).Trim()
           "ENGINE_PYTHON=$((Get-Command python.exe).Source)" >> $env:GITHUB_ENV
-          "ENGINE_RUSTC=$((Get-Command rustc.exe).Source)" >> $env:GITHUB_ENV
-          "ENGINE_CARGO=$((Get-Command cargo.exe).Source)" >> $env:GITHUB_ENV
+          "ENGINE_RUSTC=$rustc" >> $env:GITHUB_ENV
+          "ENGINE_CARGO=$cargo" >> $env:GITHUB_ENV
           "ENGINE_MATURIN=$env:RUNNER_TEMP\maturin-env\Scripts\maturin.exe" >> $env:GITHUB_ENV
       - name: Acquire and verify exact upstream source
         run: |
           uv run python tools/build_poke_engine_wheel.py acquire --checkout "${{ runner.temp }}/poke-engine"
           uv run python tools/build_poke_engine_wheel.py verify-source --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json
       - name: Fetch locked Cargo dependencies before the offline build
-        run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"
+        shell: pwsh
+        env:
+          CARGO_HOME: ${{ runner.temp }}/battlebelief-engine-cargo-home
+        run: '& "${{ env.ENGINE_CARGO }}" fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
       - name: Build and bind one wheel cell
         id: engine_build
         run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
@@ -274,6 +279,7 @@ jobs:
         if: failure() && steps.engine_build.outcome == 'failure'
         shell: pwsh
         env:
+          CARGO_HOME: ${{ runner.temp }}/battlebelief-engine-cargo-home
           CARGO_INCREMENTAL: "false"
           CARGO_NET_OFFLINE: "true"
           CARGO_PROFILE_RELEASE_DEBUG: "0"

@@ -217,6 +217,10 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
         },
         "build_environment": {
             "allowlist": [
+                {
+                    "name": "CARGO_HOME",
+                    "value": "../battlebelief-engine-cargo-home",
+                },
                 {"name": "CARGO_INCREMENTAL", "value": "false"},
                 {"name": "CARGO_NET_OFFLINE", "value": "true"},
                 {"name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0"},

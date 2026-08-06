@@ -85,6 +85,10 @@
   "build_environment": {
     "allowlist": [
       {
+        "name": "CARGO_HOME",
+        "value": "../battlebelief-engine-cargo-home"
+      },
+      {
         "name": "CARGO_INCREMENTAL",
         "value": "false"
       },

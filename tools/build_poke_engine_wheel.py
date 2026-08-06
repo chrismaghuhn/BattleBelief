@@ -41,6 +41,7 @@ UPSTREAM_TREE = "74d10964d7470b2b9d92ba734550825388178d2d"
 RUST_TOOLCHAIN = "1.83.0"
 MATURIN_VERSION = "1.7.1"
 SOURCE_DATE_EPOCH = "1784471591"
+CONTROLLED_CARGO_HOME = "../battlebelief-engine-cargo-home"
 FEATURES = ("poke-engine/gen9", "poke-engine/terastallization")
 TARGETS = frozenset(("x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"))
 MAX_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -138,6 +139,7 @@ def _controlled_build_environment(
     """Construct the explicit child environment for the native build."""
 
     environment = {
+        "CARGO_HOME": CONTROLLED_CARGO_HOME,
         "CARGO_INCREMENTAL": "false",
         "CARGO_NET_OFFLINE": "true",
         "CARGO_PROFILE_RELEASE_DEBUG": "0",
@@ -696,6 +698,7 @@ def create_build_manifest(
         "wheel": dict(wheel),
         "build_environment": {
             "allowlist": [
+                {"name": "CARGO_HOME", "value": CONTROLLED_CARGO_HOME},
                 {"name": "CARGO_INCREMENTAL", "value": "false"},
                 {"name": "CARGO_NET_OFFLINE", "value": "true"},
                 {"name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0"},
