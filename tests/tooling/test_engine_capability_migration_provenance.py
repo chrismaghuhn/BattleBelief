@@ -4,7 +4,8 @@ import json
 import shutil
 from pathlib import Path
 
-from tools.check_schemas import _validate_engine_capability_artifacts
+from tools.canonicalize_manifest import manifest_digest
+from tools.check_schemas import _migration_report_projection, _validate_engine_capability_artifacts
 from tools.migrate_engine_capability import migrate_v1_document
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -101,3 +102,40 @@ def test_repository_validator_resolves_every_migration_identity(tmp_path: Path) 
             report_path.write_text(json.dumps(report), encoding="utf-8")
         errors = _validate_engine_capability_artifacts(root)
         assert any(expected in error for error in errors)
+
+
+def test_repository_validator_derives_loss_counts_from_v1_source(tmp_path: Path) -> None:
+    root, target_path, _, report_path = _write_migration_repository(tmp_path)
+    report = _document(report_path)
+    target = _document(target_path)
+
+    report["loss"]["exact"] = 999
+    report["loss_report_digest"] = manifest_digest(_migration_report_projection(report))
+    target["migration"]["loss_report_digest"] = report["loss_report_digest"]
+    report["target_digest"] = manifest_digest(target)
+    target_path.write_text(json.dumps(target), encoding="utf-8")
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+    assert any("loss counts do not match v1 source" in error for error in errors)
+
+
+def test_repository_validator_enforces_v1_source_formats_on_readback(tmp_path: Path) -> None:
+    root, target_path, source_path, report_path = _write_migration_repository(tmp_path)
+    source = _document(source_path)
+    report = _document(report_path)
+    target = _document(target_path)
+
+    source["generated_at"] = "not-a-date"
+    source_digest = manifest_digest(source)
+    target["migration"]["source_digest"] = source_digest
+    report["source_digest"] = source_digest
+    report["loss_report_digest"] = manifest_digest(_migration_report_projection(report))
+    target["migration"]["loss_report_digest"] = report["loss_report_digest"]
+    report["target_digest"] = manifest_digest(target)
+    source_path.write_text(json.dumps(source), encoding="utf-8")
+    target_path.write_text(json.dumps(target), encoding="utf-8")
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+    assert any("schema violation (format)" in error for error in errors)

@@ -460,6 +460,13 @@ def _validate_migration_provenance(
             errors.append("migration loss report digest does not match manifest closure")
         if manifest_digest(_migration_report_projection(report)) != migration["loss_report_digest"]:
             errors.append("migration loss report digest does not match report projection")
+        if source is not None:
+            expected_loss = {
+                name: len(source[name])
+                for name in ("exact", "approximated", "unsupported", "known_divergences")
+            }
+            if report.get("loss") != expected_loss:
+                errors.append("migration loss counts do not match v1 source")
         if report.get("target_digest") != manifest_digest(manifest_document):
             errors.append("migration loss report target digest does not match manifest")
     return [f"{manifest_path.relative_to(root)}: {error}" for error in errors]
@@ -546,7 +553,9 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         schema = load_json_strict(_schema_path_for_example(schema_root, schema_name))
         structural_errors.extend(
             f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
-            for issue in Draft202012Validator(schema).iter_errors(document)
+            for issue in Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(
+                document
+            )
         )
     errors.extend(structural_errors)
     # Do not enter semantic/index traversal with documents that failed their
@@ -602,7 +611,6 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         )
         errors.extend(evidence_errors)
         all_referenced_ids: set[str] = set()
-        evidence_reference_counts: dict[str, int] = {}
         for manifest_path, manifest_document in manifest_documents:
             assert manifest_document is not None
             errors.extend(
@@ -623,18 +631,9 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
                 for reference in claim["evidence_refs"]
             }
             all_referenced_ids.update(referenced_ids)
-            for evidence_id in referenced_ids:
-                evidence_reference_counts[evidence_id] = (
-                    evidence_reference_counts.get(evidence_id, 0) + 1
-                )
         for evidence_id, evidence_path in sorted(evidence_paths.items()):
             if evidence_id not in all_referenced_ids:
                 errors.append(f"unreferenced evidence document {evidence_path.relative_to(root)}")
-            elif evidence_reference_counts[evidence_id] != 1:
-                errors.append(
-                    f"evidence document {evidence_path.relative_to(root)} must be referenced by "
-                    "exactly one qualifying manifest"
-                )
     assert isinstance(source_document, dict)
     assert isinstance(index_document, dict)
     source_digest = manifest_digest(source_document)

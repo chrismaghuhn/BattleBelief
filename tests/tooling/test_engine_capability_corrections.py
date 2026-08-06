@@ -416,13 +416,21 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     second_manifest["manifest_id"] = "poke-engine-gen9ou-capabilities-v2-qualified-second"
     second_manifest["claims"] = [
         {
+            "capability_id": evidence["capability_id"],
+            "status": "exact",
+            "evidence_refs": references,
+            "approximation": None,
+        },
+        {
             "capability_id": "gen9.transition.order.speed",
             "status": "exact",
             "evidence_refs": second_references,
             "approximation": None,
-        }
+        },
     ]
-    second_manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": second_references})
+    second_manifest["evidence_set_digest"] = manifest_digest(
+        {"evidence_refs": [*references, *second_references]}
+    )
     second_manifest_path = (
         artifact_root / "engine-capabilities/engine-capability-v2-qualified-second.json"
     )

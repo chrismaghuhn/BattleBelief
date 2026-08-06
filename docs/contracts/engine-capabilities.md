@@ -73,12 +73,15 @@ and canonicalization-contract digest. The repository validator loads the
 referenced document from
 `artifacts/gen9ou/m2/engine-capabilities/evidence/<evidence-id>.json`,
 recomputes its canonical digest, and rejects any closure mismatch. The
-directory contains exactly one document per qualifying claimed capability and
-bound environment cell; no evidence file may exist outside it. `unknown` and
-`unsupported` capabilities produce no capability-evidence documents; their
-complete unfavorable, aborted, or divergent outcomes remain retained in the
-differential run artifacts. Evidence IDs and digests are unique within a
-manifest. The five adapter fields are either all `null` or all present. They
+directory is exactly the union of the documents referenced by qualifying claims
+across discovered manifests, with exactly one document per qualifying claimed
+capability and bound environment cell within each manifest; no evidence file
+may exist outside it. The same immutable document may be referenced by more
+than one manifest. `unknown` and `unsupported` capabilities produce no
+capability-evidence documents; their complete unfavorable, aborted, or
+divergent outcomes remain retained in the differential run artifacts. Evidence
+IDs and digests are unique within a manifest. The five adapter fields are either
+all `null` or all present. They
 name the later BattleBelief transition adapter.
 
 The Task 25 artifact/sentinel probe is not that adapter binding. It supports
