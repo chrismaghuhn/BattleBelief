@@ -220,7 +220,7 @@ def main() -> int:
                 "from battlebelief_lab.oracle.showdown.network import "
                 "network_guard_bytes, network_guard_digest; "
                 "assert network_guard_digest() == "
-                "'sha256:4d373632513bc09b22536206f912a6cebd8909c34a2da7cedbfececd33bc2124'; "
+                "'sha256:f78b2d3ce3a6af69a79acc7fa4766bfbebee25d6da11d28228a334c535fdacf8'; "
                 "assert network_guard_bytes(); "
                 "assert all(value is not None for value in "
                 "(OracleFailureClass, OracleRequestIdentity, OracleResult, "

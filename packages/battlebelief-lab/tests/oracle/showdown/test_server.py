@@ -288,3 +288,50 @@ def test_external_marker_split_across_chunks_overrides_readiness_timeout_after_c
     assert raised.value.failure_class is OracleFailureClass.EXTERNAL_NETWORK_ATTEMPT
     assert not (source / "config" / "config.js").exists()
     assert not (source / "logs" / ".gitindex").exists()
+
+
+def test_server_cleanup_does_not_replace_the_primary_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    (source / "config").mkdir(parents=True)
+    process = _Process()
+    process.stderr = _Reader([b"server operational noise\n"])
+
+    async def launcher(
+        _argv: tuple[str, ...], _cwd: Path, _environment: object, _new_group: bool
+    ) -> _Process:
+        git = source / ".git"
+        git.mkdir()
+        (git / "index").write_bytes(b"generated-index")
+        logs = source / "logs"
+        logs.mkdir()
+        (logs / ".gitindex").write_bytes(b"generated-index")
+        return process
+
+    async def terminate(target: _Process, *, force: bool) -> None:
+        assert force is False
+        raise OracleProcessError(OracleFailureClass.SHUTDOWN_FAILED, "shutdown failed")
+
+    def fail_config_cleanup(_path: Path, _expected: bytes) -> None:
+        raise OracleProcessError(OracleFailureClass.SOURCE_DIRTY, "cleanup failed")
+
+    monkeypatch.setattr(showdown_server, "_remove_controlled_config", fail_config_cleanup)
+
+    with pytest.raises(OracleProcessError) as raised:
+        asyncio.run(
+            LoopbackServerSmoke(
+                launcher=launcher,
+                terminator=terminate,
+                orphan_verifier=lambda _process: asyncio.sleep(0, result=False),
+            ).run(
+                LoopbackServerConfig(
+                    source_directory=source,
+                    node_executable=Path("C:/node/node.exe"),
+                    environment={"SYSTEMROOT": "C:/Windows"},
+                ),
+                _limits(),
+            )
+        )
+
+    assert raised.value.failure_class is OracleFailureClass.START_TIMEOUT

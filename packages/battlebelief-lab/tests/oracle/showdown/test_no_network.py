@@ -114,6 +114,28 @@ def test_packaged_preload_allows_literal_loopback_http_without_a_dns_lookup() ->
     assert EXTERNAL_NETWORK_MARKER.encode("ascii") not in completed.stderr
 
 
+def test_packaged_preload_allows_bracketed_ipv6_loopback_http() -> None:
+    script = (
+        "const http=require('node:http');"
+        "const server=http.createServer((_request,response)=>response.end('ok'));"
+        "server.listen({host:'::1',port:0},()=>{"
+        "http.get('http://[::1]:'+server.address().port, response=>{"
+        "response.resume(); response.on('end',()=>server.close());"
+        "});"
+        "});"
+    )
+    with guarded_node_environment(_guarded_environment()) as env:
+        completed = subprocess.run(
+            [_node(), "-e", script],
+            env=dict(env),
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+    assert completed.returncode == 0
+    assert EXTERNAL_NETWORK_MARKER.encode("ascii") not in completed.stderr
+
+
 @pytest.mark.parametrize(
     "script",
     (

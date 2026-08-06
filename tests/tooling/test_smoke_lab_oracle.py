@@ -10,6 +10,7 @@ import pytest
 from tools import smoke_lab_oracle
 
 from battlebelief_lab.oracle.showdown.errors import OracleFailureClass
+from battlebelief_lab.oracle.showdown.installation import BuildOracleError
 from battlebelief_lab.oracle.showdown.process import OracleProcessError
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -96,6 +97,75 @@ def test_cli_retains_the_server_failure_class(
         == 1
     )
     assert capsys.readouterr().err == "external_network_attempt\n"
+
+
+def test_cli_preserves_a_build_failure_class(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(smoke_lab_oracle, "_load_manifests", lambda *_args: (object(), object()))
+    monkeypatch.setattr(
+        smoke_lab_oracle,
+        "fixture_paths",
+        lambda _directory: (Path("minimal.json"), Path("tera.json")),
+    )
+    monkeypatch.setattr(smoke_lab_oracle, "_fixture_document", lambda _path: {})
+
+    async def failed_smoke(**_kwargs: object) -> dict[str, object]:
+        raise BuildOracleError(OracleFailureClass.LOCKFILE_MISMATCH, "redacted")
+
+    monkeypatch.setattr(smoke_lab_oracle, "_run_smoke", failed_smoke)
+
+    assert (
+        smoke_lab_oracle.main(
+            [
+                "--source-manifest",
+                "source.json",
+                "--build-manifest",
+                "build.json",
+                "--checkout",
+                "checkout",
+                "--node",
+                "node",
+                "--npm",
+                "npm",
+                "--fixtures-dir",
+                "fixtures",
+            ]
+        )
+        == 1
+    )
+    assert capsys.readouterr().err == "lockfile_mismatch\n"
+
+
+def test_cli_classifies_invalid_tool_input_separately(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        smoke_lab_oracle,
+        "_load_manifests",
+        lambda *_args: (_ for _ in ()).throw(ValueError("invalid input")),
+    )
+
+    assert (
+        smoke_lab_oracle.main(
+            [
+                "--source-manifest",
+                "source.json",
+                "--build-manifest",
+                "build.json",
+                "--checkout",
+                "checkout",
+                "--node",
+                "node",
+                "--npm",
+                "npm",
+                "--fixtures-dir",
+                "fixtures",
+            ]
+        )
+        == 1
+    )
+    assert capsys.readouterr().err == "tool_input_invalid\n"
 
 
 def test_oracle_environment_has_a_minimal_allowlist_and_excludes_host_state() -> None:

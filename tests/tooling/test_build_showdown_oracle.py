@@ -125,6 +125,35 @@ def test_dist_records_reject_a_windows_junction_root(tmp_path: Path) -> None:
         collect_dist_records(dist)
 
 
+@pytest.mark.skipif(
+    os.name != "nt", reason="Windows junction semantics are validated on Windows CI"
+)
+def test_dependency_records_reject_a_windows_junction_directory(tmp_path: Path) -> None:
+    root = tmp_path / "checkout" / "node_modules"
+    root.mkdir(parents=True)
+    target = root / "real-package"
+    target.mkdir()
+    (target / "index.js").write_bytes(b"runtime")
+    _create_windows_junction(root / "junction-package", target)
+
+    with pytest.raises(BuildOracleError, match="dependency entry is not regular"):
+        collect_dependency_file_records(root)
+
+
+@pytest.mark.skipif(
+    os.name != "nt", reason="Windows junction semantics are validated on Windows CI"
+)
+def test_dependency_records_reject_a_windows_junction_root(tmp_path: Path) -> None:
+    target = tmp_path / "real-node-modules"
+    target.mkdir()
+    (target / "package.json").write_bytes(b"{}")
+    root = tmp_path / "node_modules"
+    _create_windows_junction(root, target)
+
+    with pytest.raises(BuildOracleError, match="node_modules directory is invalid"):
+        collect_dependency_file_records(root)
+
+
 def test_clear_verified_dist_refuses_paths_outside_the_verified_checkout(tmp_path: Path) -> None:
     checkout = tmp_path / "checkout"
     outside = tmp_path / "outside"
@@ -179,6 +208,20 @@ def test_pinned_source_acquisition_preserves_transport_environment(
     assert installation._source_transport_environment()["HTTPS_PROXY"] == (
         "http://controlled-proxy.invalid:8080"
     )
+
+
+def test_git_verification_preserves_host_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SYSTEMROOT", "C:/Windows")
+    captured: dict[str, str] = {}
+
+    def runner(
+        _argv: tuple[str, ...], _cwd: Path, environment: dict[str, str]
+    ) -> installation.CommandResult:
+        captured.update(environment)
+        return installation.CommandResult(0, b"verified", b"")
+
+    assert installation._git(runner, Path("C:/checkout"), "rev-parse", "HEAD") == b"verified"
+    assert captured["SYSTEMROOT"] == "C:/Windows"
 
 
 def test_isolated_build_path_prefers_the_exact_approved_node(

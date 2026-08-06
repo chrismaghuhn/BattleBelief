@@ -12,12 +12,11 @@ from battlebelief_lab.oracle.showdown import (
     ShowdownBuildManifest,
     ShowdownSourceManifest,
 )
+from battlebelief_lab.oracle.showdown.installation import RULESET_EXTRACTOR_DIGEST
 
 ROOT = Path(__file__).resolve().parents[5]
 _DIGEST = "sha256:" + "0" * 64
-_RULESET_EXTRACTOR_DIGEST = (
-    "sha256:82ae637f73a81aa9bafeab27fc0bc057d1fc281660985898a9c0006159e56f58"
-)
+_RULESET_EXTRACTOR_DIGEST = RULESET_EXTRACTOR_DIGEST
 
 
 def _ruleset_snapshot() -> dict[str, object]:
@@ -151,6 +150,7 @@ def test_failure_taxonomy_is_closed_and_stable() -> None:
         "external_network_attempt",
         "input_too_large",
         "output_too_large",
+        "tool_input_invalid",
     }
 
 
@@ -296,6 +296,10 @@ def test_new_manifest_examples_pass_and_invalid_examples_fail() -> None:
             (schema_root / "examples" / "invalid" / invalid_name).read_text(encoding="utf-8")
         )
         assert list(Draft202012Validator(schema).iter_errors(invalid))
+        if example_name == "showdown-oracle-build.example.json":
+            without_pid = dict(invalid)
+            without_pid.pop("pid")
+            assert list(Draft202012Validator(schema).iter_errors(without_pid)) == []
 
 
 def test_manifest_input_is_not_mutated() -> None:

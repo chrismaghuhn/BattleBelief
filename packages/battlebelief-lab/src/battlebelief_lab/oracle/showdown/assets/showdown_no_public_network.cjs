@@ -17,7 +17,7 @@ function denied() {
 }
 
 function isLoopbackLiteral(value) {
-	return value === '127.0.0.1' || value === '::1';
+	return value === '127.0.0.1' || value === '::1' || value === '[::1]';
 }
 
 function optionHost(value) {
@@ -39,7 +39,7 @@ function literalLoopbackLookup(hostname, options, callback) {
 	if (typeof options === 'function') callback = options;
 	requireLoopback(hostname);
 	if (typeof callback !== 'function') denied();
-	callback(null, hostname, hostname === '::1' ? 6 : 4);
+	callback(null, hostname, hostname === '::1' || hostname === '[::1]' ? 6 : 4);
 }
 
 function guardedConnectionArgs(args) {

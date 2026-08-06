@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from battlebelief_lab.oracle.showdown import process as process_module
 from battlebelief_lab.oracle.showdown.errors import OracleFailureClass
 from battlebelief_lab.oracle.showdown.network import EXTERNAL_NETWORK_MARKER
 from battlebelief_lab.oracle.showdown.process import (
@@ -901,6 +902,20 @@ def test_stderr_is_sanitized_and_bounded() -> None:
     assert "192.0.2.4" not in diagnostic
     assert "example.test" not in diagnostic
     assert len(diagnostic.encode("utf-8")) <= 64
+
+
+def test_stderr_sanitizer_keeps_the_failure_path_when_user_lookup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        process_module.getpass,
+        "getuser",
+        lambda: (_ for _ in ()).throw(OSError("no login name")),
+    )
+
+    diagnostic = sanitize_stderr(b"classified failure", max_bytes=64)
+
+    assert diagnostic == "classified failure"
 
 
 @pytest.mark.parametrize("max_bytes", [1, 2, 3, 4, 8])

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from tools.check_architecture import ImportRule, scan_tree
 
 
@@ -26,6 +27,23 @@ def test_runtime_cannot_import_process_primitives(tmp_path: Path) -> None:
     write_module(tmp_path, "battlebelief_runtime", "from subprocess import Popen\n")
     errors = scan_tree(tmp_path, ImportRule.runtime())
     assert any("subprocess" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import asyncio\nasyncio.create_subprocess_exec('node')\n",
+        "from asyncio import create_subprocess_exec\ncreate_subprocess_exec('node')\n",
+        "import os\nos.system('node')\n",
+        "from os import system\nsystem('node')\n",
+    ),
+)
+def test_core_and_runtime_cannot_call_indirect_process_spawners(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+    write_module(tmp_path, "battlebelief_runtime", body)
+
+    assert scan_tree(tmp_path, ImportRule.core())
+    assert scan_tree(tmp_path, ImportRule.runtime())
 
 
 def test_lab_oracle_may_import_process_primitives(tmp_path: Path) -> None:

@@ -32,6 +32,7 @@ class OracleFailureClass(StrEnum):
     EXTERNAL_NETWORK_ATTEMPT = "external_network_attempt"
     INPUT_TOO_LARGE = "input_too_large"
     OUTPUT_TOO_LARGE = "output_too_large"
+    TOOL_INPUT_INVALID = "tool_input_invalid"
 
 
 __all__ = ["OracleFailureClass"]

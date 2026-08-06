@@ -339,7 +339,7 @@ class LoopbackServerSmoke:
                 try:
                     forced_shutdown = await self._shutdown(process, return_task, limits)
                 except OracleProcessError as error:
-                    pending_error = error
+                    pending_error = pending_error or error
                 for task in (stdout_task, stderr_task):
                     if task is not None and not task.done():
                         task.cancel()
@@ -351,12 +351,12 @@ class LoopbackServerSmoke:
                 try:
                     _remove_controlled_config(config_path, expected_config)
                 except OracleProcessError as error:
-                    pending_error = error
+                    pending_error = pending_error or error
             if log_index is not None:
                 try:
                     _remove_generated_log_index(log_index)
                 except OracleProcessError as error:
-                    pending_error = error
+                    pending_error = pending_error or error
         if state.external_network_attempt:
             raise OracleProcessError(
                 OracleFailureClass.EXTERNAL_NETWORK_ATTEMPT,

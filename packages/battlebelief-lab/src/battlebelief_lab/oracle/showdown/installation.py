@@ -276,7 +276,11 @@ def collect_dependency_file_records(node_modules_directory: Path) -> list[dict[s
         raise BuildOracleError(
             OracleFailureClass.BUILD_OUTPUT_MISSING, "node_modules directory is missing"
         ) from error
-    if stat.S_ISLNK(root_mode) or not stat.S_ISDIR(root_mode):
+    if (
+        stat.S_ISLNK(root_mode)
+        or node_modules_directory.is_junction()
+        or not stat.S_ISDIR(root_mode)
+    ):
         raise BuildOracleError(
             OracleFailureClass.BUILD_OUTPUT_MISSING, "node_modules directory is invalid"
         )
@@ -298,6 +302,10 @@ def collect_dependency_file_records(node_modules_directory: Path) -> list[dict[s
                 ) from error
             if stat.S_ISLNK(mode):
                 records.append(_dependency_symlink_record(candidate, root))
+            elif candidate.is_junction():
+                raise BuildOracleError(
+                    OracleFailureClass.BUILD_OUTPUT_MISSING, "dependency entry is not regular"
+                )
             elif stat.S_ISDIR(mode):
                 visit(candidate)
             elif stat.S_ISREG(mode):
@@ -492,7 +500,7 @@ def _git(
     *arguments: str,
     failure: OracleFailureClass = OracleFailureClass.SOURCE_COMMIT_MISMATCH,
 ) -> bytes:
-    result = runner(("git", *arguments), checkout, {})
+    result = runner(("git", *arguments), checkout, dict(os.environ))
     return _require_success(result, failure, "git verification")
 
 
@@ -651,7 +659,7 @@ def verify_source_checkout(
         ("diff", "--no-ext-diff", "--quiet"),
         ("diff", "--cached", "--no-ext-diff", "--quiet"),
     ):
-        if runner(("git", *arguments), checkout, {}).returncode != 0:
+        if runner(("git", *arguments), checkout, dict(os.environ)).returncode != 0:
             raise BuildOracleError(OracleFailureClass.SOURCE_DIRTY, "tracked checkout is dirty")
     status = _git(
         runner,

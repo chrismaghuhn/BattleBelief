@@ -422,7 +422,15 @@ def sanitize_stderr(raw: bytes, *, max_bytes: int) -> str:
         text,
     )
     text = re.sub(r"(?i)\b(hostname|host|user(?:name)?)\s*[:=]\s*[^\s]+", r"\1=<redacted>", text)
-    for local_identity in (getpass.getuser(), socket.gethostname()):
+    local_identities: list[str] = []
+    for identity_getter in (getpass.getuser, socket.gethostname):
+        try:
+            identity = identity_getter()
+        except OSError:
+            continue
+        if identity:
+            local_identities.append(identity)
+    for local_identity in local_identities:
         if local_identity:
             text = re.sub(re.escape(local_identity), "<redacted>", text, flags=re.IGNORECASE)
     text = re.sub(r"(?i)(?:[a-z]:[\\/]|\\\\)[^\r\n]*", "<path>", text)

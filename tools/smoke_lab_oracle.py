@@ -241,7 +241,7 @@ async def _run_comparison_fixture(
     ):
         raise OracleSmokeError(OracleFailureClass.PROTOCOL_DESYNCHRONIZATION)
     if fixture.expected_tera_line is not None and not any(
-        fixture.expected_tera_line in line
+        fixture.expected_tera_line == line
         for message in transcript
         if message["kind"] == "update"
         for line in cast(list[str], message["lines"])
@@ -382,14 +382,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     except OracleSmokeError as error:
         print(error.failure_class.value, file=sys.stderr)
         return 1
-    except BuildOracleError:
-        print(OracleFailureClass.PROCESS_CRASH.value, file=sys.stderr)
+    except BuildOracleError as error:
+        print(error.failure_class.value, file=sys.stderr)
         return 1
     except OracleProcessError as error:
         print(error.failure_class.value, file=sys.stderr)
         return 1
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        print(OracleFailureClass.SOURCE_DIRTY.value, file=sys.stderr)
+        print(OracleFailureClass.TOOL_INPUT_INVALID.value, file=sys.stderr)
         return 1
     print(canonicalize(summary).decode("utf-8"))
     return 0
