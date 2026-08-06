@@ -65,9 +65,8 @@ def verify_staged_wheelhouse_closure(wheel_path: Path) -> None:
     try:
         wheelhouse = wheel_path.parent
         wheelhouse_metadata = wheelhouse.lstat()
-        if (
-            not stat.S_ISDIR(wheelhouse_metadata.st_mode)
-            or _is_link_or_reparse_entry(wheelhouse, wheelhouse_metadata)
+        if not stat.S_ISDIR(wheelhouse_metadata.st_mode) or _is_link_or_reparse_entry(
+            wheelhouse, wheelhouse_metadata
         ):
             _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
         entries = list(wheelhouse.iterdir())
@@ -77,9 +76,8 @@ def verify_staged_wheelhouse_closure(wheel_path: Path) -> None:
         if _normalized_absolute_path(wheel_entry) != _normalized_absolute_path(wheel_path):
             _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
         wheel_metadata = wheel_entry.lstat()
-        if (
-            not stat.S_ISREG(wheel_metadata.st_mode)
-            or _is_link_or_reparse_entry(wheel_entry, wheel_metadata)
+        if not stat.S_ISREG(wheel_metadata.st_mode) or _is_link_or_reparse_entry(
+            wheel_entry, wheel_metadata
         ):
             _fail(_STAGED_WHEELHOUSE_CLOSURE_ERROR)
     except OSError:

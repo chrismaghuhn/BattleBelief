@@ -267,9 +267,7 @@ def _import_verified_native(verified: VerifiedEngineArtifact) -> ModuleType:
     try:
         package_path = Path(package_origin).resolve(strict=True)
         extension_path = Path(extension_origin).resolve(strict=True)
-        expected_package_path = (verified.package_root / "__init__.py").resolve(
-            strict=True
-        )
+        expected_package_path = (verified.package_root / "__init__.py").resolve(strict=True)
         expected_extension_path = verified.extension_path.resolve(strict=True)
     except (OSError, TypeError):
         _fail(EngineFailureClass.IMPORT_FAILED)
