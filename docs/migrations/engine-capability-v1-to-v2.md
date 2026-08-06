@@ -29,12 +29,16 @@ The migration is deliberately lossy and fail-closed:
 - no free v1 capability is copied into the catalog;
 - no v1 classification is promoted to a v2 claim;
 - `claims` is empty, so every catalog ID remains effectively `unknown`; and
-- the transition adapter, oracle, ruleset, corpus, and evidence bindings remain
+- the transition adapter, oracle, ruleset, corpus, runner, classifier, and evidence bindings remain
   explicitly `null`.
 
-The report has only `migrator_id`, `migrator_version`, `source_digest`,
-`target_digest`, and deterministic per-section loss counts for `exact`,
-`approximated`, `unsupported`, and `known_divergences`. It contains no path,
-hostname, or time. The explicit source/index/environment binding prevents a
-migration from guessing provenance; it remains unqualified because it has no
-claims or evidence.
+The target has a `migration` closure with `source_schema_id`, source digest,
+migrator ID/version, sorted loss codes, and `loss_report_digest`. The digest is
+computed over a deterministic report projection excluding `target_digest`; the
+final report repeats that projection and binds the resulting target digest. This
+is acyclic while preventing either report projection or target from being
+substituted independently. The report contains deterministic per-section loss
+counts for `exact`, `approximated`, `unsupported`, and `known_divergences`. It
+contains no path, hostname, or time. The explicit source/index/environment
+binding prevents a migration from guessing provenance; it remains unqualified
+because it has no claims or evidence.

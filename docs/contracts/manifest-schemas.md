@@ -127,8 +127,10 @@ The fail-closed engine-capability v1-to-v2 migration is documented in
 [`engine-capability-v1-to-v2.md`](../migrations/engine-capability-v1-to-v2.md).
 It promotes no free v1 capability or classification. The explicit source,
 artifact, and environment binding is supplied by the caller; unbound adapter,
-oracle, ruleset, corpus, and evidence fields remain `null`, so the candidate is
-not search-qualified.
+oracle, ruleset, corpus, runner, classifier, and evidence fields remain `null`,
+so the candidate is not search-qualified. A migrated target additionally binds
+its deterministic loss-report projection through the optional v2 `migration`
+closure; the report in turn binds the target digest.
 
 Canonical arrays, including catalog definitions, environment bindings, claims,
 and claim evidence, use their contractually specified lexicographic order.

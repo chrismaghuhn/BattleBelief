@@ -244,3 +244,104 @@ def test_semantic_reconstruction_rejects_unsorted_or_duplicate_unknown_claims() 
     assert _validate_capability_manifest(manifest, catalog)
     manifest["claims"][1] = copy.deepcopy(manifest["claims"][0])
     assert _validate_capability_manifest(manifest, catalog)
+
+
+def test_evidence_reference_is_derived_from_the_complete_evidence_document() -> None:
+    from battlebelief_core.domain.engine_capabilities import (
+        CapabilityCatalog,
+        CapabilityEvidenceRef,
+    )
+
+    catalog = CapabilityCatalog.from_document(_document(CATALOG_PATH))
+    evidence = _document(SCHEMAS / "examples/engine-capability-evidence.example.json")
+
+    reference = CapabilityEvidenceRef.from_document(evidence, catalog)
+
+    assert reference.evidence_id == evidence["evidence_id"]
+    assert reference.evidence_digest == manifest_digest(evidence)
+    assert reference.capability_id == catalog.id_for(evidence["capability_id"])
+    assert reference.runner_source_digest == evidence["runner_source_digest"]
+    assert reference.classifier_source_digest == evidence["classifier_source_digest"]
+    changed = copy.deepcopy(evidence)
+    changed["capability_id"] = "gen9.legality.terastallization.activation"
+    assert (
+        CapabilityEvidenceRef.from_document(changed, catalog).evidence_digest
+        != reference.evidence_digest
+    )
+
+
+def test_qualifying_manifest_requires_the_referenced_evidence_document(tmp_path: Path) -> None:
+    artifact_root = tmp_path / "artifacts/gen9ou/m2"
+    shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
+    shutil.copytree(ROOT / "artifacts/gen9ou/m2/engine", artifact_root / "engine")
+    shutil.copy2(CATALOG_PATH, artifact_root / CATALOG_PATH.name)
+    evidence_dir = artifact_root / "engine-capabilities/evidence"
+    evidence_dir.mkdir(parents=True)
+
+    catalog = _document(CATALOG_PATH)
+    evidence = _document(SCHEMAS / "examples/engine-capability-evidence.example.json")
+    manifest = _document(MANIFEST_PATH)
+    evidence.update(
+        {
+            "catalog_id": catalog["catalog_id"],
+            "catalog_version": catalog["catalog_version"],
+            "catalog_digest": manifest_digest(catalog),
+            "capability_id": "gen9.legality.move.selection",
+            "engine_source_manifest_digest": manifest["engine_source_manifest_digest"],
+            "artifact_index_digest": manifest["artifact_index_digest"],
+        }
+    )
+    evidence_documents: list[dict[str, object]] = []
+    references: list[dict[str, object]] = []
+    for index, binding in enumerate(manifest["environment_bindings"], start=1):
+        document = copy.deepcopy(evidence)
+        document.update(
+            {
+                "evidence_id": f"fixture-evidence-{index}",
+                "environment_cell_id": binding["environment_cell_id"],
+                "engine_build_manifest_digest": binding["engine_build_manifest_digest"],
+                "wheel_digest": binding["wheel_digest"],
+            }
+        )
+        evidence_documents.append(document)
+        reference = {**document, "evidence_digest": manifest_digest(document)}
+        reference.pop("schema_version")
+        references.append(reference)
+    manifest.update(
+        {
+            "transition_adapter_id": evidence["transition_adapter_id"],
+            "transition_adapter_version": evidence["transition_adapter_version"],
+            "transition_adapter_source_digest": evidence["transition_adapter_source_digest"],
+            "transition_model_contract_digest": evidence["transition_model_contract_digest"],
+            "transition_adapter_conformance_digest": evidence[
+                "transition_adapter_conformance_digest"
+            ],
+            "oracle_source_manifest_digest": evidence["oracle_source_manifest_digest"],
+            "oracle_build_manifest_digest": evidence["oracle_build_manifest_digest"],
+            "ruleset_digest": evidence["ruleset_digest"],
+            "corpus_digest": evidence["corpus_digest"],
+            "runner_source_digest": evidence["runner_source_digest"],
+            "classifier_source_digest": evidence["classifier_source_digest"],
+            "claims": [
+                {
+                    "capability_id": evidence["capability_id"],
+                    "status": "exact",
+                    "evidence_refs": references,
+                    "approximation": None,
+                }
+            ],
+        }
+    )
+    manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
+    manifest_path = artifact_root / "engine-capabilities/engine-capability-v2-unqualified.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert _validate_engine_capability_artifacts(tmp_path)
+    for index, document in enumerate(evidence_documents, start=1):
+        (evidence_dir / f"evidence-{index}.json").write_text(json.dumps(document), encoding="utf-8")
+    assert _validate_engine_capability_artifacts(tmp_path) == []
+    evidence_documents[0]["capability_id"] = "gen9.legality.terastallization.activation"
+    (evidence_dir / "evidence-1.json").write_text(
+        json.dumps(evidence_documents[0]), encoding="utf-8"
+    )
+    assert _validate_engine_capability_artifacts(tmp_path)

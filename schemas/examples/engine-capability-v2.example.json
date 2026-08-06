@@ -18,7 +18,10 @@
   "oracle_build_manifest_digest": null,
   "ruleset_digest": null,
   "corpus_digest": null,
+  "runner_source_digest": null,
+  "classifier_source_digest": null,
   "evidence_set_digest": null,
   "canonicalization_contract_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "migration": null,
   "claims": []
 }

@@ -54,13 +54,20 @@ The only statuses are `exact`, `bounded_approximation`, `unsupported`, and
 `unknown`. A missing claim is effectively `unknown`. `unsupported` and
 `unknown` carry neither evidence nor an approximation. `exact` requires a
 complete evidence matrix over every bound environment cell.
-`bounded_approximation` requires the same closure and a nonempty `bound` and
-`condition`; it must never be interpreted as `exact`.
+`bounded_approximation` requires the same closure and a machine-readable
+`metric_id`, canonical decimal `maximum`, `unit_id`, and `condition_id`; it
+must never be interpreted as `exact`.
 
 Qualifying claims bind the engine source, artifact index, every build/wheel
 cell, all five `transition_adapter_*` identities, oracle source/build, ruleset,
-corpus, result schema, and result digest. The five adapter fields are either
-all `null` or all present. They name the later BattleBelief transition adapter.
+corpus, runner and classifier source, result schema, and result digest. An
+inline evidence reference additionally binds its `evidence_id`, canonical
+complete-document `evidence_digest`, capability ID, catalog ID/version/digest,
+and canonicalization-contract digest. The repository validator loads the
+referenced document from the deterministic Task-26 evidence directory,
+recomputes its canonical digest, and rejects any closure mismatch. Evidence IDs
+and digests are unique within a manifest. The five adapter fields are either all
+`null` or all present. They name the later BattleBelief transition adapter.
 
 The Task 25 artifact/sentinel probe is not that adapter binding. It supports
 private build and health properties only: it does not establish transition
@@ -68,11 +75,17 @@ mapping, oracle parity, search eligibility, or strength. The initial v2
 artifact is explicitly unqualified: every catalog ID is effectively `unknown`,
 and there is no `exact` or `bounded_approximation` evidence.
 
+A migrated v2 document binds an optional `migration` closure containing source
+schema and digest, migrator ID/version, deterministic loss codes, and the
+digest of a deterministic loss-report projection. The report binds the target
+digest. This acyclic pair prevents a loose report from being substituted; an
+ordinary unqualified initial manifest has `migration: null`.
+
 ### Eligibility before each search
 
 1. Check artifact identity, version, build features, and adapter provenance.
-2. Form required capabilities from state, belief support, legal set, and
-   end-of-turn mechanics.
+2. Form the conservative static preflight set defined in
+   [Required capabilities before search](#required-capabilities-before-search).
 3. Start search only with a completely `exact` classified set.
 4. Admit `bounded_approximation` only with a named tested bound and explicit
    approval.
@@ -94,13 +107,17 @@ artifact health probe and cannot supply a transition adapter binding.
 
 ### Required capabilities before search
 
-`PreparedWorld`, `SearchAction`, and `TransitionOutcome` each carry their
-required capabilities. Before starting search, validate that every value is a
-catalog-bound `CapabilityId` from the same `capability_catalog_digest`; reject
-foreign IDs. Deduplicate the values and sort them lexicographically by
-capability value, then take the deterministic union across the prepared world,
-candidate search actions, and transition outcomes. If this validation or union
-cannot be formed, no search starts and the fallback path applies.
+Before starting search, form a conservative static preflight set from prepared
+worlds, authoritative root actions, statically enumerated deep-action kinds,
+and potentially reachable ordering, chance, transition, end-of-turn, and
+terminal handlers. Validate that every value is a catalog-bound `CapabilityId`
+from the same `capability_catalog_digest`; reject foreign IDs, deduplicate, and
+sort by capability value. No `TransitionOutcome` is produced to determine this
+preflight set. `TransitionOutcome.required_capabilities` is runtime
+conformance evidence: every actual outcome capability must be a subset of the
+prequalified set. A new or catalog-foreign outcome capability ends that search
+path fail closed. If the static set cannot be formed, no search starts and the
+fallback path applies.
 
 ### Differential gates
 

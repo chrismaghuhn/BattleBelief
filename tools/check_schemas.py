@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ from battlebelief_core.domain.engine_capabilities import (  # noqa: E402
     CapabilityCatalog,
     CapabilityClaim,
     CapabilityEvidenceRef,
+    CapabilityMigrationClosure,
     CapabilityStatus,
     EngineCapabilityManifest,
     EngineEnvironmentBinding,
@@ -181,40 +183,16 @@ def _validate_capability_evidence(
     document: dict[str, Any], catalog: CapabilityCatalog
 ) -> list[str]:
     try:
-        if (
-            document["catalog_id"] != catalog.catalog_id
-            or document["catalog_version"] != catalog.catalog_version
-            or document["catalog_digest"] != catalog.catalog_digest
-            or document["canonicalization_contract_digest"]
-            != catalog.canonicalization_contract_digest
-        ):
-            raise ValueError("evidence catalog identity does not match the catalog")
-        catalog.id_for(document["capability_id"])
-        CapabilityEvidenceRef(
-            environment_cell_id=document["environment_cell_id"],
-            engine_source_manifest_digest=document["engine_source_manifest_digest"],
-            engine_build_manifest_digest=document["engine_build_manifest_digest"],
-            artifact_index_digest=document["artifact_index_digest"],
-            wheel_digest=document["wheel_digest"],
-            transition_adapter_id=document["transition_adapter_id"],
-            transition_adapter_version=document["transition_adapter_version"],
-            transition_adapter_source_digest=document["transition_adapter_source_digest"],
-            transition_model_contract_digest=document["transition_model_contract_digest"],
-            transition_adapter_conformance_digest=document["transition_adapter_conformance_digest"],
-            oracle_source_manifest_digest=document["oracle_source_manifest_digest"],
-            oracle_build_manifest_digest=document["oracle_build_manifest_digest"],
-            ruleset_digest=document["ruleset_digest"],
-            corpus_digest=document["corpus_digest"],
-            qualification_result_schema_id=document["qualification_result_schema_id"],
-            qualification_result_digest=document["qualification_result_digest"],
-        )
+        CapabilityEvidenceRef.from_document(document, catalog)
     except (KeyError, TypeError, ValueError) as error:
         return [f"capability evidence semantic validation failed: {error}"]
     return []
 
 
 def _validate_capability_manifest(
-    document: dict[str, Any], catalog: CapabilityCatalog
+    document: dict[str, Any],
+    catalog: CapabilityCatalog,
+    evidence_documents: Mapping[str, CapabilityEvidenceRef] | None = None,
 ) -> list[str]:
     try:
         if (
@@ -233,7 +211,15 @@ def _validate_capability_manifest(
         )
         claims: list[CapabilityClaim] = []
         for item in document["claims"]:
-            refs = tuple(CapabilityEvidenceRef(**ref) for ref in item["evidence_refs"])
+            refs = tuple(
+                CapabilityEvidenceRef(
+                    **{
+                        **ref,
+                        "capability_id": catalog.id_for(ref["capability_id"]),
+                    }
+                )
+                for ref in item["evidence_refs"]
+            )
             approximation = item["approximation"]
             claims.append(
                 CapabilityClaim(
@@ -262,13 +248,64 @@ def _validate_capability_manifest(
             oracle_build_manifest_digest=document["oracle_build_manifest_digest"],
             ruleset_digest=document["ruleset_digest"],
             corpus_digest=document["corpus_digest"],
+            runner_source_digest=document["runner_source_digest"],
+            classifier_source_digest=document["classifier_source_digest"],
             evidence_set_digest=document["evidence_set_digest"],
             canonicalization_contract_digest=document["canonicalization_contract_digest"],
+            migration=(
+                None
+                if document["migration"] is None
+                else CapabilityMigrationClosure(
+                    source_schema_id=document["migration"]["source_schema_id"],
+                    source_digest=document["migration"]["source_digest"],
+                    migrator_id=document["migration"]["migrator_id"],
+                    migrator_version=document["migration"]["migrator_version"],
+                    loss_codes=tuple(document["migration"]["loss_codes"]),
+                    loss_report_digest=document["migration"]["loss_report_digest"],
+                )
+            ),
             claims=tuple(claims),
         )
+        if evidence_documents is not None:
+            for claim in claims:
+                for ref in claim.evidence_refs:
+                    document_ref = evidence_documents.get(ref.evidence_id)
+                    if document_ref is None or document_ref != ref:
+                        raise ValueError("referenced evidence document does not match evidence_ref")
     except (KeyError, TypeError, ValueError) as error:
         return [f"capability manifest semantic validation failed: {error}"]
     return []
+
+
+def _load_capability_evidence_documents(
+    evidence_directory: Path, catalog: CapabilityCatalog, schema: dict[str, Any]
+) -> tuple[dict[str, CapabilityEvidenceRef], list[str]]:
+    """Load canonical evidence documents from the deterministic Task-26 directory."""
+
+    if not evidence_directory.exists():
+        return {}, []
+    if not evidence_directory.is_dir():
+        return {}, [f"{evidence_directory}: evidence path is not a directory"]
+    documents: dict[str, CapabilityEvidenceRef] = {}
+    errors: list[str] = []
+    for path in sorted(evidence_directory.glob("*.json")):
+        document = load_json_strict(path)
+        errors.extend(
+            f"{path}: {schema_issue_summary(issue)}"
+            for issue in Draft202012Validator(schema).iter_errors(document)
+        )
+        try:
+            reference = CapabilityEvidenceRef.from_document(document, catalog)
+            if reference.evidence_id in documents:
+                raise ValueError("duplicate evidence_id")
+            if any(
+                item.evidence_digest == reference.evidence_digest for item in documents.values()
+            ):
+                raise ValueError("duplicate evidence_digest")
+            documents[reference.evidence_id] = reference
+        except (TypeError, ValueError) as error:
+            errors.append(f"{path}: capability evidence semantic validation failed: {error}")
+    return documents, errors
 
 
 def _validate_engine_capability_artifacts(root: Path) -> list[str]:
@@ -299,9 +336,18 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     catalog, catalog_errors = _validate_capability_catalog(catalog_document)
     errors.extend(f"{catalog_path.relative_to(root)}: {error}" for error in catalog_errors)
     if catalog is not None:
+        evidence_schema = load_json_strict(
+            _schema_path_for_example(schema_root, "engine-capability-evidence.schema.json")
+        )
+        evidence_documents, evidence_errors = _load_capability_evidence_documents(
+            manifest_path.parent / "evidence", catalog, evidence_schema
+        )
+        errors.extend(evidence_errors)
         errors.extend(
             f"{manifest_path.relative_to(root)}: {error}"
-            for error in _validate_capability_manifest(manifest_document, catalog)
+            for error in _validate_capability_manifest(
+                manifest_document, catalog, evidence_documents
+            )
         )
     source_digest = manifest_digest(source_document)
     index_digest = manifest_digest(index_document)
@@ -348,7 +394,9 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         "transition_model_contract_digest",
         "transition_adapter_conformance_digest",
     )
-    if any(manifest_document[name] is not None for name in adapter_fields):
+    if not manifest_document["claims"] and any(
+        manifest_document[name] is not None for name in adapter_fields
+    ):
         errors.append(
             f"{manifest_path.relative_to(root)}: initial artifact must not bind an adapter"
         )

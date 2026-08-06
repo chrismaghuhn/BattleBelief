@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from battlebelief_core.domain.engine_capabilities import (
     CapabilityCatalog,
+    CapabilityMigrationClosure,
     EngineCapabilityManifest,
     EngineEnvironmentBinding,
 )
@@ -17,6 +18,7 @@ from tools.canonicalize_manifest import manifest_digest
 
 MIGRATOR_ID = "battlebelief.engine-capability-v1-to-v2"
 MIGRATOR_VERSION = "1"
+SOURCE_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
 _ROOT = Path(__file__).resolve().parents[1]
 _V1_SCHEMA = _ROOT / "schemas/manifests/engine-capability.schema.json"
 _V2_SCHEMA = _ROOT / "schemas/manifests/engine-capability-v2.schema.json"
@@ -91,6 +93,20 @@ def migrate_v1_document(
     source_digest, index_digest, environment_bindings, canonicalization_digest = _require_binding(
         unqualified_target_binding, catalog_value
     )
+    loss = {
+        name: len(source_document[name])
+        for name in ("exact", "approximated", "unsupported", "known_divergences")
+    }
+    loss_codes = ("approximated", "exact", "known-divergences", "unsupported")
+    report_projection = {
+        "source_schema_id": SOURCE_SCHEMA_ID,
+        "source_digest": manifest_digest(source_document),
+        "migrator_id": MIGRATOR_ID,
+        "migrator_version": MIGRATOR_VERSION,
+        "loss_codes": list(loss_codes),
+        "loss": loss,
+    }
+    loss_report_digest = manifest_digest(report_projection)
     target: dict[str, Any] = {
         "schema_version": 2,
         "manifest_id": f"{source_document['manifest_id']}-v2-unqualified",
@@ -118,8 +134,18 @@ def migrate_v1_document(
         "oracle_build_manifest_digest": None,
         "ruleset_digest": None,
         "corpus_digest": None,
+        "runner_source_digest": None,
+        "classifier_source_digest": None,
         "evidence_set_digest": None,
         "canonicalization_contract_digest": canonicalization_digest,
+        "migration": {
+            "source_schema_id": SOURCE_SCHEMA_ID,
+            "source_digest": report_projection["source_digest"],
+            "migrator_id": MIGRATOR_ID,
+            "migrator_version": MIGRATOR_VERSION,
+            "loss_codes": list(loss_codes),
+            "loss_report_digest": loss_report_digest,
+        },
         "claims": [],
     }
     if _schema_errors(_V2_SCHEMA, target):
@@ -142,20 +168,25 @@ def migrate_v1_document(
             oracle_build_manifest_digest=None,
             ruleset_digest=None,
             corpus_digest=None,
+            runner_source_digest=None,
+            classifier_source_digest=None,
             evidence_set_digest=None,
             canonicalization_contract_digest=canonicalization_digest,
+            migration=CapabilityMigrationClosure(
+                source_schema_id=SOURCE_SCHEMA_ID,
+                source_digest=report_projection["source_digest"],
+                migrator_id=MIGRATOR_ID,
+                migrator_version=MIGRATOR_VERSION,
+                loss_codes=loss_codes,
+                loss_report_digest=loss_report_digest,
+            ),
             claims=(),
         )
     except ValueError as error:
         raise ValueError(f"migrated target fails Core validation: {error}") from error
     report = {
-        "migrator_id": MIGRATOR_ID,
-        "migrator_version": MIGRATOR_VERSION,
-        "source_digest": manifest_digest(source_document),
+        **report_projection,
+        "loss_report_digest": loss_report_digest,
         "target_digest": manifest_digest(target),
-        "loss": {
-            name: len(source_document[name])
-            for name in ("exact", "approximated", "unsupported", "known_divergences")
-        },
     }
     return target, report

@@ -59,6 +59,8 @@ def test_v2_catalog_and_unqualified_manifest_are_explicitly_registered_and_valid
             "oracle_build_manifest_digest",
             "ruleset_digest",
             "corpus_digest",
+            "runner_source_digest",
+            "classifier_source_digest",
             "evidence_set_digest",
         )
     )
@@ -75,10 +77,10 @@ def test_v2_manifest_and_evidence_round_trip_to_stable_canonical_digests() -> No
     assert manifest_round_trip == manifest
     assert evidence_round_trip == evidence
     assert manifest_digest(manifest_round_trip) == (
-        "sha256:aa52852f380dc153bfa04b090c09e7b47ce9c0fe770778a767cccbf2b3f96f6f"
+        "sha256:231464524db93c6b9fc91e16c694088518cda33b7342840d9a915eea6fcdd9fa"
     )
     assert manifest_digest(evidence_round_trip) == (
-        "sha256:eab9ee90ca4898f0edd3d84d95ad5aa4c7fcac984e80628167236d05be61031c"
+        "sha256:8b42de351cb92cfe82f561a388a1b95f756d3e847138c2ef935b7c98e5db7594"
     )
 
 
@@ -88,5 +90,5 @@ def test_v2_catalog_is_the_only_capability_id_authority() -> None:
     assert values == sorted(values)
     assert len(values) == 13
     assert manifest_digest(catalog) == (
-        "sha256:a5cbb785c757917ef525a74a37c95aa61dcdc2dd0ae15f70b882abc1692b9b53"
+        "sha256:be94731f65e698899100fe38ca99b7a8f54c03a84aed87be32c13f143c1c5966"
     )
