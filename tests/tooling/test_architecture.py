@@ -32,6 +32,55 @@ def test_runtime_cannot_import_process_primitives(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "body",
     (
+        "import poke_engine\n",
+        "import poke_engine as native\n",
+        "from poke_engine import State\n",
+        "import importlib\nimportlib.import_module('poke_engine')\n",
+        "from importlib import import_module as load\nload('poke_engine.poke_engine')\n",
+        "__import__('poke_engine')\n",
+    ),
+)
+def test_runtime_native_import_is_confined_to_poke_engine_adapter(
+    tmp_path: Path, body: str
+) -> None:
+    write_module(tmp_path, "battlebelief_runtime/composition", body)
+
+    errors = scan_tree(tmp_path, ImportRule.runtime())
+
+    assert any("poke_engine" in error for error in errors)
+
+
+def test_submodule_importlib_binding_still_detects_dynamic_native_import(
+    tmp_path: Path,
+) -> None:
+    write_module(
+        tmp_path,
+        "battlebelief_runtime/composition",
+        "import importlib.metadata\nimportlib.import_module('poke_engine')\n",
+    )
+
+    assert any("poke_engine" in error for error in scan_tree(tmp_path, ImportRule.runtime()))
+
+
+def test_native_import_is_allowed_inside_poke_engine_adapter(tmp_path: Path) -> None:
+    write_module(
+        tmp_path,
+        "battlebelief_runtime/adapters/poke_engine",
+        "import importlib\nimportlib.import_module('poke_engine.poke_engine')\n",
+    )
+
+    assert scan_tree(tmp_path, ImportRule.runtime()) == []
+
+
+def test_lab_cannot_import_native_engine_directly(tmp_path: Path) -> None:
+    write_module(tmp_path, "battlebelief_lab", "import poke_engine\n")
+
+    assert any("poke_engine" in error for error in scan_tree(tmp_path, ImportRule.lab()))
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
         "import asyncio\nasyncio.create_subprocess_exec('node')\n",
         "from asyncio import create_subprocess_exec\ncreate_subprocess_exec('node')\n",
         "import os\nos.system('node')\n",

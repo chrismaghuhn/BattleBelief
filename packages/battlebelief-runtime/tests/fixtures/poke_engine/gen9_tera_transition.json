@@ -1,0 +1,7 @@
+{
+  "expected_side_one_terastallized": true,
+  "fixture_id": "gen9-tera-transition-v1",
+  "schema_version": 1,
+  "side_one_choice": "tackle-tera",
+  "side_two_choice": "tackle"
+}

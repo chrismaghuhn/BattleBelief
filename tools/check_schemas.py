@@ -41,6 +41,9 @@ from tools.canonicalize_manifest import canonicalize, manifest_digest  # noqa: E
 EXAMPLE_SCHEMA_MAP = {
     "dataset-manifest.example.json": "dataset-manifest.schema.json",
     "engine-capability.example.json": "engine-capability.schema.json",
+    "engine-source.example.json": "engine-source.schema.json",
+    "engine-build.example.json": "engine-build.schema.json",
+    "engine-artifact-index.example.json": "engine-artifact-index.schema.json",
     "evaluation-claim.example.json": "evaluation-claim.schema.json",
     "ruleset-snapshot.example.json": "ruleset-snapshot.schema.json",
     "search-contract.example.json": "search-contract.schema.json",
@@ -62,6 +65,9 @@ EXAMPLE_SCHEMA_MAP = {
 }
 
 INVALID_EXAMPLE_SCHEMA_MAP = {
+    "invalid/engine-source.invalid.json": "engine-source.schema.json",
+    "invalid/engine-build.invalid.json": "engine-build.schema.json",
+    "invalid/engine-artifact-index.invalid.json": "engine-artifact-index.schema.json",
     "invalid/showdown-oracle-source.invalid.json": "showdown-oracle-source.schema.json",
     "invalid/showdown-oracle-build.invalid.json": "showdown-oracle-build.schema.json",
 }

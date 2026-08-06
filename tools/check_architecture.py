@@ -51,6 +51,7 @@ class ImportRule:
     forbidden_roots: frozenset[str]
     runtime_allowlist: tuple[str, ...] = ()
     forbidden_calls: frozenset[tuple[str, str]] = frozenset()
+    native_import_prefix: str | None = None
 
     @classmethod
     def core(cls) -> ImportRule:
@@ -58,7 +59,11 @@ class ImportRule:
 
     @classmethod
     def runtime(cls) -> ImportRule:
-        return cls(RUNTIME_FORBIDDEN, forbidden_calls=PROCESS_SPAWN_CALLS)
+        return cls(
+            RUNTIME_FORBIDDEN,
+            forbidden_calls=PROCESS_SPAWN_CALLS,
+            native_import_prefix="battlebelief_runtime/adapters/poke_engine/",
+        )
 
     @classmethod
     def lab(cls) -> ImportRule:
@@ -73,6 +78,41 @@ def imported_modules(path: Path) -> list[tuple[int, str]]:
             modules.extend((node.lineno, alias.name) for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             modules.append((node.lineno, node.module))
+    return modules
+
+
+def dynamically_imported_modules(path: Path) -> list[tuple[int, str]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    module_aliases: set[str] = set()
+    function_aliases: set[str] = {"__import__"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "importlib":
+                    module_aliases.add(alias.asname or "importlib")
+                elif alias.name.startswith("importlib.") and alias.asname is None:
+                    module_aliases.add("importlib")
+        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            for alias in node.names:
+                if alias.name == "import_module":
+                    function_aliases.add(alias.asname or alias.name)
+    modules: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        argument = node.args[0]
+        if not isinstance(argument, ast.Constant) or not isinstance(argument.value, str):
+            continue
+        is_dynamic_import = (
+            isinstance(node.func, ast.Name) and node.func.id in function_aliases
+        ) or (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "import_module"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in module_aliases
+        )
+        if is_dynamic_import:
+            modules.append((node.lineno, argument.value))
     return modules
 
 
@@ -112,9 +152,16 @@ def has_root(module: str, root: str) -> bool:
 def scan_tree(root: Path, rule: ImportRule) -> list[str]:
     errors: list[str] = []
     for path in sorted(root.rglob("*.py")):
-        for line, module in imported_modules(path):
+        relative_path = path.relative_to(root).as_posix()
+        modules = [*imported_modules(path), *dynamically_imported_modules(path)]
+        for line, module in modules:
             if any(has_root(module, forbidden) for forbidden in rule.forbidden_roots):
                 errors.append(f"{path.relative_to(root)}:{line}: forbidden import {module}")
+            if has_root(module, "poke_engine") and (
+                rule.native_import_prefix is None
+                or not relative_path.startswith(rule.native_import_prefix)
+            ):
+                errors.append(f"{path.relative_to(root)}:{line}: forbidden native import {module}")
             if (
                 has_root(module, "battlebelief_runtime")
                 and rule.runtime_allowlist

@@ -10,7 +10,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 EXAMPLE_SCHEMA_MAP = {
     "dataset-manifest.example.json": "dataset-manifest.schema.json",
+    "engine-artifact-index.example.json": "engine-artifact-index.schema.json",
+    "engine-build.example.json": "engine-build.schema.json",
     "engine-capability.example.json": "engine-capability.schema.json",
+    "engine-source.example.json": "engine-source.schema.json",
     "evaluation-claim.example.json": "evaluation-claim.schema.json",
     "ruleset-snapshot.example.json": "ruleset-snapshot.schema.json",
     "search-contract.example.json": "search-contract.schema.json",

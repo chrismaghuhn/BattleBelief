@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 16
+version: 17
 applies_to:
   - manifests
   - release
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-05
+last_reviewed: 2026-08-06
 ---
 
 # Manifest-Schemas, Canonicalization und Evolution
@@ -44,6 +44,9 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Synthetisches Fixture-Manifest v2/v3 | [`synthetic-fixture-manifest.schema.json`](../../schemas/manifests/synthetic-fixture-manifest.schema.json), [`synthetic-fixture-manifest-v3.schema.json`](../../schemas/manifests/synthetic-fixture-manifest-v3.schema.json) |
 | Lokale Showdown-Oracle-Quelle v1 | [`showdown-oracle-source.schema.json`](../../schemas/manifests/showdown-oracle-source.schema.json) |
 | Lokaler Showdown-Oracle-Build v1 | [`showdown-oracle-build.schema.json`](../../schemas/manifests/showdown-oracle-build.schema.json) |
+| `poke-engine`-Quelle v1 | [`engine-source.schema.json`](../../schemas/manifests/engine-source.schema.json) |
+| `poke-engine`-Build v1 | [`engine-build.schema.json`](../../schemas/manifests/engine-build.schema.json) |
+| `poke-engine`-Artifact-Index v1 | [`engine-artifact-index.schema.json`](../../schemas/manifests/engine-artifact-index.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
 | Decision-Record-Payload v2 | [`decision-record-payload-v2.schema.json`](../../schemas/records/decision-record-payload-v2.schema.json) |
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
@@ -62,6 +65,15 @@ solcher Build-Record bindet außerdem die vollständige plattformspezifische
 `node_modules`-Runtime-Closure als kanonische reguläre Dateien und relative
 POSIX-Symlinks sowie den unveränderbaren Extractor-Digest. Er ist weder eine
 Engine-Qualifikation noch ein Parity- oder Strength-Claim.
+
+Die drei `poke-engine`-Manifeste binden die vollständige Git-Blob-Closure der
+ausgewählten Quelle, genau eine kontrollierte Wheel-Build-Zelle und den
+geschlossenen Sechs-Zellen-Artifact-Index. Ein Build-Manifest bewahrt neben dem
+Digest des ursprünglichen Wheel-`RECORD` auch dessen normalisierte Einträge.
+Die Installationsprüfung verifiziert diese Einträge erneut und erlaubt nur die
+dokumentierten, vom Installer erzeugten Metadaten-Sidecars. Diese Manifeste
+sind reine Herkunfts- und Health-Evidenz; sie qualifizieren weder Mechanics-
+Parität noch Search-Eligibility oder Search-Stärke.
 
 ## Canonicalization und Hashbildung
 

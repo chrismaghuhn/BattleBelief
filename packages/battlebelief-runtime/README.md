@@ -46,3 +46,22 @@ outcome (win, loss, or tie) without a primary error returns `0`.
 
 Public-network execution is not part of automated validation and requires
 separate maintainer approval with a dedicated test account.
+
+## Optional native search artifact
+
+The `search` extra installs one digest-bound `poke-engine` wheel from the
+project's immutable Task-25 artifact prerelease on a matching CPython 3.12,
+3.13, or 3.14 Linux x86-64 or Windows AMD64 environment. It is not a base
+dependency, and the Runtime never invokes Cargo, maturin, or another source
+build fallback.
+
+The qualified install smoke uses `pip --no-compile --only-binary=:all:`.
+Disabling bytecode compilation prevents an installer-generated, unhashed
+`.pyc` from entering the RECORD closure; the Runtime rejects such unverifiable
+installation additions.
+
+Package installation is not a support claim. Before importing the native
+extension, the Runtime accepts only the six artifact-index cells: Ubuntu 24.04
+x86-64 and Windows Server 2025 x86-64 for those three CPython versions. Other
+Linux distributions fail closed as `unsupported_environment` even if their
+packaging markers allowed the wheel to be installed.

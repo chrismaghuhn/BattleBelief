@@ -1,6 +1,15 @@
 version = 1
 revision = 3
 requires-python = ">=3.12, <3.15"
+resolution-markers = [
+    "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(implementation_name != 'cpython' and sys_platform == 'linux') or (implementation_name != 'cpython' and sys_platform == 'win32') or (platform_machine != 'x86_64' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')",
+]
 
 [manifest]
 members = [
@@ -110,11 +119,28 @@ dependencies = [
     { name = "websockets" },
 ]
 
+[package.optional-dependencies]
+search = [
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl" }, marker = "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-none-win_amd64.whl" }, marker = "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'" },
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-cp313-linux_x86_64.whl" }, marker = "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-none-win_amd64.whl" }, marker = "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'" },
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-cp314-linux_x86_64.whl" }, marker = "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "poke-engine", version = "0.0.48", source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-none-win_amd64.whl" }, marker = "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "battlebelief-core", editable = "packages/battlebelief-core" },
+    { name = "poke-engine", marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl" },
+    { name = "poke-engine", marker = "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-cp313-linux_x86_64.whl" },
+    { name = "poke-engine", marker = "python_full_version == '3.14.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-cp314-linux_x86_64.whl" },
+    { name = "poke-engine", marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-none-win_amd64.whl" },
+    { name = "poke-engine", marker = "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-none-win_amd64.whl" },
+    { name = "poke-engine", marker = "python_full_version == '3.14.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'search'", url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-none-win_amd64.whl" },
     { name = "websockets", specifier = "==16.1.1" },
 ]
+provides-extras = ["search"]
 
 [[package]]
 name = "battlebelief-workspace"
@@ -407,6 +433,72 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl" }
+resolution-markers = [
+    "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl", hash = "sha256:2f566d435691873278203e6e13ea0247a4c3d675735d2f9e7117812b32988c84" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-none-win_amd64.whl" }
+resolution-markers = [
+    "python_full_version < '3.13' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp312-none-win_amd64.whl", hash = "sha256:0678b467f6109dcbff9612bfdff765a0faab825068e5c456d1250f0aac05c05a" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-cp313-linux_x86_64.whl" }
+resolution-markers = [
+    "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-cp313-linux_x86_64.whl", hash = "sha256:0426bae7bada0d8ed576bde65381eb726c9bbecd28d59f491b0c4409420f5131" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-none-win_amd64.whl" }
+resolution-markers = [
+    "python_full_version == '3.13.*' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp313-none-win_amd64.whl", hash = "sha256:8828c4730a70940a09d49d6e5d776f18dddf6b16e726dffdbe86e7499dd5c653" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-cp314-linux_x86_64.whl" }
+resolution-markers = [
+    "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-cp314-linux_x86_64.whl", hash = "sha256:895b44026f5eed78223a37e568e0d426ee7e6e98178abf333298364bca46a8e0" },
+]
+
+[[package]]
+name = "poke-engine"
+version = "0.0.48"
+source = { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-none-win_amd64.whl" }
+resolution-markers = [
+    "python_full_version >= '3.14' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+wheels = [
+    { url = "https://github.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0.0.48-bcf13823-v1/poke_engine-0.0.48-cp314-none-win_amd64.whl", hash = "sha256:11502307bc5ecd37e351c47317f401a1cdbe50f013c8defbe88262238a74352e" },
 ]
 
 [[package]]

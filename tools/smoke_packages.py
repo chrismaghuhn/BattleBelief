@@ -181,7 +181,18 @@ def main() -> int:
             runtime_env,
             dist,
             f"battlebelief-runtime=={VERSION}",
-            [],
+            [
+                [
+                    str(environment_python(runtime_env)),
+                    "-c",
+                    "import importlib.util, sys; "
+                    "import battlebelief_runtime; "
+                    "from battlebelief_runtime.public_api import runtime_status; "
+                    "assert importlib.util.find_spec('poke_engine') is None; "
+                    "assert 'poke_engine' not in sys.modules; "
+                    "assert runtime_status() == " + repr(RUNTIME_STATUS),
+                ]
+            ],
         )
         runtime_entrypoint = str(entrypoint(runtime_env, "battlebelief"))
         assert_output([runtime_entrypoint, "--version"], VERSION)

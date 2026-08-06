@@ -1,0 +1,38 @@
+{
+  "fixture_id": "gen9-transition-v1",
+  "schema_version": 1,
+  "side_one_choice": "tackle",
+  "side_two_choice": "tackle",
+  "state": {
+    "side_one": {
+      "pokemon": {
+        "ability": "none",
+        "base_types": ["electric", "typeless"],
+        "hp": 120,
+        "id": "pikachu",
+        "maxhp": 120,
+        "moves": [
+          {"disabled": false, "id": "tackle", "pp": 32},
+          {"disabled": false, "id": "protect", "pp": 16}
+        ],
+        "tera_type": "electric",
+        "types": ["electric", "typeless"]
+      }
+    },
+    "side_two": {
+      "pokemon": {
+        "ability": "none",
+        "base_types": ["normal", "typeless"],
+        "hp": 140,
+        "id": "eevee",
+        "maxhp": 140,
+        "moves": [
+          {"disabled": false, "id": "tackle", "pp": 32},
+          {"disabled": false, "id": "protect", "pp": 16}
+        ],
+        "tera_type": "normal",
+        "types": ["normal", "typeless"]
+      }
+    }
+  }
+}

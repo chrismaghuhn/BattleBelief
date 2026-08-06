@@ -62,6 +62,11 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
         "dependency-review",
         "protocol-smoke",
         "safety-smoke",
+        "artifact-build",
+        "artifact-candidate-index",
+        "artifact-stage-sentinel",
+        "artifact-index",
+        "runtime-search-smoke",
     ]
     assert "permissions" not in gate
     assert all("uses" not in step for step in gate["steps"])
@@ -72,6 +77,11 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert '"$PROTOCOL_SMOKE"' in gate_step["run"]
     assert '"$SAFETY_SMOKE"' in gate_step["run"]
     assert '"$ORACLE_SMOKE"' in gate_step["run"]
+    assert '"$ARTIFACT_BUILD"' in gate_step["run"]
+    assert '"$ARTIFACT_CANDIDATE_INDEX"' in gate_step["run"]
+    assert '"$ARTIFACT_STAGE_SENTINEL"' in gate_step["run"]
+    assert '"$ARTIFACT_INDEX"' in gate_step["run"]
+    assert '"$RUNTIME_SEARCH_SMOKE"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
 
 
@@ -83,6 +93,178 @@ def test_repository_contracts_run_m15_semantic_validation() -> None:
         if step.get("name") == "Repository contracts"
     )
     assert "uv run python tools/validate_m15_registration.py" in contracts_step["run"]
+
+
+def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
+    workflow = _load_workflow()
+    steps = workflow["jobs"]["artifact-build"]["steps"]
+    diagnostic = next(
+        step for step in steps if step.get("name") == "Diagnose a failed Maturin build"
+    )
+    assert diagnostic["if"] == "failure() && steps.engine_build.outcome == 'failure'"
+    assert diagnostic["shell"] == "pwsh"
+    assert diagnostic["env"] == {
+        "CARGO_HOME": "${{ runner.temp }}/battlebelief-engine-cargo-home",
+        "CARGO_INCREMENTAL": "false",
+        "CARGO_NET_OFFLINE": "true",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "PYTHONUTF8": "1",
+        "SOURCE_DATE_EPOCH": "1784471591",
+    }
+    command = diagnostic["run"]
+    assert (
+        '"--manifest-path", "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"' in command
+    )
+    assert '"--interpreter", "${{ env.ENGINE_PYTHON }}"' in command
+    assert '"--target", "${{ env.ENGINE_TARGET }}"' in command
+    assert "--no-default-features" in command
+    assert "poke-engine/gen9,poke-engine/terastallization" in command
+    assert "Get-ChildItem Env:" not in command
+
+
+def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_literals() -> None:
+    workflow = _load_workflow()
+    for job_name in ("artifact-stage-sentinel", "runtime-search-smoke"):
+        steps = workflow["jobs"][job_name]["steps"]
+        install = next(
+            step
+            for step in steps
+            if step.get("name")
+            in {
+                "Create isolated sentinel environment",
+                "Create isolated Runtime search environment",
+            }
+        )
+        command = install["run"]
+        assert "battlebelief_core-0.2.0" not in command
+        assert "battlebelief_runtime-0.2.0" not in command
+        assert "Get-ChildItem" in command
+        assert "battlebelief_core-*.whl" in command
+        assert "battlebelief_runtime-*.whl" in command
+
+
+def test_runtime_search_smoke_installs_only_published_binary_wheels() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["runtime-search-smoke"]
+
+    assert job["name"] == "runtime-search-smoke-${{ matrix.os }}-py${{ matrix.python }}"
+    assert job["needs"] == ["artifact-index"]
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["strategy"]["matrix"]["include"] == [
+        {"os": os_name, "python": python_version}
+        for os_name in ("ubuntu-24.04", "windows-2025")
+        for python_version in ("3.12", "3.13", "3.14")
+    ]
+
+    steps = job["steps"]
+    install = next(
+        step for step in steps if step.get("name") == "Create isolated Runtime search environment"
+    )
+    assert install["shell"] == "pwsh"
+    assert "-m pip install" in install["run"]
+    assert "--only-binary=:all:" in install["run"]
+    assert "--no-compile" in install["run"]
+    assert "--no-deps" not in install["run"]
+    assert "+ '[search]'" in install["run"]
+    assert "poke_engine-0.0.48" not in install["run"]
+
+    sentinel = next(
+        step for step in steps if step.get("name") == "Run published Runtime search sentinel twice"
+    )
+    assert "run_gen9_sentinel" in sentinel["run"]
+    assert "status == 'available'" in sentinel["run"]
+    assert "--staged-wheel" not in sentinel["run"]
+    assert "engine-publication-bundle" not in str(job)
+
+
+def test_artifact_index_closes_the_immutable_published_release() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["artifact-index"]
+
+    assert job["needs"] == ["artifact-build", "artifact-stage-sentinel"]
+    assert job["permissions"] == {"contents": "read"}
+    assert job["env"] == {
+        "ENGINE_RELEASE_TAG": "engine-poke-engine-v0.0.48-bcf13823-v1",
+        "ENGINE_RELEASE_COMMIT": "78ec24dec65582bafb5cb89f00ecb4f8b8a23d8c",
+    }
+
+    steps = job["steps"]
+    release = next(
+        step for step in steps if step.get("name") == "Download immutable release closure"
+    )
+    assert release["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert "X-GitHub-Api-Version: 2026-03-10" in release["run"]
+    assert "gh release download" in release["run"]
+
+    verify = next(step for step in steps if step.get("name") == "Verify immutable release closure")
+    assert "tools/verify_published_engine_release.py" in verify["run"]
+    assert "--release-metadata" in verify["run"]
+    assert "--bundle-root" in verify["run"]
+    assert "--manifest-root artifacts/gen9ou/m2/engine" in verify["run"]
+    assert '--expected-tag "${{ env.ENGINE_RELEASE_TAG }}"' in verify["run"]
+    schema = next(step for step in steps if step.get("name") == "Validate published index schema")
+    assert "engine-artifact-index.schema.json" in schema["run"]
+    assert "publication/engine-artifact-index.json" in schema["run"]
+
+    published_wheels = next(
+        step for step in steps if "publication/engine-build-*.json" in step.get("run", "")
+    )
+    assert published_wheels["name"] == (
+        "Verify every published wheel manifest without native import"
+    )
+    assert "tools/verify_published_wheel_manifest.py" in published_wheels["run"]
+    assert "tools/verify_poke_engine_artifact.py" not in published_wheels["run"]
+    assert "--checkout" not in published_wheels["run"]
+
+    staged_wheel = next(
+        step
+        for step in workflow["jobs"]["artifact-build"]["steps"]
+        if step.get("name") == "Verify the staged wheel without import"
+    )
+    assert "tools/verify_poke_engine_artifact.py" in staged_wheel["run"]
+    assert "--checkout" in staged_wheel["run"]
+
+    commands = "\n".join(step.get("run", "") for step in steps)
+    assert "git rev-parse" in commands
+    assert "ENGINE_RELEASE_COMMIT" in commands
+    assert (
+        'test "$(git rev-parse "${ENGINE_RELEASE_TAG}^{commit}")" = "$ENGINE_RELEASE_COMMIT"'
+        in commands
+    )
+    assert 'git diff --exit-code "$ENGINE_RELEASE_COMMIT" -- tools/build_poke_engine_wheel.py' in (
+        commands
+    )
+    assert 'git show "${ENGINE_RELEASE_COMMIT}:.github/workflows/pr.yml"' in commands
+    assert "current['jobs']['artifact-build'] == released['jobs']['artifact-build']" in commands
+    assert "Create available artifact index" not in commands
+    assert 'cmp "$committed"' not in commands
+
+
+def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:
+    workflow = _load_workflow()
+    steps = workflow["jobs"]["artifact-build"]["steps"]
+    linux_resolution = next(
+        step for step in steps if step.get("name") == "Resolve controlled executables on Linux"
+    )
+    windows_resolution = next(
+        step for step in steps if step.get("name") == "Resolve controlled executables on Windows"
+    )
+    assert "rustup which --toolchain 1.83.0 rustc" in linux_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 cargo" in linux_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 rustc" in windows_resolution["run"]
+    assert "rustup which --toolchain 1.83.0 cargo" in windows_resolution["run"]
+    fetch = next(
+        step
+        for step in steps
+        if step.get("name") == "Fetch locked Cargo dependencies before the offline build"
+    )
+    assert fetch["shell"] == "pwsh"
+    assert fetch["env"] == {"CARGO_HOME": "${{ runner.temp }}/battlebelief-engine-cargo-home"}
+    assert fetch["run"] == (
+        '& "${{ env.ENGINE_CARGO }}" fetch --locked --manifest-path '
+        '"${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
+    )
+    assert "--target" not in fetch["run"]
 
 
 def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
