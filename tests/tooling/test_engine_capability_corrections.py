@@ -374,7 +374,13 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
                     "status": "exact",
                     "evidence_refs": references,
                     "approximation": None,
-                }
+                },
+                {
+                    "capability_id": "gen9.transition.order.speed",
+                    "status": "unsupported",
+                    "evidence_refs": [],
+                    "approximation": None,
+                },
             ],
         }
     )
@@ -388,6 +394,15 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
             json.dumps(document), encoding="utf-8"
         )
     assert _validate_engine_capability_artifacts(tmp_path) == []
+
+    unsupported_evidence = copy.deepcopy(evidence_documents[0])
+    unsupported_evidence["evidence_id"] = "unsupported-capability-evidence"
+    unsupported_evidence["capability_id"] = "gen9.transition.order.speed"
+    unsupported_path = evidence_dir / "unsupported-capability-evidence.json"
+    unsupported_path.write_text(json.dumps(unsupported_evidence), encoding="utf-8")
+    errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("unreferenced evidence" in error for error in errors)
+    unsupported_path.unlink()
 
     missing_path = evidence_dir / f"{evidence_documents[0]['evidence_id']}.json"
     missing_path.unlink()
