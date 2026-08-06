@@ -336,8 +336,18 @@ def test_installed_file_read_error_is_sanitized(
     assert str(caught.value) == "artifact_mismatch"
 
 
+@pytest.mark.parametrize(
+    ("error_type", "private_detail"),
+    [
+        pytest.param(PermissionError, "private expected package resolution detail", id="os-error"),
+        pytest.param(RuntimeError, "private loop path", id="symlink-loop"),
+    ],
+)
 def test_expected_package_resolution_error_is_sanitized_after_origin_resolution(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error_type: type[OSError] | type[RuntimeError],
+    private_detail: str,
 ) -> None:
     data_root, site, distribution, index_digest = _installation(tmp_path)
     monkeypatch.syspath_prepend(str(site))
@@ -363,7 +373,7 @@ def test_expected_package_resolution_error_is_sanitized_after_origin_resolution(
         if post_spec and path == expected_package:
             expected_resolve_count += 1
             if expected_resolve_count == 2:
-                raise PermissionError("private expected package resolution detail")
+                raise error_type(private_detail)
         return original_resolve(path, strict=strict)
 
     monkeypatch.setattr(importlib.machinery.PathFinder, "find_spec", mark_post_spec)
@@ -380,7 +390,7 @@ def test_expected_package_resolution_error_is_sanitized_after_origin_resolution(
     assert expected_resolve_count == 2
     assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
     assert str(caught.value) == "artifact_mismatch"
-    assert "private expected package resolution detail" not in str(caught.value)
+    assert private_detail not in str(caught.value)
     assert str(tmp_path) not in str(caught.value)
 
 

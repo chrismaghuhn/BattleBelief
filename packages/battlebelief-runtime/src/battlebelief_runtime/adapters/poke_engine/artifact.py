@@ -586,7 +586,7 @@ def _verify_installation(
     try:
         origin = Path(spec.origin).resolve(strict=True)
         expected_origin = expected_package.resolve(strict=True)
-    except OSError:
+    except (OSError, RuntimeError):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     if origin != expected_origin:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
