@@ -3,7 +3,7 @@
   "evidence_id": "schema-fixture-evidence",
   "catalog_id": "gen9ou-engine-capabilities",
   "catalog_version": "1",
-  "catalog_digest": "sha256:ee1d5db2d489035440602acb8decd87c727dfa04ddad832cdb9e208d8fb0d258",
+  "catalog_digest": "sha256:526a324392d38e30ca7880bb035bb725cc5daf1821dc839cc9611bc0ba9a96e9",
   "capability_id": "gen9.legality.move.selection",
   "environment_cell_id": "schema-fixture-cell",
   "engine_source_manifest_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
