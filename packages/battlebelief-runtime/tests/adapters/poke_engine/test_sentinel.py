@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sys
 from unittest.mock import patch
 
+from battlebelief_runtime.adapters.poke_engine.artifact import RuntimeEnvironment
 from battlebelief_runtime.adapters.poke_engine.errors import (
     EngineArtifactError,
     EngineFailureClass,
@@ -21,3 +23,43 @@ def test_public_sentinel_maps_artifact_failure_to_sanitized_availability() -> No
         "identity": None,
         "failure_class": "extra_unavailable",
     }
+
+
+def test_unsupported_environment_stops_before_distribution_probe_or_build() -> None:
+    unsupported = RuntimeEnvironment(
+        operating_system="unsupported",
+        architecture="x86_64",
+        python_tag="cp314",
+        abi_tag="cp314",
+        platform_tag="linux_x86_64",
+    )
+    sys.modules.pop("poke_engine", None)
+
+    with (
+        patch(
+            "battlebelief_runtime.adapters.poke_engine.artifact.current_environment",
+            return_value=unsupported,
+        ),
+        patch(
+            "battlebelief_runtime.adapters.poke_engine.artifact.importlib.metadata.distribution",
+            side_effect=AssertionError("distribution lookup must not run"),
+        ) as distribution,
+        patch(
+            "battlebelief_runtime.adapters.poke_engine.native_probe.run_native_probe",
+            side_effect=AssertionError("native probe must not run"),
+        ) as native_probe,
+        patch(
+            "subprocess.run", side_effect=AssertionError("build fallback must not run")
+        ) as process,
+    ):
+        availability = run_gen9_sentinel()
+
+    assert availability.to_dict() == {
+        "status": "unsupported_environment",
+        "identity": None,
+        "failure_class": "unsupported_environment",
+    }
+    distribution.assert_not_called()
+    native_probe.assert_not_called()
+    process.assert_not_called()
+    assert "poke_engine" not in sys.modules

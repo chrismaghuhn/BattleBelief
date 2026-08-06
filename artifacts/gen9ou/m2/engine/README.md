@@ -25,6 +25,14 @@ small one-thread native MCTS health call. These records do not qualify
 Pokémon Showdown mechanics parity, BattleBelief mapping, search eligibility,
 deadline safety, or search strength.
 
-The release target is the immutable prerelease tag
-`engine-poke-engine-v0.0.48-bcf13823-v1`. The exact release URL and final
-digests are bound by `engine-artifact-index.json` after the Publication Gate.
+The six-cell bundle is published as the immutable prerelease
+[`engine-poke-engine-v0.0.48-bcf13823-v1`](https://github.com/chrismaghuhn/BattleBelief/releases/tag/engine-poke-engine-v0.0.48-bcf13823-v1).
+The exact asset URLs and final digests are bound by
+`engine-artifact-index.json`, whose canonical manifest digest is
+`sha256:5b4f59849ff01c6024b7b5f78f95f5457f3f69030bf46822d9f323c911908d98`.
+
+Linux wheel markers can identify CPython, `linux`, and `x86_64`, but not
+Ubuntu 24.04. Installation on another x86-64 Linux distribution therefore
+does not imply support. The Runtime verifies the actual OS release before any
+native import and returns `unsupported_environment` outside the six indexed
+cells, without a search call or local build fallback.

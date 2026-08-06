@@ -33,7 +33,9 @@ _EXPECTED_CELLS = frozenset(
 )
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _DEFAULT_DATA_ROOT = Path(__file__).with_name("data")
-EXPECTED_ARTIFACT_INDEX_DIGEST: str | None = None
+EXPECTED_ARTIFACT_INDEX_DIGEST = (
+    "sha256:5b4f59849ff01c6024b7b5f78f95f5457f3f69030bf46822d9f323c911908d98"
+)
 
 
 @dataclass(frozen=True, slots=True)

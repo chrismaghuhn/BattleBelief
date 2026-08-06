@@ -482,24 +482,21 @@ jobs:
           retention-days: 7
           compression-level: 0
 
-  artifact-final-sentinel:
-    name: engine-final-sentinel-${{ matrix.os }}-py${{ matrix.python }}
+  runtime-search-smoke:
+    name: runtime-search-smoke-${{ matrix.os }}-py${{ matrix.python }}
     needs: [artifact-index]
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, abi_tag: cp312, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, abi_tag: cp313, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, abi_tag: cp314, platform_tag: linux_x86_64}
-          - {os: windows-2025, python: "3.12", python_tag: cp312, abi_tag: none, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.13", python_tag: cp313, abi_tag: none, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.14", python_tag: cp314, abi_tag: none, platform_tag: win_amd64}
+          - {os: ubuntu-24.04, python: "3.12"}
+          - {os: ubuntu-24.04, python: "3.13"}
+          - {os: ubuntu-24.04, python: "3.14"}
+          - {os: windows-2025, python: "3.12"}
+          - {os: windows-2025, python: "3.13"}
+          - {os: windows-2025, python: "3.14"}
     runs-on: ${{ matrix.os }}
-    env:
-      ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
-      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.abi_tag }}-${{ matrix.platform_tag }}.whl
     steps:
       - name: Check out BattleBelief
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -511,43 +508,47 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install uv
         run: python -m pip install uv==0.12.0
-      - name: Download publication bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: engine-publication-bundle
-          path: ${{ runner.temp }}/publication
       - name: Build base BattleBelief wheels
         run: |
           uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
           uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
-      - name: Create isolated final sentinel environment
+      - name: Create isolated Runtime search environment
         shell: pwsh
         env:
           BATTLEBELIEF_WHEEL_ROOT: ${{ runner.temp }}/battlebelief-wheels
-          ENGINE_WHEEL_PATH: ${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}
-          SENTINEL_ENV: ${{ runner.temp }}/sentinel-env
+          SEARCH_ENV: ${{ runner.temp }}/runtime-search-env
         run: |
           $coreWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_core-*.whl' -File)
           $runtimeWheels = @(Get-ChildItem -LiteralPath $env:BATTLEBELIEF_WHEEL_ROOT -Filter 'battlebelief_runtime-*.whl' -File)
           if ($coreWheels.Count -ne 1 -or $runtimeWheels.Count -ne 1) { throw 'BattleBelief wheel closure differs' }
-          uv venv $env:SENTINEL_ENV --python python --seed
-          uv pip install --python $env:SENTINEL_ENV --only-binary :all: rfc8785==0.1.4
-          uv pip install --python $env:SENTINEL_ENV --no-deps $coreWheels[0].FullName $runtimeWheels[0].FullName $env:ENGINE_WHEEL_PATH
+          $runtimeRequirement = $runtimeWheels[0].FullName + '[search]'
+          uv venv $env:SEARCH_ENV --python python --seed
+          $searchPython = if ($env:RUNNER_OS -eq 'Windows') {
+            Join-Path $env:SEARCH_ENV 'Scripts/python.exe'
+          } else {
+            Join-Path $env:SEARCH_ENV 'bin/python'
+          }
+          & $searchPython -m pip install --disable-pip-version-check --no-compile --only-binary=:all: $coreWheels[0].FullName $runtimeRequirement
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime search installation failed' }
       - name: Resolve isolated Python on Linux
         if: runner.os != 'Windows'
         shell: bash
-        run: echo "SENTINEL_PYTHON=${RUNNER_TEMP}/sentinel-env/bin/python" >> "$GITHUB_ENV"
+        run: echo "SEARCH_PYTHON=${RUNNER_TEMP}/runtime-search-env/bin/python" >> "$GITHUB_ENV"
       - name: Resolve isolated Python on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          "SENTINEL_PYTHON=$env:RUNNER_TEMP\sentinel-env\Scripts\python.exe" >> $env:GITHUB_ENV
-      - name: Run final sentinel twice
+          "SEARCH_PYTHON=$env:RUNNER_TEMP\runtime-search-env\Scripts\python.exe" >> $env:GITHUB_ENV
+      - name: Run published Runtime search sentinel twice
         shell: pwsh
         run: |
-          & "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/publication" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/final-sentinel-1.json"
-          & "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/publication" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/publication/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/final-sentinel-2.json"
-          & "${{ env.SENTINEL_PYTHON }}" -c "from pathlib import Path; assert Path(r'${{ runner.temp }}/final-sentinel-1.json').read_bytes() == Path(r'${{ runner.temp }}/final-sentinel-2.json').read_bytes()"
+          $sentinel = "import json,sys; from pathlib import Path; from battlebelief_runtime.public_api import run_gen9_sentinel; availability=run_gen9_sentinel(); assert availability.status == 'available', availability.to_dict(); Path(sys.argv[1]).write_text(json.dumps(availability.to_dict(), sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8', newline='\n')"
+          & "${{ env.SEARCH_PYTHON }}" -c $sentinel "${{ runner.temp }}/runtime-search-sentinel-1.json"
+          if ($LASTEXITCODE -ne 0) { throw 'First Runtime search sentinel failed' }
+          & "${{ env.SEARCH_PYTHON }}" -c $sentinel "${{ runner.temp }}/runtime-search-sentinel-2.json"
+          if ($LASTEXITCODE -ne 0) { throw 'Second Runtime search sentinel failed' }
+          & "${{ env.SEARCH_PYTHON }}" -c "from pathlib import Path; assert Path(r'${{ runner.temp }}/runtime-search-sentinel-1.json').read_bytes() == Path(r'${{ runner.temp }}/runtime-search-sentinel-2.json').read_bytes()"
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime search sentinel evidence differs' }
 
   dependency-review:
     name: dependency-review
@@ -574,7 +575,7 @@ jobs:
       - artifact-candidate-index
       - artifact-stage-sentinel
       - artifact-index
-      - artifact-final-sentinel
+      - runtime-search-smoke
     runs-on: ubuntu-24.04
     steps:
       - name: Evaluate required jobs
@@ -589,10 +590,10 @@ jobs:
           ARTIFACT_CANDIDATE_INDEX: ${{ needs['artifact-candidate-index'].result }}
           ARTIFACT_STAGE_SENTINEL: ${{ needs['artifact-stage-sentinel'].result }}
           ARTIFACT_INDEX: ${{ needs['artifact-index'].result }}
-          ARTIFACT_FINAL_SENTINEL: ${{ needs['artifact-final-sentinel'].result }}
+          RUNTIME_SEARCH_SMOKE: ${{ needs['runtime-search-smoke'].result }}
         shell: bash
         run: |
-          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE" "$ARTIFACT_BUILD" "$ARTIFACT_CANDIDATE_INDEX" "$ARTIFACT_STAGE_SENTINEL" "$ARTIFACT_INDEX" "$ARTIFACT_FINAL_SENTINEL"; do
+          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE" "$ARTIFACT_BUILD" "$ARTIFACT_CANDIDATE_INDEX" "$ARTIFACT_STAGE_SENTINEL" "$ARTIFACT_INDEX" "$RUNTIME_SEARCH_SMOKE"; do
             case "$result" in
               success|skipped) ;;
               *) echo "Required job result: $result"; exit 1 ;;

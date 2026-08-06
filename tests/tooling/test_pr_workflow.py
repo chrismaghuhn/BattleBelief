@@ -66,7 +66,7 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
         "artifact-candidate-index",
         "artifact-stage-sentinel",
         "artifact-index",
-        "artifact-final-sentinel",
+        "runtime-search-smoke",
     ]
     assert "permissions" not in gate
     assert all("uses" not in step for step in gate["steps"])
@@ -81,7 +81,7 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert '"$ARTIFACT_CANDIDATE_INDEX"' in gate_step["run"]
     assert '"$ARTIFACT_STAGE_SENTINEL"' in gate_step["run"]
     assert '"$ARTIFACT_INDEX"' in gate_step["run"]
-    assert '"$ARTIFACT_FINAL_SENTINEL"' in gate_step["run"]
+    assert '"$RUNTIME_SEARCH_SMOKE"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
 
 
@@ -124,7 +124,7 @@ def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
 
 def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_literals() -> None:
     workflow = _load_workflow()
-    for job_name in ("artifact-stage-sentinel", "artifact-final-sentinel"):
+    for job_name in ("artifact-stage-sentinel", "runtime-search-smoke"):
         steps = workflow["jobs"][job_name]["steps"]
         install = next(
             step
@@ -132,7 +132,7 @@ def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_li
             if step.get("name")
             in {
                 "Create isolated sentinel environment",
-                "Create isolated final sentinel environment",
+                "Create isolated Runtime search environment",
             }
         )
         command = install["run"]
@@ -141,6 +141,40 @@ def test_engine_sentinel_install_resolves_battlebelief_wheels_without_version_li
         assert "Get-ChildItem" in command
         assert "battlebelief_core-*.whl" in command
         assert "battlebelief_runtime-*.whl" in command
+
+
+def test_runtime_search_smoke_installs_only_published_binary_wheels() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["runtime-search-smoke"]
+
+    assert job["name"] == "runtime-search-smoke-${{ matrix.os }}-py${{ matrix.python }}"
+    assert job["needs"] == ["artifact-index"]
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["strategy"]["matrix"]["include"] == [
+        {"os": os_name, "python": python_version}
+        for os_name in ("ubuntu-24.04", "windows-2025")
+        for python_version in ("3.12", "3.13", "3.14")
+    ]
+
+    steps = job["steps"]
+    install = next(
+        step for step in steps if step.get("name") == "Create isolated Runtime search environment"
+    )
+    assert install["shell"] == "pwsh"
+    assert "-m pip install" in install["run"]
+    assert "--only-binary=:all:" in install["run"]
+    assert "--no-compile" in install["run"]
+    assert "--no-deps" not in install["run"]
+    assert "+ '[search]'" in install["run"]
+    assert "poke_engine-0.0.48" not in install["run"]
+
+    sentinel = next(
+        step for step in steps if step.get("name") == "Run published Runtime search sentinel twice"
+    )
+    assert "run_gen9_sentinel" in sentinel["run"]
+    assert "status == 'available'" in sentinel["run"]
+    assert "--staged-wheel" not in sentinel["run"]
+    assert "engine-publication-bundle" not in str(job)
 
 
 def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:
