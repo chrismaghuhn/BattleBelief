@@ -14,12 +14,12 @@ def _identity() -> EngineArtifactIdentity:
         source_manifest_digest=digest,
         build_manifest_digest=digest,
         wheel_sha256=digest,
-        wheel_filename="poke_engine-0.0.48-cp314-cp314-win_amd64.whl",
+        wheel_filename="poke_engine-0.0.48-cp314-none-win_amd64.whl",
         cell_id="windows-2025-x86_64-cp314",
         distribution_name="poke-engine",
         distribution_version="0.0.48",
         python_tag="cp314",
-        abi_tag="cp314",
+        abi_tag="none",
         platform_tag="win_amd64",
         operating_system="windows-2025",
         architecture="x86_64",
@@ -29,7 +29,7 @@ def _identity() -> EngineArtifactIdentity:
         release_asset_url=(
             "https://github.com/chrismaghuhn/BattleBelief/releases/download/"
             "engine-poke-engine-v0.0.48-bcf13823-v1/"
-            "poke_engine-0.0.48-cp314-cp314-win_amd64.whl"
+            "poke_engine-0.0.48-cp314-none-win_amd64.whl"
         ),
         sentinel_fixture_digest=digest,
         sentinel_result_digest=digest,

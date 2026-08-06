@@ -182,7 +182,7 @@ def test_build_argv_is_locked_feature_explicit_and_platform_truthful() -> None:
 def _write_fixture_wheel(path: Path, *, version: str = "0.0.48") -> None:
     dist_info = "poke_engine-0.0.48.dist-info"
     metadata = f"Metadata-Version: 2.1\nName: poke-engine\nVersion: {version}\n".encode()
-    wheel_metadata = b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-cp314-win_amd64\n"
+    wheel_metadata = b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-none-win_amd64\n"
 
     def record_hash(content: bytes) -> str:
         encoded = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).decode().rstrip("=")
@@ -200,19 +200,19 @@ def _write_fixture_wheel(path: Path, *, version: str = "0.0.48") -> None:
 
 
 def test_wheel_inspection_binds_distribution_metadata_and_record(tmp_path: Path) -> None:
-    wheel_path = tmp_path / "poke_engine-0.0.48-cp314-cp314-win_amd64.whl"
+    wheel_path = tmp_path / "poke_engine-0.0.48-cp314-none-win_amd64.whl"
     _write_fixture_wheel(wheel_path)
 
     wheel = inspect_wheel(
         wheel_path,
         python_tag="cp314",
-        abi_tag="cp314",
+        abi_tag="none",
         platform_tag="win_amd64",
     )
 
     assert wheel["filename"] == wheel_path.name
     assert wheel["root_is_purelib"] is False
-    assert wheel["tags"] == ["cp314-cp314-win_amd64"]
+    assert wheel["tags"] == ["cp314-none-win_amd64"]
     assert wheel["sha256"].startswith("sha256:")
     assert wheel["metadata_sha256"].startswith("sha256:")
     assert wheel["wheel_metadata_sha256"].startswith("sha256:")
@@ -221,21 +221,21 @@ def test_wheel_inspection_binds_distribution_metadata_and_record(tmp_path: Path)
         "path": "poke_engine-0.0.48.dist-info/WHEEL",
         "sha256": "sha256:"
         + hashlib.sha256(
-            b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-cp314-win_amd64\n"
+            b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-none-win_amd64\n"
         ).hexdigest(),
-        "size": 69,
+        "size": 68,
     }
 
 
 def test_wheel_inspection_rejects_wrong_distribution_version(tmp_path: Path) -> None:
-    wheel_path = tmp_path / "poke_engine-0.0.48-cp314-cp314-win_amd64.whl"
+    wheel_path = tmp_path / "poke_engine-0.0.48-cp314-none-win_amd64.whl"
     _write_fixture_wheel(wheel_path, version="0.0.47")
 
     with pytest.raises(BuildPokeEngineError, match="wheel distribution identity differs"):
         inspect_wheel(
             wheel_path,
             python_tag="cp314",
-            abi_tag="cp314",
+            abi_tag="none",
             platform_tag="win_amd64",
         )
 
@@ -246,7 +246,7 @@ def test_build_manifest_binds_exact_cell_without_operational_paths() -> None:
         "commit": "bcf13823abc162a608e187b26bbf683f759f385e",
     }
     wheel = {
-        "filename": "poke_engine-0.0.48-cp314-cp314-win_amd64.whl",
+        "filename": "poke_engine-0.0.48-cp314-none-win_amd64.whl",
         "size": 123,
         "sha256": "sha256:" + "a" * 64,
         "metadata_sha256": "sha256:" + "b" * 64,
@@ -265,7 +265,7 @@ def test_build_manifest_binds_exact_cell_without_operational_paths() -> None:
             },
         ],
         "root_is_purelib": False,
-        "tags": ["cp314-cp314-win_amd64"],
+        "tags": ["cp314-none-win_amd64"],
     }
 
     manifest = create_build_manifest(
@@ -289,7 +289,7 @@ def test_build_manifest_binds_exact_cell_without_operational_paths() -> None:
         "implementation": "CPython",
         "version": "3.14.2",
         "python_tag": "cp314",
-        "abi_tag": "cp314",
+        "abi_tag": "none",
         "platform_tag": "win_amd64",
     }
     assert manifest["features"] == list(FEATURES)

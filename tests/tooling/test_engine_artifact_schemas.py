@@ -71,8 +71,9 @@ def _build_manifest(
     windows = operating_system == "windows-2025"
     target = "x86_64-pc-windows-msvc" if windows else "x86_64-unknown-linux-gnu"
     platform_tag = "win_amd64" if windows else "linux_x86_64"
+    abi_tag = "none" if windows else python_tag
     cell = f"{operating_system}-x86_64-{python_tag}"
-    filename = f"poke_engine-0.0.48-{python_tag}-{python_tag}-{platform_tag}.whl"
+    filename = f"poke_engine-0.0.48-{python_tag}-{abi_tag}-{platform_tag}.whl"
     return {
         "schema_version": 1,
         "schema_id": "urn:battlebelief:schema:manifest:engine-build:v1",
@@ -122,7 +123,7 @@ def _build_manifest(
             "implementation": "CPython",
             "version": f"{python_minor}.9",
             "python_tag": python_tag,
-            "abi_tag": python_tag,
+            "abi_tag": abi_tag,
             "platform_tag": platform_tag,
         },
         "distribution": {"name": "poke-engine", "version": "0.0.48"},
@@ -146,7 +147,7 @@ def _build_manifest(
                 },
             ],
             "root_is_purelib": False,
-            "tags": [f"{python_tag}-{python_tag}-{platform_tag}"],
+            "tags": [f"{python_tag}-{abi_tag}-{platform_tag}"],
         },
         "build_environment": {
             "allowlist": [

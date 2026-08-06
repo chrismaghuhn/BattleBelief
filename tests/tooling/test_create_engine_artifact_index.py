@@ -34,9 +34,11 @@ def _builds() -> list[dict[str, Any]]:
         windows = operating_system == "windows-2025"
         target = "x86_64-pc-windows-msvc" if windows else "x86_64-unknown-linux-gnu"
         platform = "win_amd64" if windows else "linux_x86_64"
+        abi = "none" if windows else None
         for minor in ("312", "313", "314"):
             cell_id = f"{operating_system}-x86_64-cp{minor}"
-            filename = f"poke_engine-0.0.48-cp{minor}-cp{minor}-{platform}.whl"
+            abi_tag = abi or f"cp{minor}"
+            filename = f"poke_engine-0.0.48-cp{minor}-{abi_tag}-{platform}.whl"
             builds.append(
                 {
                     "schema_version": 1,
@@ -55,7 +57,7 @@ def _builds() -> list[dict[str, Any]]:
                         "implementation": "CPython",
                         "version": f"3.{minor[-2:]}.1",
                         "python_tag": f"cp{minor}",
-                        "abi_tag": f"cp{minor}",
+                        "abi_tag": abi_tag,
                         "platform_tag": platform,
                     },
                     "distribution": {"name": "poke-engine", "version": "0.0.48"},

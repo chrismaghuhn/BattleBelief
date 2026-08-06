@@ -215,12 +215,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
-          - {os: windows-2025, python: "3.12", python_tag: cp312, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.13", python_tag: cp313, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.14", python_tag: cp314, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, abi_tag: cp312, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, abi_tag: cp313, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, abi_tag: cp314, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
     runs-on: ${{ matrix.os }}
     env:
       ENGINE_TARGET: ${{ matrix.target }}
@@ -293,7 +293,7 @@ jobs:
           }
           & "${{ env.ENGINE_MATURIN }}" @diagnosticArgs
       - name: Verify the staged wheel without import
-        run: uv run python tools/verify_poke_engine_artifact.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --wheel "${{ runner.temp }}/engine-wheel/poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl" --checkout "${{ runner.temp }}/poke-engine"
+        run: uv run python tools/verify_poke_engine_artifact.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --wheel "${{ runner.temp }}/engine-wheel/poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.abi_tag }}-${{ matrix.platform_tag }}.whl" --checkout "${{ runner.temp }}/poke-engine"
       - name: Stage the cell artifact
         run: uv run python -c "from pathlib import Path; import shutil; stage=Path(r'${{ runner.temp }}/engine-cell'); stage.mkdir(); shutil.copy2(Path(r'${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json'), stage); [shutil.copy2(path, stage) for path in Path(r'${{ runner.temp }}/engine-wheel').glob('*.whl')]"
       - name: Upload temporary cell artifact
@@ -348,16 +348,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, platform_tag: linux_x86_64}
-          - {os: windows-2025, python: "3.12", python_tag: cp312, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.13", python_tag: cp313, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.14", python_tag: cp314, platform_tag: win_amd64}
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, abi_tag: cp312, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, abi_tag: cp313, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, abi_tag: cp314, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, abi_tag: none, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, abi_tag: none, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, abi_tag: none, platform_tag: win_amd64}
     runs-on: ${{ matrix.os }}
     env:
       ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
-      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl
+      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.abi_tag }}-${{ matrix.platform_tag }}.whl
     steps:
       - name: Check out BattleBelief
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -475,16 +475,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, platform_tag: linux_x86_64}
-          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, platform_tag: linux_x86_64}
-          - {os: windows-2025, python: "3.12", python_tag: cp312, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.13", python_tag: cp313, platform_tag: win_amd64}
-          - {os: windows-2025, python: "3.14", python_tag: cp314, platform_tag: win_amd64}
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, abi_tag: cp312, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, abi_tag: cp313, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, abi_tag: cp314, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, abi_tag: none, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, abi_tag: none, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, abi_tag: none, platform_tag: win_amd64}
     runs-on: ${{ matrix.os }}
     env:
       ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
-      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl
+      ENGINE_WHEEL: poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.abi_tag }}-${{ matrix.platform_tag }}.whl
     steps:
       - name: Check out BattleBelief
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

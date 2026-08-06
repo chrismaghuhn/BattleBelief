@@ -23,7 +23,7 @@ DIGEST = "sha256:" + "a" * 64
 FEATURES = ["poke-engine/gen9", "poke-engine/terastallization"]
 RELEASE_TAG = "engine-poke-engine-v0.0.48-bcf13823-v1"
 CELL_ID = "windows-2025-x86_64-cp314"
-WHEEL = "poke_engine-0.0.48-cp314-cp314-win_amd64.whl"
+WHEEL = "poke_engine-0.0.48-cp314-none-win_amd64.whl"
 
 
 def _sha256(data: bytes) -> str:
@@ -39,7 +39,7 @@ def _environment() -> RuntimeEnvironment:
         operating_system="windows-2025",
         architecture="x86_64",
         python_tag="cp314",
-        abi_tag="cp314",
+        abi_tag="none",
         platform_tag="win_amd64",
     )
 
@@ -74,7 +74,7 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
     _write_canonical(source_path, source)
 
     metadata_bytes = b"Metadata-Version: 2.1\nName: poke-engine\nVersion: 0.0.48\n"
-    wheel_bytes = b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-cp314-win_amd64\n"
+    wheel_bytes = b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-none-win_amd64\n"
     direct_url_bytes = canonicalize(
         {
             "archive_info": {"hash": "sha256=" + "a" * 64},
@@ -154,7 +154,7 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
             "implementation": "CPython",
             "version": "3.14.2",
             "python_tag": "cp314",
-            "abi_tag": "cp314",
+            "abi_tag": "none",
             "platform_tag": "win_amd64",
         },
         "distribution": {"name": "poke-engine", "version": "0.0.48"},
@@ -176,7 +176,7 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
             ]
             + [{"path": record_relative, "sha256": None, "size": None}],
             "root_is_purelib": False,
-            "tags": ["cp314-cp314-win_amd64"],
+            "tags": ["cp314-none-win_amd64"],
         },
         "build_environment": {
             "allowlist": [
@@ -196,7 +196,8 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
     def cell(operating_system: str, python_tag: str) -> dict[str, object]:
         windows = operating_system == "windows-2025"
         platform_tag = "win_amd64" if windows else "linux_x86_64"
-        filename = f"poke_engine-0.0.48-{python_tag}-{python_tag}-{platform_tag}.whl"
+        abi_tag = "none" if windows else python_tag
+        filename = f"poke_engine-0.0.48-{python_tag}-{abi_tag}-{platform_tag}.whl"
         cell_id = f"{operating_system}-x86_64-{python_tag}"
         return {
             "cell_id": cell_id,
@@ -208,7 +209,7 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
             "distribution_name": "poke-engine",
             "distribution_version": "0.0.48",
             "python_tag": python_tag,
-            "abi_tag": python_tag,
+            "abi_tag": abi_tag,
             "platform_tag": platform_tag,
             "operating_system": operating_system,
             "architecture": "x86_64",

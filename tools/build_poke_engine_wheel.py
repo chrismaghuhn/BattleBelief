@@ -531,8 +531,9 @@ def _python_tags(python_version: str, target_triple: str) -> tuple[str, str, str
     if match is None:
         _fail("Python version is outside the approved matrix")
     python_tag = f"cp3{match.group(1)}"
-    platform_tag = "linux_x86_64" if target_triple == "x86_64-unknown-linux-gnu" else "win_amd64"
-    return python_tag, python_tag, platform_tag
+    if target_triple == "x86_64-unknown-linux-gnu":
+        return python_tag, python_tag, "linux_x86_64"
+    return python_tag, "none", "win_amd64"
 
 
 def create_build_manifest(

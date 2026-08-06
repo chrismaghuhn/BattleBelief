@@ -87,7 +87,7 @@
         "implementation": { "const": "CPython" },
         "version": { "type": "string", "pattern": "^3\\.(?:12|13|14)\\.[0-9]+$" },
         "python_tag": { "enum": ["cp312", "cp313", "cp314"] },
-        "abi_tag": { "enum": ["cp312", "cp313", "cp314"] },
+        "abi_tag": { "enum": ["cp312", "cp313", "cp314", "none"] },
         "platform_tag": { "enum": ["linux_x86_64", "win_amd64"] }
       }
     },
@@ -105,7 +105,7 @@
       "additionalProperties": false,
       "required": ["filename", "size", "sha256", "metadata_sha256", "wheel_metadata_sha256", "record_sha256", "record_entries", "root_is_purelib", "tags"],
       "properties": {
-        "filename": { "type": "string", "pattern": "^poke_engine-0\\.0\\.48-cp(?:312|313|314)-cp(?:312|313|314)-(?:linux_x86_64|win_amd64)\\.whl$" },
+        "filename": { "type": "string", "pattern": "^poke_engine-0\\.0\\.48-(?:cp(?:312|313|314)-cp(?:312|313|314)-linux_x86_64|cp(?:312|313|314)-none-win_amd64)\\.whl$" },
         "size": { "type": "integer", "minimum": 1 },
         "sha256": { "$ref": "#/$defs/sha256" },
         "metadata_sha256": { "$ref": "#/$defs/sha256" },
@@ -131,7 +131,7 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^cp(?:312|313|314)-cp(?:312|313|314)-(?:linux_x86_64|win_amd64)$" }
+          "items": { "type": "string", "pattern": "^(?:cp(?:312|313|314)-cp(?:312|313|314)-linux_x86_64|cp(?:312|313|314)-none-win_amd64)$" }
         }
       }
     },

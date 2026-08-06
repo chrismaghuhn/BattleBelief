@@ -111,18 +111,21 @@ def current_environment() -> RuntimeEnvironment:
         operating_system = (
             "windows-2025" if "server" in edition and build >= 26100 else "unsupported"
         )
+        abi_tag = "none"
         platform_tag = "win_amd64"
     elif sys.platform == "linux":
         operating_system = _linux_operating_system()
+        abi_tag = python_tag
         platform_tag = "linux_x86_64"
     else:
         operating_system = "unsupported"
+        abi_tag = "unsupported"
         platform_tag = "unsupported"
     return RuntimeEnvironment(
         operating_system=operating_system,
         architecture=architecture,
         python_tag=python_tag,
-        abi_tag=python_tag,
+        abi_tag=abi_tag,
         platform_tag=platform_tag,
     )
 
