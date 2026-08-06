@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import dataclasses
+import json
+from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_core.domain.engine_capabilities import (
@@ -16,6 +19,12 @@ from battlebelief_core.domain.engine_capabilities import (
     EngineCapabilityManifest,
     EngineEnvironmentBinding,
 )
+
+ROOT = Path(__file__).resolve().parents[4]
+
+
+def _document(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _digest(letter: str) -> str:
@@ -264,6 +273,50 @@ class TestCapabilityClaims:
 
         with pytest.raises(ValueError):
             CapabilityApproximation(**values)
+
+    @pytest.mark.parametrize("maximum", ["0", "0.5", "0.25", "1", "1.5", "10.01"])
+    def test_approximation_accepts_canonical_nonnegative_decimals(self, maximum: str) -> None:
+        CapabilityApproximation(
+            metric_id="absolute-error",
+            maximum=maximum,
+            unit_id="hp",
+            condition_id="fixed-corpus",
+        )
+        schema = _document(ROOT / "schemas/manifests/engine-capability-v2.schema.json")
+        assert (
+            list(
+                Draft202012Validator(
+                    schema["$defs"]["approximation"]["properties"]["maximum"]
+                ).iter_errors(maximum)
+            )
+            == []
+        )
+
+    @pytest.mark.parametrize(
+        "maximum",
+        ["00", ".5", "00.5", "0.0", "0.50", "1.0", "-0.5", "1e-3"],
+    )
+    def test_approximation_rejects_noncanonical_decimals_in_core_and_schema(
+        self, maximum: str
+    ) -> None:
+        values = {
+            "metric_id": "absolute-error",
+            "maximum": maximum,
+            "unit_id": "hp",
+            "condition_id": "fixed-corpus",
+        }
+        with pytest.raises(ValueError, match="canonical non-negative decimal"):
+            CapabilityApproximation(**values)
+
+        schema = _document(
+            Path(__file__).resolve().parents[4]
+            / "schemas/manifests/engine-capability-v2.schema.json"
+        )
+        assert list(
+            Draft202012Validator(
+                schema["$defs"]["approximation"]["properties"]["maximum"]
+            ).iter_errors(maximum)
+        )
 
     def test_rejects_evidence_for_another_engine_environment(self) -> None:
         catalog = _catalog()

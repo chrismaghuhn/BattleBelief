@@ -20,7 +20,7 @@ _SCHEMA_ID_RE = re.compile(
 )
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _FORMAT = "gen9ou"
-_CANONICAL_DECIMAL_RE = re.compile(r"^(?:0|[1-9][0-9]*(?:\.[0-9]*[1-9])?)$")
+_CANONICAL_DECIMAL_RE = re.compile(r"^(?:0|0\.[0-9]*[1-9]|[1-9][0-9]*(?:\.[0-9]*[1-9])?)$")
 
 
 def _nonempty(value: object, name: str) -> str:

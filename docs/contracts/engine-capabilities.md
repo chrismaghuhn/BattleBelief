@@ -63,7 +63,9 @@ complete evidence matrix over every bound environment cell.
 must never be interpreted as `exact`.
 
 Qualifying claims bind the engine source, artifact index, every build/wheel
-cell, all five `transition_adapter_*` identities, oracle source/build, ruleset,
+cell, `transition_adapter_id`, `transition_adapter_version`,
+`transition_adapter_source_digest`, `transition_model_contract_digest`, and
+`transition_adapter_conformance_digest`, plus oracle source/build, ruleset,
 corpus, runner and classifier source, result schema, and result digest. An
 inline evidence reference additionally binds its `evidence_id`, canonical
 complete-document `evidence_digest`, capability ID, catalog ID/version/digest,
@@ -105,7 +107,9 @@ Changes to a private prepared world do not alter that root digest.
 
 `backend_identity_digest` is the canonical closure over the engine source
 manifest, selected engine build manifest, artifact index, selected environment
-cell and wheel, plus all five `transition_adapter_*` fields. It is not the
+cell and wheel, plus `transition_adapter_id`, `transition_adapter_version`,
+`transition_adapter_source_digest`, `transition_model_contract_digest`, and
+`transition_adapter_conformance_digest`. It is not the
 Task25 sentinel adapter identity: the Task25 sentinel remains only a private
 artifact health probe and cannot supply a transition adapter binding.
 
