@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "schema_id": "urn:battlebelief:schema:manifest:engine-source:v1",
+  "manifest_id": "poke-engine-source-bcf13823",
+  "repository_url": "https://github.com/pmariglia/poke-engine",
+  "commit": "bcf13823abc162a608e187b26bbf683f759f385e",
+  "observed_tag": "v0.0.48",
+  "tag_peeled_commit": "bcf13823abc162a608e187b26bbf683f759f385e",
+  "git_tree_oid": "74d10964d7470b2b9d92ba734550825388178d2d",
+  "retrieved_on": "2026-08-06",
+  "license": {
+    "spdx_id": "MIT",
+    "path": "LICENSE",
+    "size": 1072,
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "source_scope": "full_git_tree",
+  "source_files": [
+    {
+      "path": "../Cargo.lock",
+      "git_mode": "100644",
+      "size": 8,
+      "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "path": "LICENSE",
+      "git_mode": "100644",
+      "size": 1072,
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "source_tree_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "source_file_count": 2,
+  "cargo_lock": {
+    "path": "Cargo.lock",
+    "size": 8,
+    "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "workspace_members": [
+    "poke-engine-py",
+    "poke-engine-tests"
+  ],
+  "submodules": {
+    "present": false,
+    "entries": []
+  },
+  "clean_tree": true,
+  "canonicalization_profile": "rfc8785-jcs-v1"
+}

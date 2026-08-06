@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "schema_id": "urn:battlebelief:schema:manifest:engine-build:v1",
+  "manifest_id": "poke-engine-build-ubuntu-24.04-x86_64-cp312",
+  "cell_id": "ubuntu-24.04-x86_64-cp312",
+  "source_schema_id": "urn:battlebelief:schema:manifest:engine-source:v1",
+  "source_manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "rust_toolchain": "1.83.0-x86_64-unknown-linux-gnu",
+  "rustc_vv": "rustc 1.83.0 (90b35a623 2024-11-26)\nbinary: rustc\ncommit-hash: 90b35a6239c3d8bdabc530a6a0816f7ff89a0aaf\ncommit-date: 2024-11-26\nhost: x86_64-unknown-linux-gnu\nrelease: 1.83.0\nLLVM version: 19.1.1",
+  "cargo_version": "cargo 1.83.0 (5ffbef321 2024-10-29)",
+  "rustup_components": [
+    "cargo",
+    "rust-std",
+    "rustc"
+  ],
+  "rust_targets": [
+    "x86_64-unknown-linux-gnu"
+  ],
+  "maturin_version": "1.7.1",
+  "build_backend": "maturin",
+  "build_argv": [
+    "maturin",
+    "build",
+    "--release",
+    "--strip",
+    "--locked",
+    "--manifest-path",
+    "poke-engine-py/Cargo.toml",
+    "--no-default-features",
+    "--features",
+    "poke-engine/gen9,poke-engine/terastallization",
+    "--interpreter",
+    "python",
+    "--target",
+    "x86_64-unknown-linux-gnu",
+    "--compatibility",
+    "linux",
+    "--out",
+    "wheelhouse"
+  ],
+  "locked": true,
+  "no_default_features": true,
+  "features": [
+    "poke-engine/gen4",
+    "poke-engine/gen9"
+  ],
+  "target_triple": "x86_64-unknown-linux-gnu",
+  "operating_system": "ubuntu-24.04",
+  "architecture": "x86_64",
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.9",
+    "python_tag": "cp312",
+    "abi_tag": "cp312",
+    "platform_tag": "linux_x86_64"
+  },
+  "distribution": {
+    "name": "poke-engine",
+    "version": "0.0.48"
+  },
+  "wheel": {
+    "filename": "poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl",
+    "size": 123456,
+    "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "metadata_sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "wheel_metadata_sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "record_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "record_entries": [
+      {
+        "path": "poke_engine/__init__.py",
+        "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "size": 8
+      },
+      {
+        "path": "poke_engine-0.0.48.dist-info/RECORD",
+        "sha256": null,
+        "size": null
+      }
+    ],
+    "root_is_purelib": false,
+    "tags": [
+      "cp312-cp312-linux_x86_64"
+    ]
+  },
+  "build_environment": {
+    "allowlist": [
+      {
+        "name": "CARGO_INCREMENTAL",
+        "value": "false"
+      },
+      {
+        "name": "CARGO_NET_OFFLINE",
+        "value": "true"
+      },
+      {
+        "name": "CARGO_PROFILE_RELEASE_DEBUG",
+        "value": "0"
+      },
+      {
+        "name": "PYTHONUTF8",
+        "value": "1"
+      },
+      {
+        "name": "SOURCE_DATE_EPOCH",
+        "value": "1784471591"
+      }
+    ]
+  },
+  "adapter_version": "battlebelief-poke-engine-v1",
+  "canonicalization_profile": "rfc8785-jcs-v1"
+}

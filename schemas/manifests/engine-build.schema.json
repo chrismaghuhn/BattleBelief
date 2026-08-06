@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:engine-build:v1",
+  "title": "BattleBelief poke-engine build manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "manifest_id",
+    "cell_id",
+    "source_schema_id",
+    "source_manifest_digest",
+    "rust_toolchain",
+    "rustc_vv",
+    "cargo_version",
+    "rustup_components",
+    "rust_targets",
+    "maturin_version",
+    "build_backend",
+    "build_argv",
+    "locked",
+    "no_default_features",
+    "features",
+    "target_triple",
+    "operating_system",
+    "architecture",
+    "python",
+    "distribution",
+    "wheel",
+    "build_environment",
+    "adapter_version",
+    "canonicalization_profile"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": { "const": "urn:battlebelief:schema:manifest:engine-build:v1" },
+    "manifest_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+    "cell_id": { "$ref": "#/$defs/cell_id" },
+    "source_schema_id": { "const": "urn:battlebelief:schema:manifest:engine-source:v1" },
+    "source_manifest_digest": { "$ref": "#/$defs/sha256" },
+    "rust_toolchain": {
+      "type": "string",
+      "pattern": "^1\\.83\\.0-(?:x86_64-unknown-linux-gnu|x86_64-pc-windows-msvc)$"
+    },
+    "rustc_vv": { "type": "string", "minLength": 1 },
+    "cargo_version": { "type": "string", "pattern": "^cargo 1\\.83\\.0 \\([0-9a-f]+ 2024-10-29\\)$" },
+    "rustup_components": {
+      "type": "array",
+      "const": ["cargo", "rust-std", "rustc"]
+    },
+    "rust_targets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/target_triple" }
+    },
+    "maturin_version": { "const": "1.7.1" },
+    "build_backend": { "const": "maturin" },
+    "build_argv": {
+      "type": "array",
+      "minItems": 16,
+      "uniqueItems": false,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+      },
+      "allOf": [
+        { "contains": { "const": "--strip" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "--locked" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "--no-default-features" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "poke-engine/gen9,poke-engine/terastallization" }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "locked": { "const": true },
+    "no_default_features": { "const": true },
+    "features": { "type": "array", "const": ["poke-engine/gen9", "poke-engine/terastallization"] },
+    "target_triple": { "$ref": "#/$defs/target_triple" },
+    "operating_system": { "enum": ["ubuntu-24.04", "windows-2025"] },
+    "architecture": { "const": "x86_64" },
+    "python": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version", "python_tag", "abi_tag", "platform_tag"],
+      "properties": {
+        "implementation": { "const": "CPython" },
+        "version": { "type": "string", "pattern": "^3\\.(?:12|13|14)\\.[0-9]+$" },
+        "python_tag": { "enum": ["cp312", "cp313", "cp314"] },
+        "abi_tag": { "enum": ["cp312", "cp313", "cp314"] },
+        "platform_tag": { "enum": ["linux_x86_64", "win_amd64"] }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "poke-engine" },
+        "version": { "const": "0.0.48" }
+      }
+    },
+    "wheel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "size", "sha256", "metadata_sha256", "wheel_metadata_sha256", "record_sha256", "record_entries", "root_is_purelib", "tags"],
+      "properties": {
+        "filename": { "type": "string", "pattern": "^poke_engine-0\\.0\\.48-cp(?:312|313|314)-cp(?:312|313|314)-(?:linux_x86_64|win_amd64)\\.whl$" },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "metadata_sha256": { "$ref": "#/$defs/sha256" },
+        "wheel_metadata_sha256": { "$ref": "#/$defs/sha256" },
+        "record_sha256": { "$ref": "#/$defs/sha256" },
+        "record_entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "size"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$" },
+              "sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+              "size": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] }
+            }
+          }
+        },
+        "root_is_purelib": { "const": false },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^cp(?:312|313|314)-cp(?:312|313|314)-(?:linux_x86_64|win_amd64)$" }
+        }
+      }
+    },
+    "build_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowlist"],
+      "properties": {
+        "allowlist": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "oneOf": [
+              { "const": { "name": "CARGO_INCREMENTAL", "value": "false" } },
+              { "const": { "name": "CARGO_NET_OFFLINE", "value": "true" } },
+              { "const": { "name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0" } },
+              { "const": { "name": "PYTHONUTF8", "value": "1" } },
+              { "const": { "name": "SOURCE_DATE_EPOCH", "value": "1784471591" } }
+            ]
+          }
+        }
+      }
+    },
+    "adapter_version": { "const": "battlebelief-poke-engine-v1" },
+    "canonicalization_profile": { "const": "rfc8785-jcs-v1" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "cell_id": { "type": "string", "pattern": "^(?:ubuntu-24\\.04|windows-2025)-x86_64-cp(?:312|313|314)$" },
+    "target_triple": { "enum": ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"] }
+  }
+}
