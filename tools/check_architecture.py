@@ -25,6 +25,8 @@ PROCESS_SPAWN_CALLS = frozenset(
         ("asyncio", "create_subprocess_exec"),
         ("asyncio", "create_subprocess_shell"),
         ("os", "popen"),
+        ("os", "posix_spawn"),
+        ("os", "posix_spawnp"),
         ("os", "spawnl"),
         ("os", "spawnle"),
         ("os", "spawnlp"),

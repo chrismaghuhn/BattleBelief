@@ -36,6 +36,8 @@ def test_runtime_cannot_import_process_primitives(tmp_path: Path) -> None:
         "from asyncio import create_subprocess_exec\ncreate_subprocess_exec('node')\n",
         "import os\nos.system('node')\n",
         "from os import system\nsystem('node')\n",
+        "import os\nos.posix_spawn('node', ['node'])\n",
+        "from os import posix_spawnp\nposix_spawnp('node', ['node'])\n",
     ),
 )
 def test_core_and_runtime_cannot_call_indirect_process_spawners(tmp_path: Path, body: str) -> None:
