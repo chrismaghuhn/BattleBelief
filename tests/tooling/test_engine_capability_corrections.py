@@ -9,6 +9,8 @@ import pytest
 from jsonschema import Draft202012Validator
 from tools.canonicalize_manifest import manifest_digest
 from tools.check_schemas import (
+    _validate_capability_catalog,
+    _validate_capability_catalog_contract_bindings,
     _validate_capability_evidence,
     _validate_capability_manifest,
     _validate_engine_capability_artifacts,
@@ -135,6 +137,41 @@ def test_evidence_context_rejects_catalog_and_capability_mismatches() -> None:
         assert _validate_capability_evidence(mismatched, catalog)
 
 
+def test_catalog_contract_bindings_resolve_exact_document_bytes(tmp_path: Path) -> None:
+    shutil.copytree(ROOT / "docs", tmp_path / "docs")
+    shutil.copytree(ROOT / "schemas/canonicalization", tmp_path / "schemas/canonicalization")
+    catalog = _document(CATALOG_PATH)
+
+    assert _validate_capability_catalog_contract_bindings(tmp_path, catalog) == []
+    for field, value in (
+        ("capability_contract_id", "other-contract"),
+        ("capability_contract_version", "999"),
+        ("capability_contract_digest", "sha256:" + "0" * 64),
+        ("canonicalization_contract_id", "other-profile"),
+        ("canonicalization_contract_version", "999"),
+        ("canonicalization_contract_digest", "sha256:" + "0" * 64),
+    ):
+        mismatched = copy.deepcopy(catalog)
+        mismatched[field] = value
+        assert _validate_capability_catalog_contract_bindings(tmp_path, mismatched)
+
+
+def test_catalog_semantics_reject_duplicate_capability_values_with_distinct_descriptions() -> None:
+    catalog = _document(CATALOG_PATH)
+    duplicate = copy.deepcopy(catalog)
+    duplicate["definitions"].append(
+        {
+            "value": duplicate["definitions"][-1]["value"],
+            "description": "A distinct description cannot create a second capability.",
+        }
+    )
+    schema = _document(SCHEMAS / "catalogs/engine-capability-catalog-v1.schema.json")
+
+    assert list(Draft202012Validator(schema).iter_errors(duplicate)) == []
+    _, errors = _validate_capability_catalog(duplicate)
+    assert errors
+
+
 def test_v2_digest_ignores_object_key_order_but_core_rejects_noncanonical_arrays() -> None:
     from battlebelief_core.domain.engine_capabilities import CapabilityCatalog
 
@@ -167,6 +204,7 @@ def test_capability_grammar_rejects_outside_three_to_eight_segments(value: str) 
 
 
 def test_task25_closure_rejects_stale_source_index_and_environment_cells(tmp_path: Path) -> None:
+    shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     artifact_root = tmp_path / "artifacts/gen9ou/m2"
     shutil.copytree(ROOT / "artifacts/gen9ou/m2/engine", artifact_root / "engine")
@@ -272,6 +310,7 @@ def test_evidence_reference_is_derived_from_the_complete_evidence_document() -> 
 
 def test_qualifying_manifest_requires_the_referenced_evidence_document(tmp_path: Path) -> None:
     artifact_root = tmp_path / "artifacts/gen9ou/m2"
+    shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     shutil.copytree(ROOT / "artifacts/gen9ou/m2/engine", artifact_root / "engine")
     shutil.copy2(CATALOG_PATH, artifact_root / CATALOG_PATH.name)

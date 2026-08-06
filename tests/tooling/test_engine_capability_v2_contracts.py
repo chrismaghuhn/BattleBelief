@@ -77,10 +77,10 @@ def test_v2_manifest_and_evidence_round_trip_to_stable_canonical_digests() -> No
     assert manifest_round_trip == manifest
     assert evidence_round_trip == evidence
     assert manifest_digest(manifest_round_trip) == (
-        "sha256:231464524db93c6b9fc91e16c694088518cda33b7342840d9a915eea6fcdd9fa"
+        "sha256:13d8395911b4ac430cbe77feb697b37fbca6691b7e15190a7226a57adde7e9cc"
     )
     assert manifest_digest(evidence_round_trip) == (
-        "sha256:8b42de351cb92cfe82f561a388a1b95f756d3e847138c2ef935b7c98e5db7594"
+        "sha256:1473a523c3550337f01671ea6063ca37657fd32291fef3fcd9c09b8818679e31"
     )
 
 
@@ -90,5 +90,5 @@ def test_v2_catalog_is_the_only_capability_id_authority() -> None:
     assert values == sorted(values)
     assert len(values) == 13
     assert manifest_digest(catalog) == (
-        "sha256:be94731f65e698899100fe38ca99b7a8f54c03a84aed87be32c13f143c1c5966"
+        "sha256:d212233e4ec403f2bd499b00f91900bd108daa115851ee19121854f5c2daadf7"
     )

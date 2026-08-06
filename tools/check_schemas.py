@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import re
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -161,12 +163,77 @@ RECORD_SCHEMA_NAMES = frozenset(
 
 CATALOG_SCHEMA_NAMES = frozenset({"engine-capability-catalog-v1.schema.json"})
 
+_CONTRACT_PATHS = {
+    "contract-engine-capabilities": Path("docs/contracts/engine-capabilities.md"),
+    "canonicalization-profile": Path("schemas/canonicalization/README.md"),
+}
+_FRONTMATTER_CONTRACT_ID = re.compile(r"^document_id: ([a-z][a-z0-9-]*)$", re.MULTILINE)
+_FRONTMATTER_CONTRACT_VERSION = re.compile(r"^version: ([1-9][0-9]*)$", re.MULTILINE)
+_PROFILE_CONTRACT_ID = re.compile(r"^Contract ID: `([a-z][a-z0-9-]*)`\s*$", re.MULTILINE)
+_PROFILE_CONTRACT_VERSION = re.compile(r"^Contract version: `([1-9][0-9]*)`\s*$", re.MULTILINE)
+
 
 def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
     if schema_name in CATALOG_SCHEMA_NAMES:
         return schema_root / "catalogs" / schema_name
     directory = "records" if schema_name in RECORD_SCHEMA_NAMES else "manifests"
     return schema_root / directory / schema_name
+
+
+def _validate_capability_catalog_contract_bindings(
+    root: Path, document: Mapping[str, object]
+) -> list[str]:
+    """Resolve the catalog's named contract bytes before trusting their digests."""
+
+    errors: list[str] = []
+    bindings = (
+        (
+            "capability",
+            "capability_contract_id",
+            "capability_contract_version",
+            "capability_contract_digest",
+            _FRONTMATTER_CONTRACT_ID,
+            _FRONTMATTER_CONTRACT_VERSION,
+        ),
+        (
+            "canonicalization",
+            "canonicalization_contract_id",
+            "canonicalization_contract_version",
+            "canonicalization_contract_digest",
+            _PROFILE_CONTRACT_ID,
+            _PROFILE_CONTRACT_VERSION,
+        ),
+    )
+    for name, id_field, version_field, digest_field, id_pattern, version_pattern in bindings:
+        contract_id = document.get(id_field)
+        version = document.get(version_field)
+        digest = document.get(digest_field)
+        if (
+            not isinstance(contract_id, str)
+            or not isinstance(version, str)
+            or not isinstance(digest, str)
+        ):
+            errors.append(f"{name} contract binding is incomplete")
+            continue
+        relative_path = _CONTRACT_PATHS.get(contract_id)
+        if relative_path is None:
+            errors.append(f"{name} contract ID is not resolvable")
+            continue
+        path = root / relative_path
+        if not path.is_file():
+            errors.append(f"{name} contract bytes are missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        resolved_id = id_pattern.search(text)
+        resolved_version = version_pattern.search(text)
+        if resolved_id is None or resolved_id.group(1) != contract_id:
+            errors.append(f"{name} contract ID does not match resolved bytes")
+        if resolved_version is None or resolved_version.group(1) != version:
+            errors.append(f"{name} contract version does not match resolved bytes")
+        actual_digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != actual_digest:
+            errors.append(f"{name} contract digest does not match resolved bytes")
+    return errors
 
 
 def _validate_capability_catalog(
@@ -324,17 +391,30 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     manifest_document = load_json_strict(manifest_path)
     source_document = load_json_strict(source_path)
     index_document = load_json_strict(index_path)
+    structural_errors: list[str] = []
     for path, schema_name, document in (
         (catalog_path, "engine-capability-catalog-v1.schema.json", catalog_document),
         (manifest_path, "engine-capability-v2.schema.json", manifest_document),
+        (source_path, "engine-source.schema.json", source_document),
+        (index_path, "engine-artifact-index.schema.json", index_document),
     ):
         schema = load_json_strict(_schema_path_for_example(schema_root, schema_name))
-        errors.extend(
+        structural_errors.extend(
             f"{path.relative_to(root)}: {schema_issue_summary(issue)}"
             for issue in Draft202012Validator(schema).iter_errors(document)
         )
+    errors.extend(structural_errors)
+    # Do not enter semantic/index traversal with documents that failed their
+    # structural contract; diagnostics must remain controlled rather than
+    # being replaced by a secondary KeyError.
+    if structural_errors:
+        return errors
     catalog, catalog_errors = _validate_capability_catalog(catalog_document)
     errors.extend(f"{catalog_path.relative_to(root)}: {error}" for error in catalog_errors)
+    errors.extend(
+        f"{catalog_path.relative_to(root)}: {error}"
+        for error in _validate_capability_catalog_contract_bindings(root, catalog_document)
+    )
     if catalog is not None:
         evidence_schema = load_json_strict(
             _schema_path_for_example(schema_root, "engine-capability-evidence.schema.json")

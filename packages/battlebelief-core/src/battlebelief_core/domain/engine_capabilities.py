@@ -94,7 +94,11 @@ class CapabilityCatalog:
     catalog_version: str
     generation: int
     format: str
+    capability_contract_id: str = field(repr=False)
+    capability_contract_version: str = field(repr=False)
     capability_contract_digest: str = field(repr=False)
+    canonicalization_contract_id: str = field(repr=False)
+    canonicalization_contract_version: str = field(repr=False)
     canonicalization_contract_digest: str = field(repr=False)
     catalog_digest: str = field(repr=False)
     definitions: tuple[CapabilityDefinition, ...] = ()
@@ -105,7 +109,11 @@ class CapabilityCatalog:
         _nonempty(self.catalog_version, "catalog_version")
         if type(self.generation) is not int or self.generation != 9 or self.format != _FORMAT:
             raise ValueError("catalog must be for Gen 9 OU")
+        _canonical_id(self.capability_contract_id, "capability_contract_id")
+        _nonempty(self.capability_contract_version, "capability_contract_version")
         _digest(self.capability_contract_digest, "capability_contract_digest")
+        _canonical_id(self.canonicalization_contract_id, "canonicalization_contract_id")
+        _nonempty(self.canonicalization_contract_version, "canonicalization_contract_version")
         _digest(self.canonicalization_contract_digest, "canonicalization_contract_digest")
         if (
             type(self.definitions) is not tuple
@@ -121,7 +129,11 @@ class CapabilityCatalog:
             self.catalog_version,
             self.generation,
             self.format,
+            self.capability_contract_id,
+            self.capability_contract_version,
             self.capability_contract_digest,
+            self.canonicalization_contract_id,
+            self.canonicalization_contract_version,
             self.canonicalization_contract_digest,
             self.definitions,
         )
@@ -135,7 +147,11 @@ class CapabilityCatalog:
         catalog_version: str,
         generation: int,
         format: str,
+        capability_contract_id: str,
+        capability_contract_version: str,
         capability_contract_digest: str,
+        canonicalization_contract_id: str,
+        canonicalization_contract_version: str,
         canonicalization_contract_digest: str,
         definitions: tuple[CapabilityDefinition, ...],
     ) -> str:
@@ -146,7 +162,11 @@ class CapabilityCatalog:
                 "catalog_version": catalog_version,
                 "generation": generation,
                 "format": format,
+                "capability_contract_id": capability_contract_id,
+                "capability_contract_version": capability_contract_version,
                 "capability_contract_digest": capability_contract_digest,
+                "canonicalization_contract_id": canonicalization_contract_id,
+                "canonicalization_contract_version": canonicalization_contract_version,
                 "canonicalization_contract_digest": canonicalization_contract_digest,
                 "definitions": [
                     {"value": definition.value, "description": definition.description}
@@ -161,7 +181,11 @@ class CapabilityCatalog:
         *,
         catalog_id: str,
         catalog_version: str,
+        capability_contract_id: str = "contract-engine-capabilities",
+        capability_contract_version: str = "2",
         capability_contract_digest: str,
+        canonicalization_contract_id: str = "canonicalization-profile",
+        canonicalization_contract_version: str = "1",
         canonicalization_contract_digest: str,
         definitions: tuple[CapabilityDefinition, ...],
     ) -> Self:
@@ -170,14 +194,22 @@ class CapabilityCatalog:
             catalog_version=catalog_version,
             generation=9,
             format=_FORMAT,
+            capability_contract_id=capability_contract_id,
+            capability_contract_version=capability_contract_version,
             capability_contract_digest=capability_contract_digest,
+            canonicalization_contract_id=canonicalization_contract_id,
+            canonicalization_contract_version=canonicalization_contract_version,
             canonicalization_contract_digest=canonicalization_contract_digest,
             catalog_digest=cls._derive_digest(
                 catalog_id,
                 catalog_version,
                 9,
                 _FORMAT,
+                capability_contract_id,
+                capability_contract_version,
                 capability_contract_digest,
+                canonicalization_contract_id,
+                canonicalization_contract_version,
                 canonicalization_contract_digest,
                 definitions,
             ),
@@ -191,7 +223,11 @@ class CapabilityCatalog:
             "catalog_version": self.catalog_version,
             "generation": self.generation,
             "format": self.format,
+            "capability_contract_id": self.capability_contract_id,
+            "capability_contract_version": self.capability_contract_version,
             "capability_contract_digest": self.capability_contract_digest,
+            "canonicalization_contract_id": self.canonicalization_contract_id,
+            "canonicalization_contract_version": self.canonicalization_contract_version,
             "canonicalization_contract_digest": self.canonicalization_contract_digest,
             "definitions": [
                 {"value": definition.value, "description": definition.description}
@@ -207,7 +243,11 @@ class CapabilityCatalog:
             "catalog_version",
             "generation",
             "format",
+            "capability_contract_id",
+            "capability_contract_version",
             "capability_contract_digest",
+            "canonicalization_contract_id",
+            "canonicalization_contract_version",
             "canonicalization_contract_digest",
             "definitions",
         }:
@@ -231,19 +271,31 @@ class CapabilityCatalog:
             raise ValueError("catalog document is not Gen 9 OU schema version 1")
         catalog_id = document["catalog_id"]
         catalog_version = document["catalog_version"]
+        capability_contract_id = document["capability_contract_id"]
+        capability_contract_version = document["capability_contract_version"]
         capability_contract_digest = document["capability_contract_digest"]
+        canonicalization_contract_id = document["canonicalization_contract_id"]
+        canonicalization_contract_version = document["canonicalization_contract_version"]
         canonicalization_contract_digest = document["canonicalization_contract_digest"]
         if not (
             type(catalog_id) is str
             and type(catalog_version) is str
+            and type(capability_contract_id) is str
+            and type(capability_contract_version) is str
             and type(capability_contract_digest) is str
+            and type(canonicalization_contract_id) is str
+            and type(canonicalization_contract_version) is str
             and type(canonicalization_contract_digest) is str
         ):
             raise ValueError("catalog document fields must be strings")
         return cls.create(
             catalog_id=catalog_id,
             catalog_version=catalog_version,
+            capability_contract_id=capability_contract_id,
+            capability_contract_version=capability_contract_version,
             capability_contract_digest=capability_contract_digest,
+            canonicalization_contract_id=canonicalization_contract_id,
+            canonicalization_contract_version=canonicalization_contract_version,
             canonicalization_contract_digest=canonicalization_contract_digest,
             definitions=tuple(definitions),
         )
@@ -554,6 +606,10 @@ class CapabilityClaim:
             self.approximation is not None
         ):
             raise ValueError("only bounded claims carry an explicit approximation")
+        if self.approximation is not None and not isinstance(
+            self.approximation, CapabilityApproximation
+        ):
+            raise ValueError("approximation must be a CapabilityApproximation")
 
 
 @dataclass(frozen=True, slots=True)

@@ -4,7 +4,11 @@
   "catalog_version": "1",
   "generation": 9,
   "format": "gen9ou",
+  "capability_contract_id": "contract-engine-capabilities",
+  "capability_contract_version": "2",
   "capability_contract_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "canonicalization_contract_id": "canonicalization-profile",
+  "canonicalization_contract_version": "1",
   "canonicalization_contract_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "definitions": [{"value": "gen10.legality.move.selection", "description": "Wrong generation."}]
 }

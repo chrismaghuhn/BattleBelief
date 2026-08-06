@@ -49,6 +49,10 @@ The machine-readable
 [`engine-capability-catalog-v1.json`](../../artifacts/gen9ou/m2/engine-capability-catalog-v1.json)
 is the sole Gen 9 OU taxonomy, including its complete approved ID set and
 normative descriptions. Other documents and code must not duplicate that list.
+The catalog binds both the capability contract and canonicalization profile by
+explicit contract ID, version, and exact UTF-8 digest. Repository validation
+resolves the declared ID/version to the authoritative bytes and rejects a
+missing, substituted, or digest-mismatched contract.
 
 The only statuses are `exact`, `bounded_approximation`, `unsupported`, and
 `unknown`. A missing claim is effectively `unknown`. `unsupported` and

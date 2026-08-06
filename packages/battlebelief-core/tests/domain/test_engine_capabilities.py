@@ -140,7 +140,7 @@ class TestCapabilityCatalog:
     )
     def test_rejects_noncanonical_capability_ids(self, value: str) -> None:
         with pytest.raises(ValueError):
-            CapabilityDefinition(value=value)
+            CapabilityDefinition(value=value, description="valid test definition")
 
     def test_rejects_foreign_ids_and_treats_missing_claim_as_unknown(self) -> None:
         catalog = _catalog()
@@ -228,6 +228,17 @@ class TestCapabilityClaims:
             CapabilityClaim(capability, CapabilityStatus.EXACT, evidence_refs=())
         with pytest.raises(ValueError):
             CapabilityClaim(capability, CapabilityStatus.UNSUPPORTED, evidence_refs=(evidence,))
+
+    def test_bounded_claim_rejects_a_non_approximation_object(self) -> None:
+        catalog = _catalog()
+
+        with pytest.raises(ValueError, match="CapabilityApproximation"):
+            CapabilityClaim(
+                catalog.id_for("gen9.battle.damage"),
+                CapabilityStatus.BOUNDED_APPROXIMATION,
+                evidence_refs=(_evidence(),),
+                approximation=object(),  # type: ignore[arg-type]
+            )
 
     @pytest.mark.parametrize(
         ("field", "value"),
