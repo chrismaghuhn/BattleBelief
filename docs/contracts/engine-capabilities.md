@@ -22,7 +22,7 @@ last_reviewed: 2026-08-06
 
 ### Roles
 
-- [Pokemon Showdown](https://github.com/smogon/pokemon-showdown) is the oracle.
+- [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) is the oracle.
 - [`poke-engine`](https://github.com/pmariglia/poke-engine) is a controlled
   surrogate simulator.
 - Legal/heuristic fallback is the live path whenever eligibility is absent.

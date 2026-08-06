@@ -3,7 +3,7 @@
   "manifest_id": "poke-engine-gen9ou-capabilities-v2-unqualified",
   "catalog_id": "gen9ou-engine-capabilities",
   "catalog_version": "1",
-  "catalog_digest": "sha256:d212233e4ec403f2bd499b00f91900bd108daa115851ee19121854f5c2daadf7",
+  "catalog_digest": "sha256:39abbf5ad0182f11742c2e705bb9359c179837720af33233c135ef627d29368f",
   "generation": 9,
   "format": "gen9ou",
   "engine_source_manifest_digest": "sha256:fa702701eddea5eef676a22a0d8a66ab30d081ed36fa0e557c05eca9b0a5a91c",
