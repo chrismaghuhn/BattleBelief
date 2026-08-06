@@ -12,6 +12,7 @@ import pytest
 from battlebelief_core.canonicalization import canonicalize, manifest_digest
 from battlebelief_runtime.adapters.poke_engine.artifact import (
     RuntimeEnvironment,
+    _verify_direct_url,
     verify_installed_artifact,
 )
 from battlebelief_runtime.adapters.poke_engine.errors import (
@@ -46,6 +47,38 @@ def _environment() -> RuntimeEnvironment:
 
 def _write_canonical(path: Path, document: dict[str, object]) -> None:
     path.write_bytes(canonicalize(document) + b"\n")
+
+
+def test_staged_wheel_direct_url_may_omit_an_archive_hash(tmp_path: Path) -> None:
+    staged_wheel = tmp_path / WHEEL
+    wheel_bytes = b"staged wheel bytes"
+    staged_wheel.write_bytes(wheel_bytes)
+    direct_url = canonicalize({"archive_info": {}, "url": staged_wheel.as_uri()})
+
+    _verify_direct_url(
+        direct_url,
+        cell={"wheel_sha256": _sha256(wheel_bytes)},
+        staged_wheel=staged_wheel,
+    )
+
+
+def test_release_direct_url_still_requires_the_bound_archive_hash() -> None:
+    direct_url = canonicalize(
+        {
+            "archive_info": {},
+            "url": f"https://github.com/example/release/{WHEEL}",
+        }
+    )
+
+    with pytest.raises(EngineArtifactError, match="artifact_mismatch"):
+        _verify_direct_url(
+            direct_url,
+            cell={
+                "wheel_sha256": DIGEST,
+                "release_asset_url": f"https://github.com/example/release/{WHEEL}",
+            },
+            staged_wheel=None,
+        )
 
 
 def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distribution, str]:
@@ -90,6 +123,10 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
         "poke_engine-0.0.48.dist-info/METADATA": metadata_bytes,
         "poke_engine-0.0.48.dist-info/WHEEL": wheel_bytes,
         "poke_engine-0.0.48.dist-info/direct_url.json": direct_url_bytes,
+        "poke_engine-0.0.48.dist-info/uv_cache.json": (
+            b'{"timestamp":{"secs_since_epoch":1786006259,"nanos_since_epoch":1},'
+            b'"commit":null,"tags":null,"env":{},"directories":{}}'
+        ),
     }
     for relative, content in installed.items():
         path = site / Path(relative)
@@ -172,7 +209,7 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
                     "size": len(content),
                 }
                 for relative, content in sorted(installed.items())
-                if not relative.endswith("direct_url.json")
+                if not relative.endswith(("direct_url.json", "uv_cache.json"))
             ]
             + [{"path": record_relative, "sha256": None, "size": None}],
             "root_is_purelib": False,

@@ -431,11 +431,12 @@ def _verify_direct_url(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     digest = _require_digest(cell.get("wheel_sha256"))
     expected_hash = "sha256=" + digest.removeprefix("sha256:")
+    hash_declared = "hash" in archive or "hashes" in archive
     hashes = archive.get("hashes")
     hash_matches = archive.get("hash") == expected_hash or (
         isinstance(hashes, dict) and hashes.get("sha256") == digest.removeprefix("sha256:")
     )
-    if not hash_matches:
+    if (hash_declared and not hash_matches) or (staged_wheel is None and not hash_matches):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     if staged_wheel is None:
         if url != cell.get("release_asset_url"):
@@ -453,6 +454,33 @@ def _verify_direct_url(
     except OSError:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     if recorded != staged:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+
+
+def _verify_uv_cache(content: bytes) -> None:
+    document = _strict_json(content, EngineFailureClass.ARTIFACT_MISMATCH)
+    if set(document) != {"timestamp", "commit", "tags", "env", "directories"}:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    timestamp = document.get("timestamp")
+    if not isinstance(timestamp, dict) or set(timestamp) != {
+        "secs_since_epoch",
+        "nanos_since_epoch",
+    }:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    seconds = timestamp.get("secs_since_epoch")
+    nanoseconds = timestamp.get("nanos_since_epoch")
+    if (
+        not isinstance(seconds, int)
+        or isinstance(seconds, bool)
+        or seconds < 0
+        or not isinstance(nanoseconds, int)
+        or isinstance(nanoseconds, bool)
+        or not 0 <= nanoseconds < 1_000_000_000
+        or document.get("commit") is not None
+        or document.get("tags") is not None
+        or document.get("env") != {}
+        or document.get("directories") != {}
+    ):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
 
 
@@ -488,6 +516,7 @@ def _verify_installation(
         f"{dist_info}/INSTALLER",
         f"{dist_info}/REQUESTED",
         f"{dist_info}/direct_url.json",
+        f"{dist_info}/uv_cache.json",
     }
     if not set(installed_record).issubset(set(original) | allowed_added) or not set(
         original
@@ -526,6 +555,10 @@ def _verify_installation(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     direct_url_path = _installed_path(root, f"{dist_info}/direct_url.json")
     _verify_direct_url(direct_url_path.read_bytes(), cell=cell, staged_wheel=staged_wheel)
+    uv_cache_relative = f"{dist_info}/uv_cache.json"
+    if uv_cache_relative in installed_record:
+        uv_cache_path = _installed_path(root, uv_cache_relative)
+        _verify_uv_cache(uv_cache_path.read_bytes())
     extension_candidates = sorted(
         _installed_path(root, path)
         for path in original
