@@ -366,7 +366,7 @@ def _installed_path(root: Path, relative: str) -> Path:
             _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     try:
         candidate.resolve(strict=True).relative_to(root.resolve(strict=True))
-    except (OSError, ValueError):
+    except (OSError, RuntimeError, ValueError):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     if not candidate.is_file():
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
@@ -427,7 +427,7 @@ def _distribution_root_and_info(
     dist_info = metadata_paths[0].split("/", 1)[0]
     try:
         root = Path(str(distribution.locate_file(""))).resolve(strict=True)
-    except OSError:
+    except (OSError, RuntimeError):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     return root, dist_info, paths
 
@@ -464,7 +464,7 @@ def _verify_direct_url(
     try:
         recorded = Path(raw_path).resolve(strict=True)
         staged = staged_wheel.resolve(strict=True)
-    except OSError:
+    except (OSError, RuntimeError):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     if recorded != staged:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)

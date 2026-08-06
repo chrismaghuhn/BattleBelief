@@ -39,13 +39,15 @@ boundary. Canonicalization failures caused by invalid fixture values, including
 `SENTINEL_FAILED` status. Raw parser or canonicalization exceptions and fixture
 contents do not escape.
 
-### Expected native-path resolution failures
+### Artifact and native-path resolution failures
 
 Every `resolve(strict=True)` operation used to compare an actual installed or
 imported native path with its expected path belongs to the same guarded block
 as the corresponding actual-path resolution.
 
-- Installation verification converts an expected-path resolution failure to
+- Artifact installation verification converts distribution-root, installed-
+  file containment, staged `direct_url.json`, and expected-package origin
+  resolution failures, including `RuntimeError` from symlink loops, to
   `EngineArtifactError(ARTIFACT_MISMATCH)`.
 - Native import verification converts an expected-path resolution failure to
   `EngineArtifactError(IMPORT_FAILED)`.
@@ -119,6 +121,9 @@ Path-resolution tests force expected-path resolution, after successful
 actual-path resolution, to raise `PermissionError` or `FileNotFoundError`.
 They also cover the path-bearing `RuntimeError` used for symlink loops by
 supported CPython 3.12, including all four actual and expected native paths.
+Separate Artifact regressions raise a path-bearing `RuntimeError` while
+resolving the distribution root, validating installed-file containment, and
+binding a staged `direct_url.json` path.
 The tests require `artifact_mismatch` for installation verification and
 `import_failed` for native import verification, and assert that neither the
 exception text nor an absolute path appears in the public result.

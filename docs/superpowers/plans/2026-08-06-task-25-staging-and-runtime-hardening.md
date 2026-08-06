@@ -142,7 +142,7 @@ if package_path != expected_package_path or extension_path != expected_extension
 
 Run the command from Step 2 with a fresh basetemp. Expected: all native-probe tests pass.
 
-### Task 2: Sanitize expected installed-package resolution failures
+### Task 2: Sanitize installed-artifact path resolution failures
 
 **Files:**
 - Modify: `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/artifact.py`
@@ -192,6 +192,34 @@ if origin != expected_origin:
 - [ ] **Step 4: Run the complete artifact test file**
 
 Run the artifact test file with a fresh workspace-local basetemp. Expected: all artifact tests pass.
+
+- [ ] **Step 5: Add failing RuntimeError regressions for the remaining Artifact paths**
+
+Add one focused regression each for `_distribution_root_and_info`,
+`_installed_path`, and the staged path branch of `_verify_direct_url`.
+Monkeypatch `Path.resolve` to raise a path-bearing `RuntimeError` at the named
+boundary. Each test must initially demonstrate the raw exception and then
+require only `EngineArtifactError(ARTIFACT_MISMATCH)` with the exact public
+message `artifact_mismatch`; neither the private exception text nor the
+workspace path may escape.
+
+- [ ] **Step 6: Close all three RuntimeError exception boundaries**
+
+Extend only the existing exception tuples:
+
+```python
+# _distribution_root_and_info
+except (OSError, RuntimeError):
+
+# _installed_path
+except (OSError, RuntimeError, ValueError):
+
+# staged _verify_direct_url
+except (OSError, RuntimeError):
+```
+
+Run the three focused regressions and then the complete artifact test file.
+Expected: every case passes with stable, path-free `artifact_mismatch` output.
 
 ### Task 3: Enforce exact staged wheelhouse closure
 

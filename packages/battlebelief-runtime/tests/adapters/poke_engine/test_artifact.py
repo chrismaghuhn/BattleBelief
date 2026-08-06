@@ -15,6 +15,8 @@ import pytest
 from battlebelief_core.canonicalization import canonicalize, manifest_digest
 from battlebelief_runtime.adapters.poke_engine.artifact import (
     RuntimeEnvironment,
+    _distribution_root_and_info,
+    _installed_path,
     _verify_direct_url,
     verify_installed_artifact,
 )
@@ -63,6 +65,36 @@ def test_staged_wheel_direct_url_may_omit_an_archive_hash(tmp_path: Path) -> Non
         cell={"wheel_sha256": _sha256(wheel_bytes)},
         staged_wheel=staged_wheel,
     )
+
+
+def test_staged_wheel_direct_url_resolution_runtime_error_is_sanitized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    staged_wheel = tmp_path / WHEEL
+    wheel_bytes = b"staged wheel bytes"
+    staged_wheel.write_bytes(wheel_bytes)
+    direct_url = canonicalize({"archive_info": {}, "url": staged_wheel.as_uri()})
+    original_resolve = Path.resolve
+    private_detail = f"private staged wheel symlink loop: {staged_wheel}"
+
+    def fail_staged_wheel(path: Path, *, strict: bool = False) -> Path:
+        if path == staged_wheel:
+            raise RuntimeError(private_detail)
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", fail_staged_wheel)
+
+    with pytest.raises(EngineArtifactError) as caught:
+        _verify_direct_url(
+            direct_url,
+            cell={"wheel_sha256": _sha256(wheel_bytes)},
+            staged_wheel=staged_wheel,
+        )
+
+    assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
+    assert str(caught.value) == "artifact_mismatch"
+    assert private_detail not in str(caught.value)
+    assert str(tmp_path) not in str(caught.value)
 
 
 def test_release_direct_url_still_requires_the_bound_archive_hash() -> None:
@@ -288,6 +320,56 @@ def _installation(tmp_path: Path) -> tuple[Path, Path, importlib.metadata.Distri
     _write_canonical(data_root / "engine-artifact-index.json", index)
     distribution = importlib.metadata.PathDistribution(dist_info)
     return data_root, site, distribution, index_digest
+
+
+def test_distribution_root_resolution_runtime_error_is_sanitized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _data_root, _site, distribution, _index_digest = _installation(tmp_path)
+    distribution_root = Path(str(distribution.locate_file("")))
+    original_resolve = Path.resolve
+    private_detail = f"private distribution symlink loop: {tmp_path}"
+
+    def fail_distribution_root(path: Path, *, strict: bool = False) -> Path:
+        if path == distribution_root:
+            raise RuntimeError(private_detail)
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", fail_distribution_root)
+
+    with pytest.raises(EngineArtifactError) as caught:
+        _distribution_root_and_info(distribution)
+
+    assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
+    assert str(caught.value) == "artifact_mismatch"
+    assert private_detail not in str(caught.value)
+    assert str(tmp_path) not in str(caught.value)
+
+
+def test_installed_path_resolution_runtime_error_is_sanitized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "site"
+    installed = root / "poke_engine" / "__init__.py"
+    installed.parent.mkdir(parents=True)
+    installed.write_bytes(b"")
+    original_resolve = Path.resolve
+    private_detail = f"private installed symlink loop: {installed}"
+
+    def fail_installed_path(path: Path, *, strict: bool = False) -> Path:
+        if path == installed:
+            raise RuntimeError(private_detail)
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", fail_installed_path)
+
+    with pytest.raises(EngineArtifactError) as caught:
+        _installed_path(root, "poke_engine/__init__.py")
+
+    assert caught.value.failure_class is EngineFailureClass.ARTIFACT_MISMATCH
+    assert str(caught.value) == "artifact_mismatch"
+    assert private_detail not in str(caught.value)
+    assert str(tmp_path) not in str(caught.value)
 
 
 def test_verified_installation_returns_only_sanitized_identity(
