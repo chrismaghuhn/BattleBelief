@@ -31,6 +31,16 @@ The exact asset URLs and final digests are bound by
 `engine-artifact-index.json`, whose canonical manifest digest is
 `sha256:5b4f59849ff01c6024b7b5f78f95f5457f3f69030bf46822d9f323c911908d98`.
 
+Post-publication CI rebuilds and runs the staged sentinel in every matrix cell,
+but it closes the published identity against the immutable release assets.
+The wheel builder and the complete artifact-build job must remain identical to
+the tagged staging commit for this artifact version.
+MSVC emits a build-time PE/COFF timestamp and CodeView GUID, so a later Windows
+evidence build can be behaviorally identical without having the released wheel
+digest. Such a build is never substituted for the published artifact; the
+release API digest, `SHA256SUMS`, committed manifests, and published-wheel
+verification must all agree.
+
 Linux wheel markers can identify CPython, `linux`, and `x86_64`, but not
 Ubuntu 24.04. Installation on another x86-64 Linux distribution therefore
 does not imply support. The Runtime verifies the actual OS release before any

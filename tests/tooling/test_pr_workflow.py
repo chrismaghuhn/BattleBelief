@@ -177,6 +177,47 @@ def test_runtime_search_smoke_installs_only_published_binary_wheels() -> None:
     assert "engine-publication-bundle" not in str(job)
 
 
+def test_artifact_index_closes_the_immutable_published_release() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["artifact-index"]
+
+    assert job["needs"] == ["artifact-build", "artifact-stage-sentinel"]
+    assert job["permissions"] == {"contents": "read"}
+    assert job["env"] == {
+        "ENGINE_RELEASE_TAG": "engine-poke-engine-v0.0.48-bcf13823-v1",
+        "ENGINE_RELEASE_COMMIT": "78ec24dec65582bafb5cb89f00ecb4f8b8a23d8c",
+    }
+
+    steps = job["steps"]
+    release = next(
+        step for step in steps if step.get("name") == "Download immutable release closure"
+    )
+    assert release["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert "X-GitHub-Api-Version: 2026-03-10" in release["run"]
+    assert "gh release download" in release["run"]
+
+    verify = next(step for step in steps if step.get("name") == "Verify immutable release closure")
+    assert "tools/verify_published_engine_release.py" in verify["run"]
+    assert "--release-metadata" in verify["run"]
+    assert "--bundle-root" in verify["run"]
+    assert "--manifest-root artifacts/gen9ou/m2/engine" in verify["run"]
+    assert '--expected-tag "${{ env.ENGINE_RELEASE_TAG }}"' in verify["run"]
+    schema = next(step for step in steps if step.get("name") == "Validate published index schema")
+    assert "engine-artifact-index.schema.json" in schema["run"]
+    assert "publication/engine-artifact-index.json" in schema["run"]
+
+    commands = "\n".join(step.get("run", "") for step in steps)
+    assert "git rev-parse" in commands
+    assert "ENGINE_RELEASE_COMMIT" in commands
+    assert 'git diff --exit-code "$ENGINE_RELEASE_COMMIT" -- tools/build_poke_engine_wheel.py' in (
+        commands
+    )
+    assert 'git show "${ENGINE_RELEASE_COMMIT}:.github/workflows/pr.yml"' in commands
+    assert "current['jobs']['artifact-build'] == released['jobs']['artifact-build']" in commands
+    assert "Create available artifact index" not in commands
+    assert 'cmp "$committed"' not in commands
+
+
 def test_engine_build_fetches_the_complete_lockfile_for_offline_metadata() -> None:
     workflow = _load_workflow()
     steps = workflow["jobs"]["artifact-build"]["steps"]
