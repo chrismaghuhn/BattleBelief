@@ -95,6 +95,32 @@ def test_repository_contracts_run_m15_semantic_validation() -> None:
     assert "uv run python tools/validate_m15_registration.py" in contracts_step["run"]
 
 
+def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
+    workflow = _load_workflow()
+    steps = workflow["jobs"]["artifact-build"]["steps"]
+    diagnostic = next(
+        step for step in steps if step.get("name") == "Diagnose a failed Maturin build"
+    )
+    assert diagnostic["if"] == "failure()"
+    assert diagnostic["shell"] == "pwsh"
+    assert diagnostic["env"] == {
+        "CARGO_INCREMENTAL": "false",
+        "CARGO_NET_OFFLINE": "true",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "PYTHONUTF8": "1",
+        "SOURCE_DATE_EPOCH": "1784471591",
+    }
+    command = diagnostic["run"]
+    assert (
+        '"--manifest-path", "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"' in command
+    )
+    assert '"--interpreter", "${{ env.ENGINE_PYTHON }}"' in command
+    assert '"--target", "${{ env.ENGINE_TARGET }}"' in command
+    assert "--no-default-features" in command
+    assert "poke-engine/gen9,poke-engine/terastallization" in command
+    assert "Get-ChildItem Env:" not in command
+
+
 def test_oracle_smoke_uses_exact_cross_platform_node_matrix() -> None:
     workflow = _load_workflow()
     job = workflow["jobs"]["oracle-smoke"]

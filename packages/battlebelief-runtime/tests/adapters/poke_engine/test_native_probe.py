@@ -86,9 +86,7 @@ def _native(*, fail: bool = False, total_visits: int = 1000) -> SimpleNamespace:
         assert duration_ms == 5
         assert iterations == 1000
         assert threads == 1
-        return SimpleNamespace(
-            side_one=[object()], side_two=[object()], total_visits=total_visits
-        )
+        return SimpleNamespace(side_one=[object()], side_two=[object()], total_visits=total_visits)
 
     return SimpleNamespace(
         Move=FakeMove,

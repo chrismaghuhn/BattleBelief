@@ -269,6 +269,29 @@ jobs:
         run: cargo fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml" --target "${{ env.ENGINE_TARGET }}"
       - name: Build and bind one wheel cell
         run: uv run python tools/build_poke_engine_wheel.py build --checkout "${{ runner.temp }}/poke-engine" --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
+      - name: Diagnose a failed Maturin build
+        if: failure()
+        shell: pwsh
+        env:
+          CARGO_INCREMENTAL: "false"
+          CARGO_NET_OFFLINE: "true"
+          CARGO_PROFILE_RELEASE_DEBUG: "0"
+          PYTHONUTF8: "1"
+          SOURCE_DATE_EPOCH: "1784471591"
+        run: |
+          $diagnosticArgs = @(
+            "build", "--release", "--strip", "--locked",
+            "--manifest-path", "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml",
+            "--no-default-features",
+            "--features", "poke-engine/gen9,poke-engine/terastallization",
+            "--interpreter", "${{ env.ENGINE_PYTHON }}",
+            "--target", "${{ env.ENGINE_TARGET }}",
+            "--out", "${{ runner.temp }}/engine-diagnostic"
+          )
+          if ("${{ runner.os }}" -ne "Windows") {
+            $diagnosticArgs += @("--compatibility", "linux")
+          }
+          & "${{ env.ENGINE_MATURIN }}" @diagnosticArgs
       - name: Verify the staged wheel without import
         run: uv run python tools/verify_poke_engine_artifact.py --source-manifest artifacts/gen9ou/m2/engine/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --wheel "${{ runner.temp }}/engine-wheel/poke_engine-0.0.48-${{ matrix.python_tag }}-${{ matrix.python_tag }}-${{ matrix.platform_tag }}.whl" --checkout "${{ runner.temp }}/poke-engine"
       - name: Stage the cell artifact
