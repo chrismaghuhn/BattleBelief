@@ -355,6 +355,7 @@ def scan_poke_engine_public_surface(runtime_root: Path) -> list[str]:
         return [f"poke_engine public adapter is unreadable: {type(error).__name__}"]
     errors: list[str] = []
     exported: object = None
+    bindings: dict[str, str] = {}
     for node in tree.body:
         if isinstance(node, ast.ImportFrom):
             module = node.module or ""
@@ -364,6 +365,11 @@ def scan_poke_engine_public_surface(runtime_root: Path) -> list[str]:
                 errors.append(
                     f"{path.name}:{node.lineno}: forbidden public adapter import {module}"
                 )
+            else:
+                for alias in node.names:
+                    bindings[alias.asname or alias.name] = module
+        elif isinstance(node, ast.Import):
+            errors.append(f"{path.name}:{node.lineno}: forbidden public adapter import")
         elif isinstance(node, ast.Assign) and any(
             isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
         ):
@@ -371,8 +377,16 @@ def scan_poke_engine_public_surface(runtime_root: Path) -> list[str]:
                 exported = ast.literal_eval(node.value)
             except (ValueError, SyntaxError):
                 errors.append(f"{path.name}:{node.lineno}: public adapter __all__ is not literal")
+        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            errors.append(f"{path.name}:{node.lineno}: unapproved public adapter binding")
     if exported != list(POKE_ENGINE_PUBLIC_EXPORTS):
         errors.append(f"{path.name}: public adapter exports differ from approved surface")
+    elif any(
+        bindings.get(name)
+        != next(module for module, names in POKE_ENGINE_PUBLIC_IMPORTS.items() if name in names)
+        for name in exported
+    ):
+        errors.append(f"{path.name}: public adapter exports are not bound to approved imports")
     return errors
 
 

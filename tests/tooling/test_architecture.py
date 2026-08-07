@@ -197,6 +197,35 @@ def test_public_poke_engine_adapter_rejects_task25_probe_and_native_exports(
     assert any("exports differ" in error for error in errors)
 
 
+def test_public_poke_engine_adapter_rejects_native_reassignment(tmp_path: Path) -> None:
+    package = tmp_path / "battlebelief_runtime/adapters/poke_engine"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(
+        "import poke_engine\n"
+        "MappingReport = poke_engine.State\n"
+        "from .mapping_report import (\n"
+        "    PokeEngineMappingFailure,\n"
+        "    RequiredCapabilities,\n"
+        ")\n"
+        "from .sentinel import run_gen9_sentinel\n"
+        "from .transition_model import PokeEngineTransitionModel\n"
+        "__all__ = [\n"
+        "    'MappingReport',\n"
+        "    'PokeEngineMappingFailure',\n"
+        "    'PokeEngineTransitionModel',\n"
+        "    'RequiredCapabilities',\n"
+        "    'run_gen9_sentinel',\n"
+        "]\n",
+        encoding="utf-8",
+    )
+
+    errors = scan_poke_engine_public_surface(tmp_path)
+
+    assert any("forbidden public adapter import" in error for error in errors)
+    assert any("unapproved public adapter binding" in error for error in errors)
+    assert any("not bound to approved imports" in error for error in errors)
+
+
 def test_current_poke_engine_public_surface_is_exactly_approved() -> None:
     runtime_root = Path(__file__).resolve().parents[2] / "packages/battlebelief-runtime/src"
     assert scan_poke_engine_public_surface(runtime_root) == []
