@@ -4,16 +4,16 @@ title: Quellenbasis
 document_type: research
 status: accepted
 normative: false
-version: 1
+version: 4
 applies_to:
   - research
   - repository
-effective_from: 2026-07-29
+effective_from: 2026-08-05
 supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-29
+last_reviewed: 2026-08-05
 ---
 
 # Quellenbasis
@@ -27,6 +27,7 @@ Primärquellen oder Projektquellen.
 - [Pokémon Showdown Simulator](https://github.com/smogon/pokemon-showdown/blob/master/sim/SIMULATOR.md)
 - [Pokémon Showdown Simulator Protocol](https://github.com/smogon/pokemon-showdown/blob/master/sim/SIM-PROTOCOL.md)
 - [Pokémon Showdown Formatdefinitionen](https://github.com/smogon/pokemon-showdown/blob/master/config/formats.ts)
+- [Pokémon Showdown Team Validator](https://github.com/smogon/pokemon-showdown/blob/master/sim/team-validator.ts)
 - [`poke-engine`](https://github.com/pmariglia/poke-engine)
 - [Foul Play Architekturbericht](https://pmariglia.github.io/posts/foul-play/)
 
@@ -34,6 +35,15 @@ Primärquellen oder Projektquellen.
 
 - [Simultaneous-Move MCTS](https://proceedings.neurips.cc/paper_files/paper/2013/file/1579779b98ce9edb98dd85606f2c119d-Paper.pdf)
 - [Information Set MCTS](https://eprints.whiterose.ac.uk/id/eprint/75048/1/CowlingPowleyWhitehouse2012.pdf)
+- [Monte-Carlo Planning in Large POMDPs](https://papers.nips.cc/paper_files/paper/2010/hash/edfbe1afcf9246bb0d40eb4d8027d90f-Abstract.html)
+- [Toward Open Set Recognition](https://pubmed.ncbi.nlm.nih.gov/23682001/)
+- [Finding Approximate POMDP Solutions Through Belief Compression](https://auld.aaai.org/Library/JAIR/Vol23/jair23-001.php)
+- [Learning to Stop: Dynamic Simulation Monte-Carlo Tree Search](https://ojs.aaai.org/index.php/AAAI/article/view/16100)
+- [Understanding the Success of Perfect Information Monte Carlo Sampling in Game Tree Search](https://ojs.aaai.org/index.php/AAAI/article/view/7562)
+- [Monte Carlo Tree Search in the Presence of Transition Uncertainty](https://ojs.aaai.org/index.php/AAAI/article/view/29994)
+- [Research Admission Gate](research-admission-gate.md)
+- [Constraint-guided Open-World Set Materialization](constraint-guided-other-materialization.md)
+- [Adjacent Belief, Search, and Evaluation Directions](adjacent-belief-search-directions.md)
 
 ## Daten, Rating und Speicherung
 
