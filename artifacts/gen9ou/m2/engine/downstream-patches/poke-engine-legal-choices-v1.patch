@@ -34,12 +34,16 @@ index 96306e403a633dd79e336b30b9b7bf8b975fced9..80b017f363d257420a71aed2b6f049c0
 +    ...
 +
 diff --git a/poke-engine-py/python/tests/test_poke_engine.py b/poke-engine-py/python/tests/test_poke_engine.py
-index 8b0490c0c5ede25e0560a9167eba08919e35df8a..d5bf156c71c3af5e13c4e6e867c87f5bffd7d816 100644
+index 8b0490c0c5ede25e0560a9167eba08919e35df8a..5d5a35306e68746c8d526f06d2f6c1c8e715591b 100644
 --- a/poke-engine-py/python/tests/test_poke_engine.py
 +++ b/poke-engine-py/python/tests/test_poke_engine.py
 @@ -11,0 +12 @@ from poke_engine import (
 +    legal_choices,
-@@ -98,0 +100,105 @@ def test_generate_instructions_errors_when_move_does_not_exist():
+@@ -31,0 +33 @@ state = State(
++                terastallized=True,
+@@ -54,0 +57 @@ state = State(
++                terastallized=True,
+@@ -98,0 +102,106 @@ def test_generate_instructions_errors_when_move_does_not_exist():
 +
 +
 +def _pokemon(name, moves, *, hp=100):
@@ -55,6 +59,7 @@ index 8b0490c0c5ede25e0560a9167eba08919e35df8a..d5bf156c71c3af5e13c4e6e867c87f5b
 +        special_attack=100,
 +        special_defense=100,
 +        speed=100,
++        terastallized=True,
 +        moves=moves,
 +    )
 +
