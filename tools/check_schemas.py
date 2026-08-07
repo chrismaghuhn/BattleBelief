@@ -438,11 +438,8 @@ def _validate_migration_provenance(
         errors.append(f"migration source document is missing for {source_id}")
     if report is None:
         errors.append(f"migration loss report is missing for {report_id}")
-    if source is not None:
-        if source.get("manifest_id") != source_id:
-            errors.append("migration source document ID does not match its manifest ID")
-        if manifest_digest(source) != migration["source_digest"]:
-            errors.append("migration source digest does not match source document")
+    if source is not None and manifest_digest(source) != migration["source_digest"]:
+        errors.append("migration source digest does not match source document")
     if report is not None:
         if report.get("report_id") != report_id:
             errors.append("migration loss report ID does not match its file identity")

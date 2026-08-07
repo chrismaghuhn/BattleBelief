@@ -33,7 +33,9 @@ def _target_binding() -> dict[str, object]:
     }
 
 
-def _write_migration_repository(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+def _write_migration_repository(
+    tmp_path: Path, *, source_document_id: str | None = None
+) -> tuple[Path, Path, Path, Path]:
     shutil.copytree(ROOT / "docs", tmp_path / "docs")
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     artifact_root = tmp_path / "artifacts/gen9ou/m2"
@@ -45,7 +47,12 @@ def _write_migration_repository(tmp_path: Path) -> tuple[Path, Path, Path, Path]
 
     source = _document(V1_SOURCE)
     catalog = _document(CATALOG)
-    target, report = migrate_v1_document(source, catalog, _target_binding())
+    target, report = migrate_v1_document(
+        source,
+        catalog,
+        _target_binding(),
+        source_document_id=source_document_id,
+    )
     source_directory = capability_root / "migration-sources"
     report_directory = capability_root / "migration-reports"
     source_directory.mkdir()
@@ -59,6 +66,12 @@ def _write_migration_repository(tmp_path: Path) -> tuple[Path, Path, Path, Path]
     return tmp_path, target_path, source_path, report_path
 
 
+def test_repository_validator_accepts_distinct_source_artifact_identity(tmp_path: Path) -> None:
+    root, _, _, _ = _write_migration_repository(tmp_path, source_document_id="archived-source-v1")
+
+    assert _validate_engine_capability_artifacts(root) == []
+
+
 def test_repository_validator_resolves_every_migration_identity(tmp_path: Path) -> None:
     root, target_path, source_path, report_path = _write_migration_repository(tmp_path)
     assert _validate_engine_capability_artifacts(root) == []
@@ -67,6 +80,12 @@ def test_repository_validator_resolves_every_migration_identity(tmp_path: Path) 
         (
             "migration source document is missing",
             lambda target, source, report: source_path.unlink(),
+        ),
+        (
+            "migration source document is missing",
+            lambda target, source, report: source_path.rename(
+                source_path.with_name("wrong-source-artifact-id.json")
+            ),
         ),
         (
             "source digest",
@@ -79,6 +98,10 @@ def test_repository_validator_resolves_every_migration_identity(tmp_path: Path) 
             lambda target, source, report: report_path.unlink(),
         ),
         (
+            "migration loss report ID does not match its file identity",
+            lambda target, source, report: report.__setitem__("report_id", "wrong-loss-report-id"),
+        ),
+        (
             "loss report digest does not match report projection",
             lambda target, source, report: report["loss"].__setitem__("exact", 999),
         ),
@@ -89,9 +112,9 @@ def test_repository_validator_resolves_every_migration_identity(tmp_path: Path) 
             ),
         ),
     )
-    for expected, mutate in mutations:
+    for index, (expected, mutate) in enumerate(mutations):
         root, target_path, source_path, report_path = _write_migration_repository(
-            tmp_path / expected
+            tmp_path / f"{index}-{expected}"
         )
         target = _document(target_path)
         source = _document(source_path)
