@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import tomllib
 from copy import deepcopy
 from dataclasses import asdict
@@ -1071,3 +1072,19 @@ def test_lab_wheel_configuration_force_includes_authoritative_differential_schem
         ),
     }
     assert pyproject["tool"]["hatch"]["build"]["hooks"]["custom"] == {"path": "hatch_build.py"}
+
+
+def test_lab_hatch_hook_resolves_evaluation_schemas_from_checkout_and_sdist_layouts(
+    tmp_path: Path,
+) -> None:
+    hook = runpy.run_path(str(_REPOSITORY_ROOT / "packages/battlebelief-lab/hatch_build.py"))
+    schema_directory = hook["_schema_directory"]
+    checkout_root = tmp_path / "checkout/repository/packages/battlebelief-lab"
+    checkout_schema_directory = tmp_path / "checkout/repository/schemas/evaluation"
+    sdist_root = tmp_path / "sdist/battlebelief-lab"
+    sdist_schema_directory = sdist_root / "schemas/evaluation"
+    checkout_schema_directory.mkdir(parents=True)
+    sdist_schema_directory.mkdir(parents=True)
+
+    assert schema_directory(checkout_root) == checkout_schema_directory
+    assert schema_directory(sdist_root) == sdist_schema_directory

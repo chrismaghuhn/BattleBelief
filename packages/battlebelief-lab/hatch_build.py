@@ -17,6 +17,16 @@ _SCHEMA_FILENAMES = (
 _SCHEMA_TARGET_DIRECTORY = "battlebelief_lab/differential/schemas"
 
 
+def _schema_directory(project_root: Path) -> Path:
+    """Resolve the authoritative schema source in an sdist or monorepo checkout."""
+
+    sdist_directory = project_root / "schemas" / "evaluation"
+    checkout_directory = project_root.parent.parent / "schemas" / "evaluation"
+    if sdist_directory.is_dir():
+        return sdist_directory
+    return checkout_directory
+
+
 class CustomBuildHook(BuildHookInterface[BuilderConfigBound]):
     """Map repository schemas into the editable wheel without changing sdist paths."""
 
@@ -24,7 +34,7 @@ class CustomBuildHook(BuildHookInterface[BuilderConfigBound]):
         if version != "editable":
             return
 
-        schema_directory = Path(self.root).parents[1] / "schemas" / "evaluation"
+        schema_directory = _schema_directory(Path(self.root))
         build_data["force_include_editable"] = {
             str(schema_directory / filename): f"{_SCHEMA_TARGET_DIRECTORY}/{filename}"
             for filename in _SCHEMA_FILENAMES
