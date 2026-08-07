@@ -176,6 +176,9 @@ def _success_message(command: str) -> str:
         "source": "PASS: pinned poke-engine source manifest created",
         "verify-source": "PASS: pinned poke-engine source provenance verified",
         "build": "PASS: controlled poke-engine wheel built and bound",
+        "source-v2": "PASS: downstream poke-engine source manifest created",
+        "verify-source-v2": "PASS: downstream poke-engine source provenance verified",
+        "build-v2": "PASS: controlled downstream poke-engine wheel built and bound",
     }
     try:
         return messages[command]
@@ -244,6 +247,131 @@ def collect_source_records(checkout: Path, commit: str) -> list[dict[str, object
     if not records:
         _fail("Git tree is empty")
     return records
+
+
+def _collect_materialized_source_records(checkout: Path) -> list[dict[str, object]]:
+    """Collect the complete tracked source closure from the materialized tree."""
+
+    raw = _git(checkout, "ls-files", "--stage", "-z")
+    records: list[dict[str, object]] = []
+    for entry in raw.split(b"\0"):
+        if not entry:
+            continue
+        try:
+            metadata, raw_path = entry.split(b"\t", 1)
+            mode, _object_id, _stage = metadata.split(maxsplit=2)
+            path = raw_path.decode("utf-8", errors="strict")
+            content = (checkout / Path(path)).read_bytes()
+        except (OSError, UnicodeDecodeError, ValueError):
+            _fail("post-patch source closure is unreadable")
+        if Path(path).is_absolute() or "\\" in path or any(part == ".." for part in Path(path).parts):
+            _fail("post-patch source path differs")
+        records.append(
+            {
+                "path": path,
+                "git_mode": mode.decode("ascii", errors="strict"),
+                "size": len(content),
+                "sha256": _sha256(content),
+            }
+        )
+    if not records:
+        _fail("post-patch source closure is empty")
+    return sorted(records, key=lambda record: str(record["path"]))
+
+
+def _patch_paths(patch_bytes: bytes) -> list[str]:
+    try:
+        lines = patch_bytes.decode("utf-8", errors="strict").splitlines()
+    except UnicodeDecodeError:
+        _fail("downstream patch is not UTF-8")
+    paths: list[str] = []
+    for line in lines:
+        if not line.startswith("+++ b/"):
+            continue
+        path = line[6:]
+        if path == "/dev/null" or Path(path).is_absolute() or "\\" in path:
+            _fail("downstream patch path differs")
+        if any(part in ("", ".", "..") for part in PurePosixPath(path).parts):
+            _fail("downstream patch path differs")
+        paths.append(path)
+    if not paths or len(paths) != len(set(paths)):
+        _fail("downstream patch path differs")
+    return sorted(paths)
+
+
+def _run_patch_command(checkout: Path, arguments: Sequence[str]) -> None:
+    try:
+        process = subprocess.run(
+            ("git", *arguments),
+            cwd=checkout,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        _fail("downstream patch application differs")
+    diagnostics = f"{process.stdout}\n{process.stderr}".lower()
+    if process.returncode != 0 or "offset" in diagnostics or "fuzz" in diagnostics:
+        _fail("downstream patch application differs")
+
+
+def _normalize_materialized_base(checkout: Path) -> None:
+    """Make the controlled checkout byte-oriented across Windows and Linux."""
+
+    _run(("git", "config", "core.autocrlf", "false"), cwd=checkout)
+    _run(("git", "reset", "--hard", "--quiet", UPSTREAM_COMMIT), cwd=checkout)
+
+
+def apply_downstream_patch(
+    checkout: Path,
+    patch_path: Path,
+    *,
+    base_commit: str,
+    base_tree: str,
+    patch_sha256: str,
+    expected_source_files: Sequence[Mapping[str, object]] | None = None,
+) -> list[dict[str, object]]:
+    """Apply one exact downstream patch and verify the resulting source closure."""
+
+    if _git_value(checkout, "rev-parse", "HEAD", label="base source commit") != base_commit:
+        _fail("base source commit differs")
+    if _git_value(checkout, "rev-parse", "HEAD^{tree}", label="base source tree") != base_tree:
+        _fail("base source tree differs")
+    if _git_value(checkout, "config", "--get", "core.autocrlf", label="source line endings") != (
+        "false"
+    ):
+        _fail("source line-ending policy differs")
+    if _git(checkout, "status", "--porcelain=v1", "--untracked-files=all"):
+        _fail("base source tree is dirty")
+    try:
+        patch_bytes = patch_path.read_bytes()
+    except OSError:
+        _fail("downstream patch is unreadable")
+    if _sha256(patch_bytes) != patch_sha256:
+        _fail("downstream patch digest differs")
+    patch_paths = _patch_paths(patch_bytes)
+    patch_argument = str(patch_path.resolve(strict=True))
+    _run_patch_command(
+        checkout,
+        ("apply", "--check", "--whitespace=error", "--verbose", "--no-recount", patch_argument),
+    )
+    _run_patch_command(
+        checkout,
+        ("apply", "--whitespace=error", "--verbose", "--no-recount", patch_argument),
+    )
+    if _git(checkout, "diff", "--check"):
+        _fail("downstream patch application differs")
+    changed_paths = _git(checkout, "diff", "--name-only", "--no-renames").decode(
+        "utf-8", errors="strict"
+    ).splitlines()
+    if sorted(changed_paths) != patch_paths:
+        _fail("downstream patch application differs")
+    actual_records = _collect_materialized_source_records(checkout)
+    if expected_source_files is not None and actual_records != sorted(
+        expected_source_files, key=lambda record: str(record["path"])
+    ):
+        _fail("post-patch source closure differs")
+    return actual_records
 
 
 def acquire_pinned_source(checkout: Path) -> None:
@@ -555,10 +683,13 @@ def inspect_wheel(
     python_tag: str,
     abi_tag: str,
     platform_tag: str,
+    distribution_version: str = "0.0.48",
 ) -> dict[str, Any]:
     """Bind a built wheel and its security-relevant metadata."""
 
-    expected_filename = f"poke_engine-0.0.48-{python_tag}-{abi_tag}-{platform_tag}.whl"
+    if not re.fullmatch(r"0\.0\.(?:48|49)", distribution_version):
+        _fail("wheel distribution identity differs")
+    expected_filename = f"poke_engine-{distribution_version}-{python_tag}-{abi_tag}-{platform_tag}.whl"
     if wheel_path.name != expected_filename or wheel_path.suffix != ".whl":
         _fail("wheel filename differs")
     try:
@@ -570,7 +701,7 @@ def inspect_wheel(
                 for name in names
                 if name.split("/", 1)[0].endswith(".dist-info")
             }
-            if dist_info_roots != {"poke_engine-0.0.48.dist-info"}:
+            if dist_info_roots != {f"poke_engine-{distribution_version}.dist-info"}:
                 _fail("wheel dist-info identity differs")
             root = next(iter(dist_info_roots))
             expected_members = {
@@ -590,7 +721,8 @@ def inspect_wheel(
         _fail("wheel is unreadable")
     if (
         _single_metadata_value(metadata, "Name", label="wheel METADATA") != "poke-engine"
-        or _single_metadata_value(metadata, "Version", label="wheel METADATA") != "0.0.48"
+        or _single_metadata_value(metadata, "Version", label="wheel METADATA")
+        != distribution_version
     ):
         _fail("wheel distribution identity differs")
     tag = f"{python_tag}-{abi_tag}-{platform_tag}"
@@ -845,6 +977,346 @@ def build_one_wheel(
     )
 
 
+LEGAL_CHOICE_VERSION = "0.0.49"
+LEGAL_CHOICE_SOURCE_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-source:v2"
+LEGAL_CHOICE_BUILD_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-build:v2"
+LEGAL_CHOICE_INDEX_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-artifact-index:v2"
+LEGAL_CHOICE_ADAPTER_VERSION = "battlebelief-poke-engine-v2-legal-choices"
+LEGAL_CHOICE_RELEASE_TAG = "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices"
+LEGAL_CHOICE_PATCH_RELATIVE_PATH = (
+    "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch"
+)
+
+
+def _materialized_workspace_members(checkout: Path) -> list[str]:
+    try:
+        document = tomllib.loads((checkout / "Cargo.toml").read_text(encoding="utf-8"))
+        members = document["workspace"]["members"]
+    except (OSError, UnicodeDecodeError, KeyError, tomllib.TOMLDecodeError):
+        _fail("Cargo workspace metadata is invalid")
+    if (
+        not isinstance(members, list)
+        or not members
+        or not all(isinstance(member, str) and member for member in members)
+    ):
+        _fail("Cargo workspace members are invalid")
+    return sorted(members)
+
+
+def create_downstream_source_manifest(
+    checkout: Path,
+    *,
+    base_manifest: Mapping[str, Any],
+    patch_path: Path,
+    retrieved_on: str,
+) -> dict[str, Any]:
+    """Create v2 provenance from one verified base and one exact patch."""
+
+    validate_pinned_source_manifest(base_manifest)
+    verify_source_checkout(checkout, base_manifest)
+    _normalize_materialized_base(checkout)
+    try:
+        date.fromisoformat(retrieved_on)
+        patch_bytes = patch_path.read_bytes()
+    except (OSError, ValueError):
+        _fail("downstream source inputs are unreadable")
+    patch_digest = _sha256(patch_bytes)
+    records = apply_downstream_patch(
+        checkout,
+        patch_path,
+        base_commit=UPSTREAM_COMMIT,
+        base_tree=UPSTREAM_TREE,
+        patch_sha256=patch_digest,
+    )
+    license_record = _record(records, "LICENSE")
+    cargo_lock_record = _record(records, "Cargo.lock")
+    return {
+        "schema_version": 2,
+        "schema_id": LEGAL_CHOICE_SOURCE_SCHEMA_ID,
+        "manifest_id": "poke-engine-source-bcf13823-downstream-legal-choices-v2",
+        "repository_url": UPSTREAM_REPOSITORY,
+        "base_source_manifest_id": base_manifest.get("manifest_id"),
+        "base_source_manifest_digest": manifest_digest(base_manifest),
+        "base_commit": UPSTREAM_COMMIT,
+        "base_tag": UPSTREAM_TAG,
+        "base_tag_peeled_commit": UPSTREAM_COMMIT,
+        "base_git_tree_oid": UPSTREAM_TREE,
+        "base_source_tree_digest": base_manifest.get("source_tree_digest"),
+        "base_source_file_count": base_manifest.get("source_file_count"),
+        "retrieved_on": retrieved_on,
+        "license": {
+            "spdx_id": "MIT",
+            "path": "LICENSE",
+            "size": license_record["size"],
+            "sha256": license_record["sha256"],
+        },
+        "source_scope": "full_git_tree_with_downstream_patch",
+        "source_files": records,
+        "source_tree_digest": manifest_digest(records),
+        "source_file_count": len(records),
+        "cargo_lock": {
+            "path": "Cargo.lock",
+            "size": cargo_lock_record["size"],
+            "sha256": cargo_lock_record["sha256"],
+        },
+        "workspace_members": _materialized_workspace_members(checkout),
+        "submodules": {"present": False, "entries": []},
+        "base_clean_tree": True,
+        "resulting_source_is_committed": False,
+        "downstream_patch": {
+            "path": LEGAL_CHOICE_PATCH_RELATIVE_PATH,
+            "role": "legal-choice-binding",
+            "format": "git-diff-binary-full-index-v1",
+            "application": "git-apply-exact-v1",
+            "size": len(patch_bytes),
+            "sha256": patch_digest,
+        },
+        "canonicalization_profile": "rfc8785-jcs-v1",
+    }
+
+
+def validate_downstream_source_manifest(
+    manifest: Mapping[str, Any], base_manifest: Mapping[str, Any], patch_path: Path
+) -> None:
+    """Require the exact v2 base, patch, and downstream source contract."""
+
+    validate_pinned_source_manifest(base_manifest)
+    expected = {
+        "schema_version": 2,
+        "schema_id": LEGAL_CHOICE_SOURCE_SCHEMA_ID,
+        "repository_url": UPSTREAM_REPOSITORY,
+        "base_source_manifest_id": base_manifest.get("manifest_id"),
+        "base_source_manifest_digest": manifest_digest(base_manifest),
+        "base_commit": UPSTREAM_COMMIT,
+        "base_tag": UPSTREAM_TAG,
+        "base_tag_peeled_commit": UPSTREAM_COMMIT,
+        "base_git_tree_oid": UPSTREAM_TREE,
+        "base_source_tree_digest": base_manifest.get("source_tree_digest"),
+        "base_source_file_count": base_manifest.get("source_file_count"),
+        "source_scope": "full_git_tree_with_downstream_patch",
+        "base_clean_tree": True,
+        "resulting_source_is_committed": False,
+        "canonicalization_profile": "rfc8785-jcs-v1",
+    }
+    if any(manifest.get(key) != value for key, value in expected.items()):
+        _fail("downstream source manifest identity differs")
+    patch = manifest.get("downstream_patch")
+    if not isinstance(patch, Mapping):
+        _fail("downstream patch provenance differs")
+    try:
+        patch_bytes = patch_path.read_bytes()
+    except OSError:
+        _fail("downstream patch is unreadable")
+    expected_patch = {
+        "path": LEGAL_CHOICE_PATCH_RELATIVE_PATH,
+        "role": "legal-choice-binding",
+        "format": "git-diff-binary-full-index-v1",
+        "application": "git-apply-exact-v1",
+        "size": len(patch_bytes),
+        "sha256": _sha256(patch_bytes),
+    }
+    if dict(patch) != expected_patch:
+        _fail("downstream patch provenance differs")
+    source_files = manifest.get("source_files")
+    if not isinstance(source_files, list) or not source_files:
+        _fail("post-patch source closure differs")
+    if manifest.get("source_file_count") != len(source_files):
+        _fail("post-patch source closure differs")
+    if manifest_digest(source_files) != manifest.get("source_tree_digest"):
+        _fail("post-patch source closure differs")
+
+
+def verify_downstream_source_checkout(
+    checkout: Path,
+    *,
+    base_manifest: Mapping[str, Any],
+    source_manifest: Mapping[str, Any],
+    patch_path: Path,
+) -> None:
+    """Verify and apply the downstream patch exactly once to a clean base."""
+
+    validate_downstream_source_manifest(source_manifest, base_manifest, patch_path)
+    verify_source_checkout(checkout, base_manifest)
+    _normalize_materialized_base(checkout)
+    try:
+        patch_digest = _sha256(patch_path.read_bytes())
+    except OSError:
+        _fail("downstream patch is unreadable")
+    records = apply_downstream_patch(
+        checkout,
+        patch_path,
+        base_commit=UPSTREAM_COMMIT,
+        base_tree=UPSTREAM_TREE,
+        patch_sha256=patch_digest,
+        expected_source_files=source_manifest["source_files"],
+    )
+    if manifest_digest(records) != source_manifest.get("source_tree_digest"):
+        _fail("post-patch source closure differs")
+    if _materialized_workspace_members(checkout) != source_manifest.get("workspace_members"):
+        _fail("Cargo workspace members differ")
+
+
+def create_downstream_build_manifest(
+    *,
+    source_manifest: Mapping[str, Any],
+    rustc_vv: str,
+    cargo_version: str,
+    maturin_version: str,
+    target_triple: str,
+    operating_system: str,
+    python_version: str,
+    wheel: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Create one canonical v2 build record from verified inputs."""
+
+    validate_build_configuration(
+        rust_toolchain=RUST_TOOLCHAIN,
+        maturin_version=maturin_version,
+        target_triple=target_triple,
+        features=FEATURES,
+        locked=True,
+        no_default_features=True,
+    )
+    _verify_rust_identity(rustc_vv, cargo_version, target_triple)
+    expected_os = "ubuntu-24.04" if target_triple == "x86_64-unknown-linux-gnu" else "windows-2025"
+    if operating_system != expected_os:
+        _fail("build operating system differs")
+    python_tag, abi_tag, platform_tag = _python_tags(python_version, target_triple)
+    expected_wheel_identity = {
+        "filename": f"poke_engine-{LEGAL_CHOICE_VERSION}-{python_tag}-{abi_tag}-{platform_tag}.whl",
+        "tags": [f"{python_tag}-{abi_tag}-{platform_tag}"],
+        "root_is_purelib": False,
+    }
+    if any(wheel.get(key) != value for key, value in expected_wheel_identity.items()):
+        _fail("wheel identity differs from the v2 build cell")
+    cell_id = f"{operating_system}-x86_64-{python_tag}"
+    return {
+        "schema_version": 2,
+        "schema_id": LEGAL_CHOICE_BUILD_SCHEMA_ID,
+        "manifest_id": f"poke-engine-build-{cell_id}-legal-choices-v2",
+        "cell_id": cell_id,
+        "source_schema_id": LEGAL_CHOICE_SOURCE_SCHEMA_ID,
+        "source_manifest_digest": manifest_digest(source_manifest),
+        "source_tree_digest": source_manifest.get("source_tree_digest"),
+        "downstream_patch_digest": source_manifest["downstream_patch"]["sha256"],
+        "rust_toolchain": f"{RUST_TOOLCHAIN}-{target_triple}",
+        "rustc_vv": rustc_vv,
+        "cargo_version": cargo_version,
+        "rustup_components": ["cargo", "rust-std", "rustc"],
+        "rust_targets": [target_triple],
+        "maturin_version": maturin_version,
+        "build_backend": "maturin",
+        "build_argv": build_argv(target_triple),
+        "locked": True,
+        "no_default_features": True,
+        "features": list(FEATURES),
+        "target_triple": target_triple,
+        "operating_system": operating_system,
+        "architecture": "x86_64",
+        "python": {
+            "implementation": "CPython",
+            "version": python_version,
+            "python_tag": python_tag,
+            "abi_tag": abi_tag,
+            "platform_tag": platform_tag,
+        },
+        "distribution": {"name": "poke-engine", "version": LEGAL_CHOICE_VERSION},
+        "wheel": dict(wheel),
+        "build_environment": {
+            "allowlist": [
+                {"name": "CARGO_HOME", "value": CONTROLLED_CARGO_HOME},
+                {"name": "CARGO_INCREMENTAL", "value": "false"},
+                {"name": "CARGO_NET_OFFLINE", "value": "true"},
+                {"name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0"},
+                {"name": "PYTHONUTF8", "value": "1"},
+                {"name": "SOURCE_DATE_EPOCH", "value": SOURCE_DATE_EPOCH},
+            ]
+        },
+        "adapter_version": LEGAL_CHOICE_ADAPTER_VERSION,
+        "canonicalization_profile": "rfc8785-jcs-v1",
+    }
+
+
+def build_one_downstream_wheel(
+    *,
+    checkout: Path,
+    base_manifest: Mapping[str, Any],
+    source_manifest: Mapping[str, Any],
+    patch_path: Path,
+    python_executable: Path,
+    rustc_executable: Path,
+    cargo_executable: Path,
+    maturin_executable: Path,
+    target_triple: str,
+    operating_system: str,
+    wheelhouse: Path,
+) -> dict[str, Any]:
+    """Apply the v2 patch and build one controlled 0.0.49 wheel."""
+
+    verify_downstream_source_checkout(
+        checkout,
+        base_manifest=base_manifest,
+        source_manifest=source_manifest,
+        patch_path=patch_path,
+    )
+    validate_build_configuration(
+        rust_toolchain=RUST_TOOLCHAIN,
+        maturin_version=MATURIN_VERSION,
+        target_triple=target_triple,
+        features=FEATURES,
+        locked=True,
+        no_default_features=True,
+    )
+    if wheelhouse.exists() or _is_within(wheelhouse, checkout):
+        _fail("wheel output directory is not isolated")
+    python_version = _python_version(python_executable, cwd=checkout)
+    python_tag, abi_tag, platform_tag = _python_tags(python_version, target_triple)
+    rustc_vv = _executable_text(rustc_executable, "--version", "--verbose", cwd=checkout)
+    cargo_version = _executable_text(cargo_executable, "--version", cwd=checkout)
+    _verify_rust_identity(rustc_vv, cargo_version, target_triple)
+    if _executable_text(maturin_executable, "--version", cwd=checkout) != (
+        f"maturin {MATURIN_VERSION}"
+    ):
+        _fail("Maturin executable identity differs")
+    wheelhouse.parent.mkdir(parents=True, exist_ok=True)
+    wheelhouse.mkdir()
+    actual_arguments = build_argv(target_triple)
+    actual_arguments[0] = str(maturin_executable)
+    actual_arguments[actual_arguments.index("python")] = str(python_executable)
+    actual_arguments[actual_arguments.index("wheelhouse")] = str(wheelhouse)
+    environment = _controlled_build_environment(
+        cargo_executable=cargo_executable,
+        rustc_executable=rustc_executable,
+    )
+    _run(actual_arguments, cwd=checkout, environment=environment)
+    changed_paths = _git(checkout, "diff", "--name-only", "--no-renames").decode(
+        "utf-8", errors="strict"
+    ).splitlines()
+    patch_paths = _patch_paths(patch_path.read_bytes())
+    if sorted(changed_paths) != patch_paths:
+        _fail("source tree changed during downstream build")
+    wheels = sorted(wheelhouse.glob("*.whl"))
+    if len(wheels) != 1 or any(path.is_dir() for path in wheelhouse.iterdir()):
+        _fail("build output closure differs")
+    wheel = inspect_wheel(
+        wheels[0],
+        python_tag=python_tag,
+        abi_tag=abi_tag,
+        platform_tag=platform_tag,
+        distribution_version=LEGAL_CHOICE_VERSION,
+    )
+    return create_downstream_build_manifest(
+        source_manifest=source_manifest,
+        rustc_vv=rustc_vv,
+        cargo_version=cargo_version,
+        maturin_version=MATURIN_VERSION,
+        target_triple=target_triple,
+        operating_system=operating_system,
+        python_version=python_version,
+        wheel=wheel,
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -870,6 +1342,36 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     build.add_argument("--wheelhouse", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
+    source_v2 = subparsers.add_parser(
+        "source-v2", help="create a downstream-patched source manifest"
+    )
+    source_v2.add_argument("--checkout", type=Path, required=True)
+    source_v2.add_argument("--base-source-manifest", type=Path, required=True)
+    source_v2.add_argument("--patch", type=Path, required=True)
+    source_v2.add_argument("--retrieved-on", required=True)
+    source_v2.add_argument("--output", type=Path, required=True)
+    verify_v2 = subparsers.add_parser(
+        "verify-source-v2", help="verify a downstream-patched source checkout"
+    )
+    verify_v2.add_argument("--checkout", type=Path, required=True)
+    verify_v2.add_argument("--base-source-manifest", type=Path, required=True)
+    verify_v2.add_argument("--source-manifest", type=Path, required=True)
+    verify_v2.add_argument("--patch", type=Path, required=True)
+    build_v2 = subparsers.add_parser("build-v2", help="build one downstream-patched wheel cell")
+    build_v2.add_argument("--checkout", type=Path, required=True)
+    build_v2.add_argument("--base-source-manifest", type=Path, required=True)
+    build_v2.add_argument("--source-manifest", type=Path, required=True)
+    build_v2.add_argument("--patch", type=Path, required=True)
+    build_v2.add_argument("--python", type=Path, required=True)
+    build_v2.add_argument("--rustc", type=Path, required=True)
+    build_v2.add_argument("--cargo", type=Path, required=True)
+    build_v2.add_argument("--maturin", type=Path, required=True)
+    build_v2.add_argument("--target", choices=sorted(TARGETS), required=True)
+    build_v2.add_argument(
+        "--operating-system", choices=("ubuntu-24.04", "windows-2025"), required=True
+    )
+    build_v2.add_argument("--wheelhouse", type=Path, required=True)
+    build_v2.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "acquire":
@@ -882,21 +1384,55 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest = _load_json(args.source_manifest)
             validate_pinned_source_manifest(manifest)
             verify_source_checkout(args.checkout, manifest)
+        elif args.command == "source-v2":
+            base_manifest = _load_json(args.base_source_manifest)
+            manifest = create_downstream_source_manifest(
+                args.checkout,
+                base_manifest=base_manifest,
+                patch_path=args.patch,
+                retrieved_on=args.retrieved_on,
+            )
+            _write_new(args.output, canonicalize(manifest) + b"\n")
+        elif args.command == "verify-source-v2":
+            base_manifest = _load_json(args.base_source_manifest)
+            manifest = _load_json(args.source_manifest)
+            verify_downstream_source_checkout(
+                args.checkout,
+                base_manifest=base_manifest,
+                source_manifest=manifest,
+                patch_path=args.patch,
+            )
         else:
             manifest = _load_json(args.source_manifest)
             if _is_within(args.output, args.checkout) or _is_within(args.output, args.wheelhouse):
                 _fail("build manifest output aliases controlled inputs")
-            build_manifest = build_one_wheel(
-                checkout=args.checkout,
-                source_manifest=manifest,
-                python_executable=args.python,
-                rustc_executable=args.rustc,
-                cargo_executable=args.cargo,
-                maturin_executable=args.maturin,
-                target_triple=args.target,
-                operating_system=args.operating_system,
-                wheelhouse=args.wheelhouse,
-            )
+            if args.command == "build-v2":
+                base_manifest = _load_json(args.base_source_manifest)
+                build_manifest = build_one_downstream_wheel(
+                    checkout=args.checkout,
+                    base_manifest=base_manifest,
+                    source_manifest=manifest,
+                    patch_path=args.patch,
+                    python_executable=args.python,
+                    rustc_executable=args.rustc,
+                    cargo_executable=args.cargo,
+                    maturin_executable=args.maturin,
+                    target_triple=args.target,
+                    operating_system=args.operating_system,
+                    wheelhouse=args.wheelhouse,
+                )
+            else:
+                build_manifest = build_one_wheel(
+                    checkout=args.checkout,
+                    source_manifest=manifest,
+                    python_executable=args.python,
+                    rustc_executable=args.rustc,
+                    cargo_executable=args.cargo,
+                    maturin_executable=args.maturin,
+                    target_triple=args.target,
+                    operating_system=args.operating_system,
+                    wheelhouse=args.wheelhouse,
+                )
             _write_new(args.output, canonicalize(build_manifest) + b"\n")
     except BuildPokeEngineError as error:
         print(str(error), file=sys.stderr)

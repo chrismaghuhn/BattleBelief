@@ -1,0 +1,199 @@
+diff --git a/poke-engine-py/Cargo.toml b/poke-engine-py/Cargo.toml
+index 60a7af3119348468fa632d716744a973484d5fab..9f0043c1c105a68d997fcf0698f699c005035d73 100644
+--- a/poke-engine-py/Cargo.toml
++++ b/poke-engine-py/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ name = "poke_engine"
+ edition = "2021"
+-version = "0.0.48"
++version = "0.0.49"
+ 
+ [lib]
+ name = "poke_engine"
+diff --git a/poke-engine-py/pyproject.toml b/poke-engine-py/pyproject.toml
+index d28b20e9dd6806bd18036c3360189af1ac9b0083..2518ee7943a666c45b904c195118b45427d4f6f1 100644
+--- a/poke-engine-py/pyproject.toml
++++ b/poke-engine-py/pyproject.toml
+@@ -8,5 +8,5 @@ build-backend = "maturin"
+ 
+ [project]
+ name = "poke-engine"
+-version = "0.0.48"
++version = "0.0.49"
+ readme = "readme.md"
+diff --git a/poke-engine-py/python/poke_engine/poke_engine.pyi b/poke-engine-py/python/poke_engine/poke_engine.pyi
+index 96306e403a633dd79e336b30b9b7bf8b975fced9..80b017f363d257420a71aed2b6f049c0c9e92efa 100644
+--- a/poke-engine-py/python/poke_engine/poke_engine.pyi
++++ b/poke-engine-py/python/poke_engine/poke_engine.pyi
+@@ -447,6 +447,15 @@ def mcts(
+     """
+     ...
+ 
++def legal_choices(py_state: State) -> Tuple[List[str], List[str]]:
++    """
++    Enumerate the native legal root choices for both sides without searching.
++
++    :param py_state: The current game state
++    :return: Canonical legal choices for side one and side two
++    """
++    ...
++
+ def generate_instructions(
+     py_state: State,
+     side_one_move: str,
+diff --git a/poke-engine-py/python/tests/test_poke_engine.py b/poke-engine-py/python/tests/test_poke_engine.py
+index 8b0490c0c5ede25e0560a9167eba08919e35df8a..d5bf156c71c3af5e13c4e6e867c87f5bffd7d816 100644
+--- a/poke-engine-py/python/tests/test_poke_engine.py
++++ b/poke-engine-py/python/tests/test_poke_engine.py
+@@ -9,6 +9,7 @@ from poke_engine import (
+     generate_instructions,
+     calculate_damage,
+     iterative_deepening_expectiminimax,
++    legal_choices,
+     Weather,
+     Terrain,
+ )
+@@ -96,3 +97,108 @@ def test_calculate_damage():
+ def test_generate_instructions_errors_when_move_does_not_exist():
+     with pytest.raises(ValueError):
+         generate_instructions(state, "not_a_move", "ember")
++
++
++def _pokemon(name, moves, *, hp=100):
++    return Pokemon(
++        id=name,
++        level=100,
++        types=("normal", "typeless"),
++        base_types=("normal", "typeless"),
++        hp=hp,
++        maxhp=100,
++        attack=100,
++        defense=100,
++        special_attack=100,
++        special_defense=100,
++        speed=100,
++        moves=moves,
++    )
++
++
++def _legal_choice_state(side_one, *, force_switch=False, force_trapped=False):
++    return State(
++        side_one=Side(
++            pokemon=side_one,
++            force_switch=force_switch,
++            force_trapped=force_trapped,
++        ),
++        side_two=Side(pokemon=[_pokemon("charmander", [Move(id="ember", pp=32)])]),
++        weather="none",
++        weather_turns_remaining=-1,
++        terrain="none",
++        terrain_turns_remaining=-1,
++        trick_room=False,
++        trick_room_turns_remaining=-1,
++    )
++
++
++def test_legal_choices_returns_multiple_ordinary_moves():
++    ordinary = _legal_choice_state(
++        [_pokemon("squirtle", [Move(id="watergun", pp=32), Move(id="tackle", pp=32)])]
++    )
++
++    assert legal_choices(ordinary) == (["watergun", "tackle"], ["ember"])
++
++
++def test_legal_choices_excludes_disabled_and_zero_pp_moves():
++    disabled = _legal_choice_state(
++        [
++            _pokemon(
++                "squirtle",
++                [
++                    Move(id="tackle", pp=32, disabled=True),
++                    Move(id="watergun", pp=0),
++                ],
++            )
++        ]
++    )
++
++    assert legal_choices(disabled)[0] == ["No Move"]
++    generate_instructions(disabled, "watergun", "ember")
++    assert "watergun" not in legal_choices(disabled)[0]
++
++
++def test_legal_choices_includes_legal_switches_with_canonical_prefix():
++    switching = _legal_choice_state(
++        [
++            _pokemon("squirtle", [Move(id="tackle", pp=32)]),
++            _pokemon("pikachu", [Move(id="tackle", pp=32)]),
++        ]
++    )
++
++    assert legal_choices(switching)[0] == ["tackle", "switch pikachu"]
++
++
++def test_legal_choices_excludes_switches_when_trapped():
++    trapped = _legal_choice_state(
++        [_pokemon("squirtle", [Move(id="tackle", pp=32)]), _pokemon("pikachu", [])],
++        force_trapped=True,
++    )
++
++    assert legal_choices(trapped)[0] == ["tackle"]
++
++
++def test_legal_choices_force_switch_contains_only_native_switches():
++    forced = _legal_choice_state(
++        [_pokemon("squirtle", [Move(id="tackle", pp=32)]), _pokemon("pikachu", [])],
++        force_switch=True,
++    )
++
++    assert legal_choices(forced)[0] == ["switch pikachu"]
++    assert "tackle" not in legal_choices(forced)[0]
++
++
++def test_legal_choices_does_not_mutate_the_python_state():
++    before = state.to_string()
++
++    legal_choices(state)
++
++    assert state.to_string() == before
++
++
++def test_legal_choices_uses_canonical_lowercase_choice_strings():
++    choices = legal_choices(state)
++
++    assert all(choice == choice.lower() for side in choices for choice in side)
++    assert choices[0] == ["watergun", "tackle", "quickattack", "leer"]
+diff --git a/poke-engine-py/src/lib.rs b/poke-engine-py/src/lib.rs
+index 032da2e0e0bf5a28adb1d84ea34c0403c9bad51a..86e8cde8fc8db6df63616b4424579ce7a783db66 100644
+--- a/poke-engine-py/src/lib.rs
++++ b/poke-engine-py/src/lib.rs
+@@ -963,6 +963,21 @@ fn id(py_state: PyState, duration_ms: u64) -> PyResult<PyIterativeDeepeningResul
+     Ok(py_id_result)
+ }
+ 
++#[pyfunction]
++fn legal_choices(py_state: PyState) -> PyResult<(Vec<String>, Vec<String>)> {
++    let state: State = py_state.into();
++    let (side_one_options, side_two_options) = state.root_get_all_options();
++    let side_one_choices = side_one_options
++        .iter()
++        .map(|choice| movechoice_to_string(&state.side_one, choice))
++        .collect();
++    let side_two_choices = side_two_options
++        .iter()
++        .map(|choice| movechoice_to_string(&state.side_two, choice))
++        .collect();
++    Ok((side_one_choices, side_two_choices))
++}
++
+ #[derive(Clone)]
+ #[pyclass(
+     name = "StateInstructions",
+@@ -1129,6 +1144,7 @@ fn py_poke_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
+     m.add_function(wrap_pyfunction!(calculate_damage, m)?)?;
+     m.add_function(wrap_pyfunction!(generate_instructions, m)?)?;
+     m.add_function(wrap_pyfunction!(id, m)?)?;
++    m.add_function(wrap_pyfunction!(legal_choices, m)?)?;
+     m.add_function(wrap_pyfunction!(mcts, m)?)?;
+     m.add_class::<PyState>()?;
+     m.add_class::<PySide>()?;

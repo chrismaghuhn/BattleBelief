@@ -1,3 +1,22 @@
+---
+document_id: plan-poke-engine-legal-choice-binding
+title: "poke-engine Legal-Choice Binding Implementation Plan"
+document_type: roadmap
+status: proposed
+normative: false
+version: 1
+applies_to:
+  - gen9ou
+  - runtime
+  - release
+effective_from: 2026-08-07
+supersedes: []
+superseded_by: null
+owners:
+  - maintainer
+last_reviewed: 2026-08-07
+---
+
 # poke-engine Legal-Choice Binding Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
