@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "report_id": "engine-capability-v2-unqualified-loss-report-v1",
+  "source_document_id": "engine-capability-v1-source",
+  "source_schema_id": "urn:battlebelief:schema:manifest:engine-capability:v1",
+  "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "migrator_id": "battlebelief.engine-capability-v1-to-v2",
+  "migrator_version": "1",
+  "loss_codes": ["approximated", "exact", "known-divergences", "unsupported"],
+  "loss": {
+    "exact": 0,
+    "approximated": 0,
+    "unsupported": 0,
+    "known_divergences": 0
+  },
+  "loss_report_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "target_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

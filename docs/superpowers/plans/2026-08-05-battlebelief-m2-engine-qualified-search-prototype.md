@@ -665,7 +665,7 @@ The transition port defines root preparation, per-player information views/keys,
 **Files:**
 
 - Create: `artifacts/gen9ou/m2/differential/runs/qualification-v1/{run-binding.json,raw-results.jsonl,result-index.json,report.json}`.
-- Create: `artifacts/gen9ou/m2/engine-capabilities/engine-capability-v2-qualified.json` and `capability-evidence-v1.json` only from complete retained results.
+- Create: `artifacts/gen9ou/m2/engine-capabilities/engine-capability-v2-qualified.json`, one deterministic `evidence/<evidence-id>.json` document per qualifying claimed capability and environment cell, and the repository-relative `artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance/index.json` plus its referenced immutable closure bytes, only from complete retained results. `unknown` and `unsupported` capabilities produce no capability-evidence documents; their complete unfavorable, aborted, or divergent outcomes remain retained in the differential run artifacts. The evidence directory is the exact union of documents referenced by qualifying claims across discovered manifests; an unchanged document may be reused by multiple manifests, and no evidence files are written outside that directory.
 - Modify: `artifacts/gen9ou/m2/differential/README.md` to link immutable run/evidence digests and scope.
 - Modify: no Python, schema, contract, corpus fixture/index, classifier, catalog, Runtime adapter, or CI file.
 - Delete: none; failed, crashed, timed-out, and unfavorable rows remain immutable.

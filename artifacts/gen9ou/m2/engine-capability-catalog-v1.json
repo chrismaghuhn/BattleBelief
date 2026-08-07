@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "catalog_id": "gen9ou-engine-capabilities",
+  "catalog_version": "1",
+  "generation": 9,
+  "format": "gen9ou",
+  "capability_contract_id": "contract-engine-capabilities",
+  "capability_contract_version": "2",
+  "capability_contract_digest": "sha256:0b01b68ef6f4b07d72384d260428094b48ab24bfa7eb432b3f7c0d36208795c5",
+  "canonicalization_contract_id": "canonicalization-profile",
+  "canonicalization_contract_version": "1",
+  "canonicalization_contract_digest": "sha256:ce1152a2ca7341a57539dcdcc90080d566b3c9bebc44276c2ba7af8edac3f505",
+  "definitions": [
+    {"value": "gen9.legality.move.selection", "description": "Select a legal move."},
+    {"value": "gen9.legality.switch.forced", "description": "Select a legal forced switch."},
+    {"value": "gen9.legality.switch.voluntary", "description": "Select a legal voluntary switch."},
+    {"value": "gen9.legality.terastallization.activation", "description": "Activate Terastallization when legal."},
+    {"value": "gen9.transition.chance.damage-roll", "description": "Resolve damage-roll chance."},
+    {"value": "gen9.transition.move.direct-damage", "description": "Apply direct move damage."},
+    {"value": "gen9.transition.order.priority", "description": "Order actions by priority."},
+    {"value": "gen9.transition.order.speed", "description": "Order actions by speed."},
+    {"value": "gen9.transition.switch.active-slot", "description": "Update the active slot after switching."},
+    {"value": "gen9.transition.terastallization.damage", "description": "Apply Terastallization damage effects."},
+    {"value": "gen9.transition.terastallization.type-change", "description": "Apply Terastallization type change."},
+    {"value": "gen9.transition.terminal.detection", "description": "Detect a terminal battle state."},
+    {"value": "gen9.transition.terminal.value", "description": "Produce a terminal state value."}
+  ]
+}

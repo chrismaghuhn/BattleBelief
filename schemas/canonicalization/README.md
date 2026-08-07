@@ -1,5 +1,8 @@
 # Canonicalization Profile v1
 
+Contract ID: `canonicalization-profile`
+Contract version: `1`
+
 Diese Datei definiert die Bytefolge, aus der Manifest-Digests entstehen.
 
 1. Das Manifest muss zuerst gegen sein JSON-Schema validieren.

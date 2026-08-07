@@ -11,16 +11,122 @@ def write_module(root: Path, package: str, body: str) -> Path:
     return path
 
 
-def test_core_cannot_import_runtime(tmp_path: Path) -> None:
-    write_module(tmp_path, "battlebelief_core", "import battlebelief_runtime\n")
+@pytest.mark.parametrize(
+    "forbidden_module", ("battlebelief_runtime", "battlebelief_lab", "poke_engine")
+)
+def test_core_cannot_import_runtime_lab_or_native_engine(
+    tmp_path: Path, forbidden_module: str
+) -> None:
+    write_module(tmp_path, "battlebelief_core", f"import {forbidden_module}\n")
     errors = scan_tree(tmp_path, ImportRule.core())
-    assert any("battlebelief_runtime" in error for error in errors)
+    assert any(forbidden_module in error for error in errors)
 
 
 def test_core_cannot_import_process_primitives(tmp_path: Path) -> None:
     write_module(tmp_path, "battlebelief_core", "import subprocess\n")
     errors = scan_tree(tmp_path, ImportRule.core())
     assert any("subprocess" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    ("body", "forbidden_root"),
+    (
+        ("from pathlib import Path\n", "pathlib"),
+        ("import os\nos.getenv('BATTLEBELIEF_TEST')\n", "os"),
+        ("import time\ntime.monotonic()\n", "time"),
+        ("import socket\nsocket.create_connection(('example.invalid', 443))\n", "socket"),
+        ("import random\nrandom.random()\n", "random"),
+        ("import secrets\nsecrets.token_bytes(32)\n", "secrets"),
+    ),
+)
+def test_core_cannot_import_nondeterministic_or_external_io_primitives(
+    tmp_path: Path, body: str, forbidden_root: str
+) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any(f"forbidden import {forbidden_root}" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "open('private-world.json')\n",
+        "import builtins\nbuiltins.open('private-world.json')\n",
+        "from builtins import open as read_file\nread_file('private-world.json')\n",
+    ),
+)
+def test_core_cannot_call_builtin_filesystem_open(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden builtin call open" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import io\nio.open('private-world.json')\n",
+        "from io import open as read_file\nread_file('private-world.json')\n",
+    ),
+)
+def test_core_cannot_call_io_open(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call io.open" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import datetime\ndatetime.datetime.now()\n",
+        "import datetime as dt\ndt.datetime.utcnow()\n",
+        "from datetime import datetime as Clock\nClock.now()\n",
+        "from datetime import date\ndate.today()\n",
+    ),
+)
+def test_core_cannot_read_wall_clock_datetime_values(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call datetime." in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "def search(world):\n    return world._opaque\n",
+        "def search(world):\n    return getattr(world, '_opaque')\n",
+        "def search(world):\n    return world.__getattribute__('_opaque')\n",
+        "def search(world):\n    return object.__getattribute__(world, '_opaque')\n",
+    ),
+)
+def test_core_search_cannot_read_the_prepared_world_payload(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core/search", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden private attribute _opaque" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "import dataclasses\ndef search(world):\n    return dataclasses.asdict(world)\n",
+        "from dataclasses import astuple as project\ndef search(world):\n    return project(world)\n",
+    ),
+)
+def test_core_cannot_generically_serialize_dataclass_payloads(tmp_path: Path, body: str) -> None:
+    write_module(tmp_path, "battlebelief_core/search", body)
+
+    errors = scan_tree(tmp_path, ImportRule.core())
+
+    assert any("forbidden call dataclasses." in error for error in errors)
 
 
 def test_runtime_cannot_import_process_primitives(tmp_path: Path) -> None:

@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 17
+version: 18
 applies_to:
   - manifests
   - release
@@ -29,7 +29,11 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Dokument-Frontmatter | [`frontmatter.schema.json`](../../schemas/documents/frontmatter.schema.json) |
 | Dokument-Snapshot-Metadaten | [`document-snapshot-metadata.schema.json`](../../schemas/documents/document-snapshot-metadata.schema.json) |
 | Search-Ausführung | [`search-contract.schema.json`](../../schemas/manifests/search-contract.schema.json) |
-| Engine-Capabilities | [`engine-capability.schema.json`](../../schemas/manifests/engine-capability.schema.json) |
+| Engine-Capabilities v1 (preserved) | [`engine-capability.schema.json`](../../schemas/manifests/engine-capability.schema.json) |
+| Engine-Capability catalog v1 | [`engine-capability-catalog-v1.schema.json`](../../schemas/catalogs/engine-capability-catalog-v1.schema.json) |
+| Engine-Capability manifest v2 | [`engine-capability-v2.schema.json`](../../schemas/manifests/engine-capability-v2.schema.json) |
+| Engine-Capability evidence v1 | [`engine-capability-evidence.schema.json`](../../schemas/manifests/engine-capability-evidence.schema.json) |
+| Engine-Capability migration loss report v1 | [`engine-capability-migration-loss-report.schema.json`](../../schemas/manifests/engine-capability-migration-loss-report.schema.json) |
 | Evaluation-Claim | [`evaluation-claim.schema.json`](../../schemas/manifests/evaluation-claim.schema.json) |
 | Ruleset-Snapshot | [`ruleset-snapshot.schema.json`](../../schemas/manifests/ruleset-snapshot.schema.json) |
 | Dataset-Provenance | [`dataset-manifest.schema.json`](../../schemas/manifests/dataset-manifest.schema.json) |
@@ -119,6 +123,22 @@ mehrdeutigen YAML-Typen werden abgelehnt.
   Canonicalizer-Versionen.
 
 ## Kompatibilität
+
+The fail-closed engine-capability v1-to-v2 migration is documented in
+[`engine-capability-v1-to-v2.md`](../migrations/engine-capability-v1-to-v2.md).
+It promotes no free v1 capability or classification. The explicit source,
+artifact, and environment binding is supplied by the caller; unbound adapter,
+oracle, ruleset, corpus, runner, classifier, and evidence fields remain `null`,
+so the candidate is not search-qualified. A migrated target additionally binds
+its deterministic loss-report projection through the optional v2 `migration`
+closure; the report in turn binds the target digest. The repository validator
+resolves the source document and loss report by their IDs under the registered
+migration directories before accepting the closure.
+
+Canonical arrays, including catalog definitions, environment bindings, claims,
+and claim evidence, use their contractually specified lexicographic order.
+Object member order does not affect a digest; input arrays are not silently
+sorted.
 
 Ein Leser darf ein Manifest nur akzeptieren, wenn:
 

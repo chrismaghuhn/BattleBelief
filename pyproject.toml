@@ -54,5 +54,9 @@ mypy_path = [
   "packages/battlebelief-runtime/src",
   "packages/battlebelief-lab/src",
 ]
-files = ["packages"]
+files = [
+  "packages",
+  "packages/battlebelief-core/tests/ports/test_transition_model_contract.py",
+  "packages/battlebelief-core/tests/ports/test_random_source_contract.py",
+]
 exclude = "packages/.*/tests/"

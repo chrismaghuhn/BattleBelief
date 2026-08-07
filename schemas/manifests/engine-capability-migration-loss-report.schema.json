@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:engine-capability-migration-loss-report:v1",
+  "title": "BattleBelief engine capability migration loss report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "source_document_id",
+    "source_schema_id",
+    "source_digest",
+    "migrator_id",
+    "migrator_version",
+    "loss_codes",
+    "loss",
+    "loss_report_digest",
+    "target_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "report_id": {"$ref": "#/$defs/id"},
+    "source_document_id": {"$ref": "#/$defs/id"},
+    "source_schema_id": {"$ref": "#/$defs/schema_id"},
+    "source_digest": {"$ref": "#/$defs/digest"},
+    "migrator_id": {"type": "string", "minLength": 1},
+    "migrator_version": {"type": "string", "minLength": 1},
+    "loss_codes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "loss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exact", "approximated", "unsupported", "known_divergences"],
+      "properties": {
+        "exact": {"type": "integer", "minimum": 0},
+        "approximated": {"type": "integer", "minimum": 0},
+        "unsupported": {"type": "integer", "minimum": 0},
+        "known_divergences": {"type": "integer", "minimum": 0}
+      }
+    },
+    "loss_report_digest": {"$ref": "#/$defs/digest"},
+    "target_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+    "schema_id": {
+      "type": "string",
+      "pattern": "^urn:battlebelief:schema:[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*:v[1-9][0-9]*$"
+    }
+  }
+}
