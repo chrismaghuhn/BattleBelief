@@ -80,7 +80,32 @@ jobs:
           CARGO_HOME: ${{ runner.temp }}/battlebelief-engine-cargo-home
         run: '& "${{ env.ENGINE_CARGO }}" fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
       - name: Build and bind one downstream wheel cell
+        id: engine_build_v2
         run: uv run python tools/build_poke_engine_wheel.py build-v2 --checkout "${{ runner.temp }}/poke-engine" --base-source-manifest artifacts/gen9ou/m2/engine/engine-source.json --source-manifest artifacts/gen9ou/m2/engine-v2/engine-source.json --patch artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
+      - name: Diagnose a failed downstream Maturin build
+        if: failure() && steps.engine_build_v2.outcome == 'failure'
+        shell: pwsh
+        env:
+          CARGO_HOME: ${{ runner.temp }}/battlebelief-engine-cargo-home
+          CARGO_INCREMENTAL: "false"
+          CARGO_NET_OFFLINE: "true"
+          CARGO_PROFILE_RELEASE_DEBUG: "0"
+          PYTHONUTF8: "1"
+          SOURCE_DATE_EPOCH: "1784471591"
+        run: |
+          $diagnosticArgs = @(
+            "build", "--release", "--strip", "--locked",
+            "--manifest-path", "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml",
+            "--no-default-features",
+            "--features", "poke-engine/gen9,poke-engine/terastallization",
+            "--interpreter", "${{ env.ENGINE_PYTHON }}",
+            "--target", "${{ env.ENGINE_TARGET }}",
+            "--out", "${{ runner.temp }}/engine-diagnostic"
+          )
+          if ("${{ runner.os }}" -ne "Windows") {
+            $diagnosticArgs += @("--compatibility", "linux")
+          }
+          & "${{ env.ENGINE_MATURIN }}" @diagnosticArgs
       - name: Run native Python-binding regression tests
         shell: pwsh
         run: |
