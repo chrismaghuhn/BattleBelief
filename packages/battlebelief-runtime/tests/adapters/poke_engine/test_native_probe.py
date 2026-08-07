@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import importlib
 import importlib.machinery
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -166,6 +167,44 @@ def test_run_native_probe_accepts_only_digest_bound_stable_result(tmp_path: Path
 
     assert availability.status == "available"
     assert availability.identity == identity
+
+
+def test_v2_native_probe_uses_legal_choices_without_search(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    bundle = load_fixture_bundle(FIXTURE_ROOT)
+    result = {"ordinary": (("tackle",), ("ember",))}
+    identity = replace(
+        _identity(
+            fixture_digest=bundle.fixture_digest,
+            result_digest=manifest_digest(result),
+            config_digest=bundle.configuration_digest,
+        ),
+        adapter_version="battlebelief-poke-engine-v2-legal-choices",
+        distribution_version="0.0.49",
+    )
+    verified = VerifiedEngineArtifact(
+        identity=identity,
+        package_root=tmp_path,
+        extension_path=tmp_path / "poke_engine.pyd",
+    )
+    native = object()
+    called: list[object] = []
+
+    def legal_choice_probe(module: object) -> dict[str, object]:
+        called.append(module)
+        return result
+
+    monkeypatch.setattr(native_probe, "run_legal_choice_probe", legal_choice_probe)
+
+    availability = run_native_probe(
+        verified,
+        fixture_root=FIXTURE_ROOT,
+        native_module=native,
+    )
+
+    assert availability.status == "available"
+    assert called == [native]
 
 
 def test_native_exception_and_fixture_digest_mismatch_are_sanitized(tmp_path: Path) -> None:

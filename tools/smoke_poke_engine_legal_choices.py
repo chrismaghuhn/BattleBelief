@@ -14,111 +14,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from battlebelief_core.canonicalization import canonicalize, manifest_digest  # noqa: E402
+from battlebelief_runtime.adapters.poke_engine.legal_choice_probe import (  # noqa: E402
+    run_legal_choice_probe,
+)
 from battlebelief_runtime.adapters.poke_engine.native_probe import (  # noqa: E402
     load_fixture_bundle,
 )
 
 
-def _pokemon(name: str, moves: list[Any], *, hp: int = 100) -> Any:
-    from poke_engine import Pokemon  # type: ignore[import-not-found]
-
-    return Pokemon(
-        id=name,
-        level=100,
-        types=("normal", "typeless"),
-        base_types=("normal", "typeless"),
-        hp=hp,
-        maxhp=100,
-        attack=100,
-        defense=100,
-        special_attack=100,
-        special_defense=100,
-        speed=100,
-        terastallized=True,
-        moves=moves,
-    )
-
-
-def _state(side_one: list[Any], *, force_switch: bool = False, force_trapped: bool = False) -> Any:
-    from poke_engine import Move, Side, State  # type: ignore[import-not-found]
-
-    return State(
-        side_one=Side(
-            pokemon=side_one,
-            force_switch=force_switch,
-            force_trapped=force_trapped,
-        ),
-        side_two=Side(pokemon=[_pokemon("charmander", [Move(id="ember", pp=32)])]),
-        weather="none",
-        weather_turns_remaining=-1,
-        terrain="none",
-        terrain_turns_remaining=-1,
-        trick_room=False,
-        trick_room_turns_remaining=-1,
-    )
-
-
 def _run_checks() -> dict[str, Any]:
-    from poke_engine import Move, legal_choices  # type: ignore[import-not-found]
+    import poke_engine  # type: ignore[import-not-found]
 
-    ordinary = _state(
-        [_pokemon("squirtle", [Move(id="watergun", pp=32), Move(id="tackle", pp=32)])]
-    )
-    if legal_choices(ordinary) != (["watergun", "tackle"], ["ember"]):
-        raise ValueError("ordinary native legal choices differ")
-
-    disabled = _state(
-        [
-            _pokemon(
-                "squirtle",
-                [Move(id="tackle", pp=32, disabled=True), Move(id="watergun", pp=0)],
-            )
-        ]
-    )
-    disabled_choices = legal_choices(disabled)
-    if disabled_choices[0] != ["No Move"] or any(
-        choice == "watergun" for choice in disabled_choices[0]
-    ):
-        raise ValueError("disabled or zero-PP move was enumerated")
-
-    switching = _state(
-        [
-            _pokemon("squirtle", [Move(id="tackle", pp=32)]),
-            _pokemon("pikachu", [Move(id="tackle", pp=32)]),
-        ]
-    )
-    if legal_choices(switching)[0] != ["tackle", "switch pikachu"]:
-        raise ValueError("legal switch choices differ")
-
-    trapped = _state(
-        [_pokemon("squirtle", [Move(id="tackle", pp=32)]), _pokemon("pikachu", [])],
-        force_trapped=True,
-    )
-    if legal_choices(trapped)[0] != ["tackle"]:
-        raise ValueError("trapped state exposed a switch")
-
-    forced = _state(
-        [_pokemon("squirtle", [Move(id="tackle", pp=32)]), _pokemon("pikachu", [])],
-        force_switch=True,
-    )
-    if legal_choices(forced)[0] != ["switch pikachu"]:
-        raise ValueError("forced-switch state exposed a non-switch choice")
-
-    before = ordinary.to_string()
-    canonical = legal_choices(ordinary)
-    if ordinary.to_string() != before:
-        raise ValueError("legal-choice enumeration mutated the caller state")
-    if any(
-        choice != "No Move" and choice != choice.lower() for side in canonical for choice in side
-    ):
-        raise ValueError("native choice strings are not canonical")
-    return {
-        "ordinary": canonical,
-        "disabled_zero_pp": disabled_choices,
-        "switching": legal_choices(switching),
-        "trapped": legal_choices(trapped),
-        "forced_switch": legal_choices(forced),
-    }
+    return run_legal_choice_probe(poke_engine)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
