@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import stat
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -376,9 +377,36 @@ def _artifact_display_path(path: Path, root: Path | None = None) -> str:
     return path.name
 
 
-def _is_link_or_reparse_point(path: Path) -> bool:
+def _is_link_or_reparse_entry(path: Path, metadata: object) -> bool:
+    if stat.S_ISLNK(getattr(metadata, "st_mode", 0)):
+        return True
+    reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    if getattr(metadata, "st_file_attributes", 0) & reparse_point:
+        return True
     is_junction = getattr(path, "is_junction", None)
-    return path.is_symlink() or (callable(is_junction) and bool(is_junction()))
+    return bool(is_junction()) if callable(is_junction) else False
+
+
+def _path_safety_errors(path: Path, expected_root: Path, root: Path) -> list[str]:
+    """Inspect governed path metadata without opening artifact contents."""
+
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return []
+    except OSError:
+        return [f"{path.relative_to(root)}: governed path metadata is unreadable"]
+    errors: list[str] = []
+    if _is_link_or_reparse_entry(path, metadata):
+        errors.append(f"{path.relative_to(root)}: symlinked artifact paths are not allowed")
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.relative_to(expected_root.resolve(strict=True))
+    except (OSError, ValueError):
+        errors.append(
+            f"{path.relative_to(root)}: resolved artifact path escapes its governed directory"
+        )
+    return errors
 
 
 def _load_capability_evidence_documents(
@@ -529,11 +557,32 @@ def _validate_migration_provenance(
 def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     errors: list[str] = []
     schema_root = root / "schemas"
+    artifact_root = root / "artifacts/gen9ou/m2"
     catalog_path = root / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
     capability_root = root / "artifacts/gen9ou/m2/engine-capabilities"
-    manifest_paths = tuple(sorted(capability_root.glob("engine-capability-v2-*.json")))
     migration_source_directory = capability_root / "migration-sources"
     migration_report_directory = capability_root / "migration-reports"
+    engine_root = root / "artifacts/gen9ou/m2/engine"
+    source_path = engine_root / "engine-source.json"
+    index_path = engine_root / "engine-artifact-index.json"
+    evidence_directory = capability_root / "evidence"
+    # Complete path safety before discovering or loading any governed artifact
+    # content.  This phase uses only directory metadata, lstat, and resolution.
+    initial_governed_paths: tuple[tuple[Path, Path], ...] = (
+        (artifact_root, artifact_root.parent),
+        (catalog_path, catalog_path.parent),
+        (engine_root, engine_root.parent),
+        (capability_root, capability_root.parent),
+        (evidence_directory, capability_root),
+        (migration_source_directory, capability_root),
+        (migration_report_directory, capability_root),
+    )
+    for path, expected_root in initial_governed_paths:
+        errors.extend(_path_safety_errors(path, expected_root, root))
+    if errors:
+        return errors
+
+    manifest_paths = tuple(sorted(capability_root.glob("engine-capability-v2-*.json")))
     migration_source_paths = (
         tuple(sorted(migration_source_directory.glob("*.json")))
         if migration_source_directory.is_dir()
@@ -544,36 +593,27 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         if migration_report_directory.is_dir()
         else ()
     )
-    engine_root = root / "artifacts/gen9ou/m2/engine"
-    source_path = engine_root / "engine-source.json"
-    index_path = engine_root / "engine-artifact-index.json"
+    governed_paths: list[tuple[Path, Path]] = [
+        (catalog_path, catalog_path.parent),
+        (source_path, engine_root),
+        (index_path, engine_root),
+        *[(path, capability_root) for path in manifest_paths],
+        *[(path, capability_root) for path in migration_source_paths],
+        *[(path, capability_root) for path in migration_report_paths],
+    ]
+    if capability_root.exists():
+        governed_paths.extend((path, capability_root) for path in capability_root.rglob("*"))
+    if engine_root.exists():
+        governed_paths.extend((path, engine_root) for path in engine_root.rglob("*"))
+    for path, expected_root in sorted(governed_paths):
+        errors.extend(_path_safety_errors(path, expected_root, root))
+    if errors:
+        return errors
+
     if not manifest_paths or not all(
         path.is_file() for path in (catalog_path, source_path, index_path)
     ):
         return ["engine capability catalog or initial v2 manifest is missing"]
-    evidence_directory = capability_root / "evidence"
-    governed_paths: list[tuple[Path, Path]] = [
-        (catalog_path, catalog_path.parent),
-        (engine_root, engine_root.parent),
-        (source_path, engine_root),
-        (index_path, engine_root),
-        (capability_root, capability_root.parent),
-        (evidence_directory, capability_root),
-        (migration_source_directory, capability_root),
-        (migration_report_directory, capability_root),
-    ]
-    if capability_root.exists() and not _is_link_or_reparse_point(capability_root):
-        governed_paths.extend((path, capability_root) for path in capability_root.rglob("*"))
-    for path, expected_root in sorted(governed_paths):
-        if _is_link_or_reparse_point(path):
-            errors.append(f"{path.relative_to(root)}: symlinked artifact paths are not allowed")
-        if path.exists():
-            try:
-                path.resolve(strict=True).relative_to(expected_root.resolve(strict=True))
-            except (OSError, ValueError):
-                errors.append(
-                    f"{path.relative_to(root)}: resolved artifact path escapes its governed directory"
-                )
     approved_paths = set(manifest_paths)
     if evidence_directory.is_dir():
         approved_paths.update(evidence_directory.glob("*.json"))

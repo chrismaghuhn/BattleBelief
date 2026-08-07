@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+import tools.check_schemas as schema_checker
 from jsonschema import Draft202012Validator
 from tools.check_schemas import (
     _validate_capability_catalog,
@@ -82,7 +85,7 @@ def test_artifact_validator_reports_malformed_discovered_evidence_without_except
     ),
 )
 def test_artifact_validator_rejects_symlinked_governed_documents(
-    tmp_path: Path, relative_link: Path
+    tmp_path: Path, relative_link: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = _copy_engine_artifacts(tmp_path)
     outside = tmp_path / "outside.json"
@@ -94,6 +97,15 @@ def test_artifact_validator_rejects_symlinked_governed_documents(
     except (OSError, NotImplementedError) as error:
         pytest.skip(f"symlink creation unavailable: {error}")
 
+    opened_targets: list[Path] = []
+    load_json_strict = schema_checker.load_json_strict
+
+    def guarded_load(path: Path) -> object:
+        if Path(path).resolve(strict=False) == outside.resolve(strict=False):
+            opened_targets.append(Path(path))
+        return load_json_strict(path)
+
+    monkeypatch.setattr(schema_checker, "load_json_strict", guarded_load)
     errors = _validate_engine_capability_artifacts(root)
 
     normalized = relative_link.as_posix()
@@ -102,6 +114,56 @@ def test_artifact_validator_rejects_symlinked_governed_documents(
         and "symlinked artifact paths are not allowed" in error
         for error in errors
     )
+    assert opened_targets == []
+
+
+def test_artifact_validator_rejects_symlinked_governed_directory_before_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    capability_root = root / "artifacts/gen9ou/m2/engine-capabilities"
+    outside_directory = tmp_path / "outside-evidence"
+    outside_directory.mkdir()
+    outside = outside_directory / "linked.json"
+    outside.write_text("{}", encoding="utf-8")
+    evidence_directory = capability_root / "evidence"
+    try:
+        os.symlink(outside_directory, evidence_directory, target_is_directory=True)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"symlink creation unavailable: {error}")
+
+    opened_targets: list[Path] = []
+    load_json_strict = schema_checker.load_json_strict
+
+    def guarded_load(path: Path) -> object:
+        if Path(path).resolve(strict=False) == outside.resolve(strict=False):
+            opened_targets.append(Path(path))
+        return load_json_strict(path)
+
+    monkeypatch.setattr(schema_checker, "load_json_strict", guarded_load)
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert any(
+        "engine-capabilities/evidence" in error.replace("\\", "/")
+        and "symlinked artifact paths are not allowed" in error
+        for error in errors
+    )
+    assert opened_targets == []
+
+
+def test_reparse_point_metadata_is_rejected_without_symlink_privilege(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reparse_flag = 0x40000000
+    monkeypatch.setattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", reparse_flag, raising=False)
+
+    regular = SimpleNamespace(st_mode=stat.S_IFREG, st_file_attributes=0)
+    reparse = SimpleNamespace(st_mode=stat.S_IFREG, st_file_attributes=reparse_flag)
+    symlink = SimpleNamespace(st_mode=stat.S_IFLNK, st_file_attributes=0)
+
+    assert not schema_checker._is_link_or_reparse_entry(Path("regular.json"), regular)
+    assert schema_checker._is_link_or_reparse_entry(Path("reparse.json"), reparse)
+    assert schema_checker._is_link_or_reparse_entry(Path("symlink.json"), symlink)
 
 
 def test_artifact_validator_requires_evidence_filename_to_match_evidence_id(
