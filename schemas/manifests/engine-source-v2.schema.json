@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:manifest:engine-source:v2",
+  "title": "BattleBelief downstream-patched poke-engine source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "manifest_id",
+    "repository_url",
+    "base_source_manifest_id",
+    "base_source_manifest_digest",
+    "base_commit",
+    "base_tag",
+    "base_tag_peeled_commit",
+    "base_git_tree_oid",
+    "base_source_tree_digest",
+    "base_source_file_count",
+    "retrieved_on",
+    "license",
+    "source_scope",
+    "source_files",
+    "source_tree_digest",
+    "source_file_count",
+    "cargo_lock",
+    "workspace_members",
+    "submodules",
+    "base_clean_tree",
+    "resulting_source_is_committed",
+    "downstream_patch",
+    "canonicalization_profile"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "schema_id": { "const": "urn:battlebelief:schema:manifest:engine-source:v2" },
+    "manifest_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+    "repository_url": { "const": "https://github.com/pmariglia/poke-engine" },
+    "base_source_manifest_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+    "base_source_manifest_digest": { "$ref": "#/$defs/sha256" },
+    "base_commit": { "$ref": "#/$defs/git_oid" },
+    "base_tag": { "const": "v0.0.48" },
+    "base_tag_peeled_commit": { "$ref": "#/$defs/git_oid" },
+    "base_git_tree_oid": { "$ref": "#/$defs/git_oid" },
+    "base_source_tree_digest": { "$ref": "#/$defs/sha256" },
+    "base_source_file_count": { "type": "integer", "minimum": 1 },
+    "retrieved_on": { "type": "string", "format": "date" },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx_id", "path", "size", "sha256"],
+      "properties": {
+        "spdx_id": { "const": "MIT" },
+        "path": { "const": "LICENSE" },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "source_scope": { "const": "full_git_tree_with_downstream_patch" },
+    "source_files": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/source_file" }
+    },
+    "source_tree_digest": { "$ref": "#/$defs/sha256" },
+    "source_file_count": { "type": "integer", "minimum": 1 },
+    "cargo_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": { "const": "Cargo.lock" },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "workspace_members": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/repository_path" }
+    },
+    "submodules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "entries"],
+      "properties": {
+        "present": { "const": false },
+        "entries": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "base_clean_tree": { "const": true },
+    "resulting_source_is_committed": { "const": false },
+    "downstream_patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "format", "application", "size", "sha256"],
+      "properties": {
+        "path": { "const": "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch" },
+        "role": { "const": "legal-choice-binding" },
+        "format": { "const": "git-diff-binary-full-index-unified-zero-v1" },
+        "application": { "const": "git-apply-exact-v1" },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "canonicalization_profile": { "const": "rfc8785-jcs-v1" }
+  },
+  "$defs": {
+    "git_oid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "repository_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    },
+    "source_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "git_mode", "size", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repository_path" },
+        "git_mode": { "enum": ["100644", "100755", "120000"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

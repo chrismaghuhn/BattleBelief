@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 18
+version: 19
 applies_to:
   - manifests
   - release
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-06
+last_reviewed: 2026-08-07
 ---
 
 # Manifest-Schemas, Canonicalization und Evolution
@@ -51,6 +51,9 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | `poke-engine`-Quelle v1 | [`engine-source.schema.json`](../../schemas/manifests/engine-source.schema.json) |
 | `poke-engine`-Build v1 | [`engine-build.schema.json`](../../schemas/manifests/engine-build.schema.json) |
 | `poke-engine`-Artifact-Index v1 | [`engine-artifact-index.schema.json`](../../schemas/manifests/engine-artifact-index.schema.json) |
+| `poke-engine`-Quelle v2 (downstream patched) | [`engine-source-v2.schema.json`](../../schemas/manifests/engine-source-v2.schema.json) |
+| `poke-engine`-Build v2 (downstream patched) | [`engine-build-v2.schema.json`](../../schemas/manifests/engine-build-v2.schema.json) |
+| `poke-engine`-Artifact-Index v2 (downstream patched) | [`engine-artifact-index-v2.schema.json`](../../schemas/manifests/engine-artifact-index-v2.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
 | Decision-Record-Payload v2 | [`decision-record-payload-v2.schema.json`](../../schemas/records/decision-record-payload-v2.schema.json) |
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
@@ -70,9 +73,13 @@ solcher Build-Record bindet außerdem die vollständige plattformspezifische
 POSIX-Symlinks sowie den unveränderbaren Extractor-Digest. Er ist weder eine
 Engine-Qualifikation noch ein Parity- oder Strength-Claim.
 
-Die drei `poke-engine`-Manifeste binden die vollständige Git-Blob-Closure der
+Die drei v1-`poke-engine`-Manifeste binden die vollständige Git-Blob-Closure der
 ausgewählten Quelle, genau eine kontrollierte Wheel-Build-Zelle und den
-geschlossenen Sechs-Zellen-Artifact-Index. Ein Build-Manifest bewahrt neben dem
+geschlossenen Sechs-Zellen-Artifact-Index. Die additive v2-Manifestfamilie
+bindet zusätzlich den vollständigen v1-Quellmanifest-Digest, den exakten
+Downstream-Patch und die vollständige resultierende Source-Closure; der
+Base-Upstream-Commit ist dabei keine behauptete Upstream-Identität des
+Patch-Ergebnisses. Ein Build-Manifest bewahrt neben dem
 Digest des ursprünglichen Wheel-`RECORD` auch dessen normalisierte Einträge.
 Die Installationsprüfung verifiziert diese Einträge erneut und erlaubt nur die
 dokumentierten, vom Installer erzeugten Metadaten-Sidecars. Diese Manifeste

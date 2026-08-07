@@ -24,7 +24,12 @@ from battlebelief_runtime.search_status import EngineArtifactIdentity
 
 from .errors import EngineArtifactError, EngineFailureClass
 
-_RELEASE_TAG = "engine-poke-engine-v0.0.48-bcf13823-v1"
+_RELEASE_TAG = "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1"
+_DISTRIBUTION_VERSION = "0.0.49"
+_ADAPTER_VERSION = "battlebelief-poke-engine-v2-legal-choices"
+_V1_RELEASE_TAG = "engine-poke-engine-v0.0.48-bcf13823-v1"
+_V1_DISTRIBUTION_VERSION = "0.0.48"
+_V1_ADAPTER_VERSION = "battlebelief-poke-engine-v1"
 _FEATURES = ("poke-engine/gen9", "poke-engine/terastallization")
 _EXPECTED_CELLS = frozenset(
     f"{operating_system}-x86_64-cp{minor}"
@@ -32,9 +37,9 @@ _EXPECTED_CELLS = frozenset(
     for minor in ("312", "313", "314")
 )
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
-_DEFAULT_DATA_ROOT = Path(__file__).with_name("data")
+_DEFAULT_DATA_ROOT = Path(__file__).with_name("data-v2")
 EXPECTED_ARTIFACT_INDEX_DIGEST = (
-    "sha256:5b4f59849ff01c6024b7b5f78f95f5457f3f69030bf46822d9f323c911908d98"
+    "sha256:d098fb14aa802d2899c0479b7fa0e18ff7f42ffd1a915dafcd0bcb6e58bc60c6"
 )
 
 
@@ -200,7 +205,7 @@ def _verify_manifest_closure(
     fixed_index = {
         "schema_version": 1,
         "schema_id": "urn:battlebelief:schema:manifest:engine-artifact-index:v1",
-        "release_tag": _RELEASE_TAG,
+        "release_tag": _V1_RELEASE_TAG,
         "release_prerelease": True,
         "release_assets_immutable": True,
         "canonicalization_profile": "rfc8785-jcs-v1",
@@ -258,7 +263,7 @@ def _verify_manifest_closure(
         "target_triple": expected_target,
         "operating_system": environment.operating_system,
         "architecture": environment.architecture,
-        "adapter_version": "battlebelief-poke-engine-v1",
+        "adapter_version": _V1_ADAPTER_VERSION,
         "canonicalization_profile": "rfc8785-jcs-v1",
         "build_environment": {
             "allowlist": [
@@ -298,21 +303,188 @@ def _verify_manifest_closure(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     distribution = build.get("distribution")
     wheel = build.get("wheel")
-    if distribution != {"name": "poke-engine", "version": "0.0.48"} or not isinstance(wheel, dict):
+    if distribution != {
+        "name": "poke-engine",
+        "version": _V1_DISTRIBUTION_VERSION,
+    } or not isinstance(wheel, dict):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     expected_cell = {
         "wheel_filename": wheel.get("filename"),
         "wheel_size": wheel.get("size"),
         "wheel_sha256": wheel.get("sha256"),
         "distribution_name": "poke-engine",
-        "distribution_version": "0.0.48",
+        "distribution_version": _V1_DISTRIBUTION_VERSION,
         "python_tag": environment.python_tag,
         "abi_tag": environment.abi_tag,
         "platform_tag": environment.platform_tag,
         "operating_system": environment.operating_system,
         "architecture": environment.architecture,
         "features": list(_FEATURES),
-        "adapter_version": "battlebelief-poke-engine-v1",
+        "adapter_version": _V1_ADAPTER_VERSION,
+        "release_tag": _V1_RELEASE_TAG,
+    }
+    if any(cell.get(key) != value for key, value in expected_cell.items()):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    allowed_statuses = {"available", "candidate"} if allow_candidate else {"available"}
+    if cell.get("availability_status") not in allowed_statuses:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    filename = cell.get("wheel_filename")
+    expected_url = f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{_V1_RELEASE_TAG}/{filename}"
+    if cell.get("release_asset_url") != expected_url:
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    for field in (
+        "sentinel_fixture_digest",
+        "sentinel_result_digest",
+        "sentinel_configuration_digest",
+    ):
+        _require_digest(cell.get(field))
+    return source, build
+
+
+def _verify_manifest_closure_v2(
+    *,
+    data_root: Path,
+    index: Mapping[str, Any],
+    cell: Mapping[str, Any],
+    environment: RuntimeEnvironment,
+    allow_candidate: bool,
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    patch_digest = "sha256:c3af469fb9f9a90ca0b5b731398d5a138725a1b1e5b6c790f86fedc0d1aa8dfe"
+    source_digest = _require_digest(index.get("source_manifest_digest"))
+    fixed_index = {
+        "schema_version": 2,
+        "schema_id": "urn:battlebelief:schema:manifest:engine-artifact-index:v2",
+        "source_schema_id": "urn:battlebelief:schema:manifest:engine-source:v2",
+        "build_schema_id": "urn:battlebelief:schema:manifest:engine-build:v2",
+        "release_tag": _RELEASE_TAG,
+        "release_prerelease": True,
+        "release_assets_immutable": True,
+        "repository_url": "https://github.com/chrismaghuhn/BattleBelief",
+        "downstream_patch_digest": patch_digest,
+        "source_tree_digest": "sha256:635bd9246a0f83882332329e3d9ef0752e7630c789ab620bba4d6dd80eb769c4",
+        "canonicalization_profile": "rfc8785-jcs-v1",
+    }
+    if any(index.get(key) != value for key, value in fixed_index.items()):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    source = _load_canonical(
+        data_root / "engine-source.json", missing=EngineFailureClass.ARTIFACT_UNAVAILABLE
+    )
+    fixed_source = {
+        "schema_version": 2,
+        "schema_id": "urn:battlebelief:schema:manifest:engine-source:v2",
+        "repository_url": "https://github.com/pmariglia/poke-engine",
+        "base_commit": "bcf13823abc162a608e187b26bbf683f759f385e",
+        "base_tag": "v0.0.48",
+        "base_tag_peeled_commit": "bcf13823abc162a608e187b26bbf683f759f385e",
+        "base_git_tree_oid": "74d10964d7470b2b9d92ba734550825388178d2d",
+        "source_scope": "full_git_tree_with_downstream_patch",
+        "resulting_source_is_committed": False,
+        "base_clean_tree": True,
+        "base_source_manifest_digest": "sha256:fa702701eddea5eef676a22a0d8a66ab30d081ed36fa0e557c05eca9b0a5a91c",
+        "base_source_tree_digest": "sha256:05e99c0f396dcb48e020cd0536872264c3a0a2381db728a2d6d1ddf3478b9a1f",
+        "source_tree_digest": "sha256:635bd9246a0f83882332329e3d9ef0752e7630c789ab620bba4d6dd80eb769c4",
+        "downstream_patch": {
+            "application": "git-apply-exact-v1",
+            "format": "git-diff-binary-full-index-unified-zero-v1",
+            "path": "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch",
+            "role": "legal-choice-binding",
+            "sha256": patch_digest,
+            "size": 6254,
+        },
+        "canonicalization_profile": "rfc8785-jcs-v1",
+    }
+    if any(source.get(key) != value for key, value in fixed_source.items()):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    if source_digest != manifest_digest(source) or source_digest != _require_digest(
+        cell.get("source_manifest_digest")
+    ):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    build = _load_canonical(
+        data_root / f"engine-build-{environment.cell_id}.json",
+        missing=EngineFailureClass.ARTIFACT_UNAVAILABLE,
+    )
+    if manifest_digest(build) != _require_digest(cell.get("build_manifest_digest")):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    expected_target = (
+        "x86_64-unknown-linux-gnu"
+        if environment.operating_system == "ubuntu-24.04"
+        else "x86_64-pc-windows-msvc"
+    )
+    expected_build = {
+        "schema_version": 2,
+        "schema_id": "urn:battlebelief:schema:manifest:engine-build:v2",
+        "source_schema_id": "urn:battlebelief:schema:manifest:engine-source:v2",
+        "cell_id": environment.cell_id,
+        "source_manifest_digest": source_digest,
+        "source_tree_digest": fixed_index["source_tree_digest"],
+        "downstream_patch_digest": patch_digest,
+        "rust_toolchain": f"1.83.0-{expected_target}",
+        "cargo_version": "cargo 1.83.0 (5ffbef321 2024-10-29)",
+        "rustup_components": ["cargo", "rust-std", "rustc"],
+        "rust_targets": [expected_target],
+        "maturin_version": "1.7.1",
+        "build_backend": "maturin",
+        "build_argv": _expected_build_argv(expected_target),
+        "locked": True,
+        "no_default_features": True,
+        "features": list(_FEATURES),
+        "target_triple": expected_target,
+        "operating_system": environment.operating_system,
+        "architecture": environment.architecture,
+        "adapter_version": _ADAPTER_VERSION,
+        "canonicalization_profile": "rfc8785-jcs-v1",
+        "build_environment": {
+            "allowlist": [
+                {"name": "CARGO_HOME", "value": "../battlebelief-engine-cargo-home"},
+                {"name": "CARGO_INCREMENTAL", "value": "false"},
+                {"name": "CARGO_NET_OFFLINE", "value": "true"},
+                {"name": "CARGO_PROFILE_RELEASE_DEBUG", "value": "0"},
+                {"name": "PYTHONUTF8", "value": "1"},
+                {"name": "SOURCE_DATE_EPOCH", "value": "1784471591"},
+            ]
+        },
+    }
+    if any(build.get(key) != value for key, value in expected_build.items()):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    rustc_vv = build.get("rustc_vv")
+    if not isinstance(rustc_vv, str) or not {
+        "rustc 1.83.0 (90b35a623 2024-11-26)",
+        "commit-hash: 90b35a6239c3d8bdabc530a6a0816f7ff89a0aaf",
+        "commit-date: 2024-11-26",
+        f"host: {expected_target}",
+        "release: 1.83.0",
+    }.issubset(set(rustc_vv.splitlines())):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    python_identity = build.get("python")
+    if not isinstance(python_identity, dict) or any(
+        python_identity.get(key) != value
+        for key, value in {
+            "implementation": "CPython",
+            "python_tag": environment.python_tag,
+            "abi_tag": environment.abi_tag,
+            "platform_tag": environment.platform_tag,
+        }.items()
+    ):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    distribution = build.get("distribution")
+    wheel = build.get("wheel")
+    if distribution != {"name": "poke-engine", "version": _DISTRIBUTION_VERSION} or not isinstance(
+        wheel, dict
+    ):
+        _fail(EngineFailureClass.ARTIFACT_MISMATCH)
+    expected_cell = {
+        "wheel_filename": wheel.get("filename"),
+        "wheel_size": wheel.get("size"),
+        "wheel_sha256": wheel.get("sha256"),
+        "distribution_name": "poke-engine",
+        "distribution_version": _DISTRIBUTION_VERSION,
+        "python_tag": environment.python_tag,
+        "abi_tag": environment.abi_tag,
+        "platform_tag": environment.platform_tag,
+        "operating_system": environment.operating_system,
+        "architecture": environment.architecture,
+        "features": list(_FEATURES),
+        "adapter_version": _ADAPTER_VERSION,
         "release_tag": _RELEASE_TAG,
     }
     if any(cell.get(key) != value for key, value in expected_cell.items()):
@@ -503,8 +675,12 @@ def _verify_installation(
     build: Mapping[str, Any],
     cell: Mapping[str, Any],
     staged_wheel: Path | None,
+    expected_version: str = _V1_DISTRIBUTION_VERSION,
 ) -> tuple[Path, Path]:
-    if distribution.metadata.get("Name") != "poke-engine" or distribution.version != "0.0.48":
+    if (
+        distribution.metadata.get("Name") != "poke-engine"
+        or distribution.version != expected_version
+    ):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     root, dist_info, distribution_paths = _distribution_root_and_info(distribution)
     record_relative = f"{dist_info}/RECORD"
@@ -605,6 +781,7 @@ def verify_installed_artifact(
 
     if expected_index_digest is None:
         _fail(EngineFailureClass.ARTIFACT_UNAVAILABLE)
+    is_v2 = data_root == _DEFAULT_DATA_ROOT
     index = _load_canonical(
         data_root / "engine-artifact-index.json",
         missing=EngineFailureClass.ARTIFACT_UNAVAILABLE,
@@ -613,7 +790,8 @@ def verify_installed_artifact(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     selected_environment = current_environment() if environment is None else environment
     cell = _cell(index, selected_environment)
-    _source, build = _verify_manifest_closure(
+    verify_manifest = _verify_manifest_closure_v2 if is_v2 else _verify_manifest_closure
+    _source, build = verify_manifest(
         data_root=data_root,
         index=index,
         cell=cell,
@@ -641,6 +819,7 @@ def verify_installed_artifact(
         build=build,
         cell=cell,
         staged_wheel=staged_wheel,
+        expected_version=_DISTRIBUTION_VERSION if is_v2 else _V1_DISTRIBUTION_VERSION,
     )
     identity = EngineArtifactIdentity(
         artifact_index_digest=expected_index_digest,

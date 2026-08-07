@@ -16,6 +16,7 @@ from battlebelief_runtime.search_status import EngineAvailability
 
 from .artifact import VerifiedEngineArtifact
 from .errors import EngineArtifactError, EngineFailureClass
+from .legal_choice_probe import run_legal_choice_probe
 
 _DEFAULT_FIXTURE_ROOT = Path(__file__).with_name("fixtures")
 
@@ -296,7 +297,10 @@ def run_native_probe(
         _fail(EngineFailureClass.SENTINEL_FAILED)
     native = _import_verified_native(verified) if native_module is None else native_module
     try:
-        result = execute_native_probe(native, bundle)
+        if verified.identity.adapter_version == "battlebelief-poke-engine-v2-legal-choices":
+            result = run_legal_choice_probe(native)
+        else:
+            result = execute_native_probe(native, bundle)
     except EngineArtifactError:
         raise
     except BaseException as error:

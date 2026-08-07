@@ -49,9 +49,10 @@ separate maintainer approval with a dedicated test account.
 
 ## Optional native search artifact
 
-The `search` extra installs one digest-bound `poke-engine` wheel from the
-project's immutable Task-25 artifact prerelease on a matching CPython 3.12,
-3.13, or 3.14 Linux x86-64 or Windows AMD64 environment. It is not a base
+The `search` extra installs one digest-bound downstream `poke-engine==0.0.49`
+wheel from the immutable legal-choice prerelease on a matching CPython 3.12,
+3.13, or 3.14 Linux x86-64 or Windows AMD64 environment. The historical
+Task-25 `0.0.48` metadata remains preserved separately. This is not a base
 dependency, and the Runtime never invokes Cargo, maturin, or another source
 build fallback.
 
@@ -65,3 +66,7 @@ extension, the Runtime accepts only the six artifact-index cells: Ubuntu 24.04
 x86-64 and Windows Server 2025 x86-64 for those three CPython versions. Other
 Linux distributions fail closed as `unsupported_environment` even if their
 packaging markers allowed the wheel to be installed.
+
+The installed `poke-engine==0.0.49` exposes native legal-choice enumeration for
+a future runtime mapping; this package still does not implement the frozen
+core's `TransitionModel.legal_actions()` port here.

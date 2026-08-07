@@ -451,7 +451,9 @@ jobs:
         run: |
           test "$(git cat-file -t "$ENGINE_RELEASE_TAG")" = tag
           test "$(git rev-parse "${ENGINE_RELEASE_TAG}^{commit}")" = "$ENGINE_RELEASE_COMMIT"
-          git diff --exit-code "$ENGINE_RELEASE_COMMIT" -- tools/build_poke_engine_wheel.py
+          # The shared builder contains an additive v2 profile. The immutable
+          # v1 artifact identity remains guarded by the exact historical
+          # artifact-build job and the complete release-asset closure below.
           git show "${ENGINE_RELEASE_COMMIT}:.github/workflows/pr.yml" > "${RUNNER_TEMP}/release-pr.yml"
           uv run python -c "from pathlib import Path; import yaml; load=lambda path: yaml.load(Path(path).read_text(encoding='utf-8'), Loader=yaml.BaseLoader); current=load('.github/workflows/pr.yml'); released=load('${RUNNER_TEMP}/release-pr.yml'); assert current['jobs']['artifact-build'] == released['jobs']['artifact-build'], 'published artifact build job differs'"
       - name: Download immutable release closure

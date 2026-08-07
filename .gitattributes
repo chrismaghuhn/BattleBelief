@@ -11,3 +11,4 @@
 *.txt text eol=lf
 *.cjs text eol=lf
 *.ps1 text eol=crlf
+artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch binary
