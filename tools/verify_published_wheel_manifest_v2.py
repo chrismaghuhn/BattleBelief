@@ -16,10 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from battlebelief_core.canonicalization import canonicalize, manifest_digest  # noqa: E402
-from tools.build_poke_engine_wheel import (  # noqa: E402
-    BuildPokeEngineError,
-    inspect_wheel,
-)
+from tools.build_poke_engine_wheel import inspect_wheel  # noqa: E402
 from tools.verify_poke_engine_artifact import (  # noqa: E402
     ManifestWheelBindingError,
     verify_staged_wheelhouse_closure,
@@ -89,8 +86,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ManifestWheelBindingError as error:
         print(f"published v2 {error}", file=sys.stderr)
         return 1
-    except (PublishedWheelV2Error, BuildPokeEngineError, ValueError) as error:
-        print(str(error), file=sys.stderr)
+    except (OSError, RuntimeError, ValueError) as error:
+        print(f"published v2 wheel verification failed: {error}", file=sys.stderr)
         return 1
     print(f"published_wheel_manifest_digest={manifest_digest(build)}")
     print(f"published_wheel_sha256={build['wheel']['sha256']}")

@@ -188,8 +188,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             expected_tag=args.expected_tag,
             expected_repository=args.expected_repository,
         )
-    except (OSError, PublishedReleaseV2Error, ValueError):
-        print("v2 immutable release closure failed", file=sys.stderr)
+    except (OSError, RuntimeError, ValueError) as error:
+        print(f"v2 immutable release closure failed: {error}", file=sys.stderr)
         return 1
     print("v2_immutable_release_closure=verified")
     return 0

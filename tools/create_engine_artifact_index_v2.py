@@ -39,6 +39,9 @@ def _fail(message: str) -> NoReturn:
 
 
 def _strict_canonical(path: Path) -> dict[str, Any]:
+    def reject_nonfinite(_value: str) -> NoReturn:
+        _fail("input contains a non-finite JSON number")
+
     def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in pairs:
@@ -49,7 +52,11 @@ def _strict_canonical(path: Path) -> dict[str, Any]:
 
     try:
         raw = path.read_bytes()
-        value = json.loads(raw, object_pairs_hook=reject_duplicates)
+        value = json.loads(
+            raw,
+            object_pairs_hook=reject_duplicates,
+            parse_constant=reject_nonfinite,
+        )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         _fail("input is unreadable")
     if not isinstance(value, dict) or raw != canonicalize(value) + b"\n":
@@ -58,7 +65,7 @@ def _strict_canonical(path: Path) -> dict[str, Any]:
 
 
 def _build_cell(
-    build: Mapping[str, Any], *, source_digest: str, wheel_path: Path
+    build: Mapping[str, Any], *, source_digest: str, patch_digest: str, wheel_path: Path
 ) -> dict[str, Any]:
     python = build.get("python")
     distribution = build.get("distribution")
@@ -96,7 +103,7 @@ def _build_cell(
         _fail("build manifest identity differs")
     if distribution != {"name": "poke-engine", "version": "0.0.49"}:
         _fail("build distribution identity differs")
-    if build.get("downstream_patch_digest", "").startswith("sha256:") is False:
+    if build.get("downstream_patch_digest") != patch_digest:
         _fail("downstream patch identity differs")
     expected = inspect_wheel(
         wheel_path,
@@ -164,11 +171,16 @@ def create_artifact_index_v2(
         _fail("source manifest identity differs")
     if availability_status not in ("candidate", "available"):
         _fail("availability status differs")
+    patch = source_manifest.get("downstream_patch")
+    patch_digest = patch.get("sha256") if isinstance(patch, Mapping) else None
+    if not isinstance(patch_digest, str):
+        _fail("downstream patch identity differs")
     source_digest = manifest_digest(source_manifest)
     cells = [
         _build_cell(
             build,
             source_digest=source_digest,
+            patch_digest=patch_digest,
             wheel_path=wheel_paths[str(build.get("wheel", {}).get("filename"))],
         )
         for build in build_manifests
@@ -179,9 +191,6 @@ def create_artifact_index_v2(
     wheel_digests = [str(cell["wheel_sha256"]) for cell in cells]
     if len(set(wheel_digests)) != 6:
         _fail("wheel identities are reused")
-    patch_digest = source_manifest.get("downstream_patch", {}).get("sha256")
-    if not isinstance(patch_digest, str):
-        _fail("downstream patch identity differs")
     if availability_status == "available":
         if evidence_by_cell is None or set(evidence_by_cell) != EXPECTED_CELLS:
             _fail("sentinel evidence closure differs")
@@ -191,25 +200,17 @@ def create_artifact_index_v2(
             )
             for cell in cells
         }
-    else:
-        candidate_result = manifest_digest({"profile": LEGAL_CHOICE_ADAPTER_VERSION})
-        evidence_values = {
-            str(cell["cell_id"]): {
-                "configuration_digest": fixture_digest,
-                "result_digest": candidate_result,
-            }
-            for cell in cells
-        }
     for cell in cells:
-        values = evidence_values[str(cell["cell_id"])]
-        cell.update(
-            {
-                "sentinel_fixture_digest": fixture_digest,
-                "sentinel_result_digest": values["result_digest"],
-                "sentinel_configuration_digest": values["configuration_digest"],
-                "availability_status": availability_status,
-            }
-        )
+        if availability_status == "available":
+            values = evidence_values[str(cell["cell_id"])]
+            cell.update(
+                {
+                    "sentinel_fixture_digest": fixture_digest,
+                    "sentinel_result_digest": values["result_digest"],
+                    "sentinel_configuration_digest": values["configuration_digest"],
+                }
+            )
+        cell["availability_status"] = availability_status
     cells.sort(key=lambda cell: str(cell["cell_id"]))
     return {
         "schema_version": 2,

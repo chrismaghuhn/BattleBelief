@@ -32,7 +32,25 @@
     "cell": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cell_id", "source_manifest_digest", "build_manifest_digest", "wheel_filename", "wheel_size", "wheel_sha256", "distribution_name", "distribution_version", "python_tag", "abi_tag", "platform_tag", "operating_system", "architecture", "features", "adapter_version", "release_tag", "release_asset_url", "sentinel_fixture_digest", "sentinel_result_digest", "sentinel_configuration_digest", "availability_status"],
+      "required": ["cell_id", "source_manifest_digest", "build_manifest_digest", "wheel_filename", "wheel_size", "wheel_sha256", "distribution_name", "distribution_version", "python_tag", "abi_tag", "platform_tag", "operating_system", "architecture", "features", "adapter_version", "release_tag", "release_asset_url", "availability_status"],
+      "allOf": [
+        {
+          "if": { "properties": { "availability_status": { "const": "available" } } },
+          "then": { "required": ["sentinel_fixture_digest", "sentinel_result_digest", "sentinel_configuration_digest"] }
+        },
+        {
+          "if": { "properties": { "availability_status": { "const": "candidate" } } },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["sentinel_fixture_digest"] },
+                { "required": ["sentinel_result_digest"] },
+                { "required": ["sentinel_configuration_digest"] }
+              ]
+            }
+          }
+        }
+      ],
       "properties": {
         "cell_id": { "type": "string", "pattern": "^(?:ubuntu-24\\.04|windows-2025)-x86_64-cp(?:312|313|314)$" },
         "source_manifest_digest": { "$ref": "#/$defs/sha256" },
@@ -50,7 +68,7 @@
         "features": { "const": ["poke-engine/gen9", "poke-engine/terastallization"] },
         "adapter_version": { "const": "battlebelief-poke-engine-v2-legal-choices" },
         "release_tag": { "const": "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1" },
-        "release_asset_url": { "type": "string", "format": "uri", "pattern": "^https://github\\.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0\\.0\\.49-bcf13823-v2-legal-choices/[A-Za-z0-9._-]+\\.whl$" },
+        "release_asset_url": { "type": "string", "format": "uri", "pattern": "^https://github\\.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0\\.0\\.49-bcf13823-v2-legal-choices-r1/[A-Za-z0-9._-]+\\.whl$" },
         "sentinel_fixture_digest": { "$ref": "#/$defs/sha256" },
         "sentinel_result_digest": { "$ref": "#/$defs/sha256" },
         "sentinel_configuration_digest": { "$ref": "#/$defs/sha256" },

@@ -254,21 +254,25 @@ jobs:
         run: |
           python -m pip install uv==0.12.0
           uv sync --frozen --all-packages --group dev
-      - name: Download candidate sidecars, wheels, and sentinel evidence
+      - name: Download v2 build cell artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          pattern: legal-choice-*
-          path: ${{ runner.temp }}/v2-artifacts
+          pattern: legal-choice-build-*
+          path: ${{ runner.temp }}/v2-builds
+          merge-multiple: true
+      - name: Download v2 sentinel evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: legal-choice-sentinel-*
+          path: ${{ runner.temp }}/v2-evidence
           merge-multiple: true
       - name: Create available v2 index
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/v2-final"
           cp artifacts/gen9ou/m2/engine-v2/engine-source.json "${RUNNER_TEMP}/v2-final/engine-source.json"
-          cp "${RUNNER_TEMP}/v2-artifacts"/engine-build-*.json "${RUNNER_TEMP}/v2-final/"
-          cp "${RUNNER_TEMP}/v2-artifacts"/*.whl "${RUNNER_TEMP}/v2-final/"
-          mkdir -p "${RUNNER_TEMP}/v2-evidence"
-          cp "${RUNNER_TEMP}/v2-artifacts"/legal-choice-sentinel-*.json "${RUNNER_TEMP}/v2-evidence/"
+          cp "${RUNNER_TEMP}/v2-builds"/engine-build-*.json "${RUNNER_TEMP}/v2-final/"
+          cp "${RUNNER_TEMP}/v2-builds"/*.whl "${RUNNER_TEMP}/v2-final/"
           uv run python tools/create_engine_artifact_index_v2.py --source-manifest "${RUNNER_TEMP}/v2-final/engine-source.json" --input-root "${RUNNER_TEMP}/v2-final" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status available --evidence-root "${RUNNER_TEMP}/v2-evidence" --output "${RUNNER_TEMP}/v2-final/engine-artifact-index.json"
       - name: Upload v2 available publication candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

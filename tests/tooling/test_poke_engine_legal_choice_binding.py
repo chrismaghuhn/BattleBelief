@@ -5,19 +5,25 @@ import json
 import subprocess
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+import yaml
 from jsonschema import Draft202012Validator, FormatChecker
+from tools import create_engine_artifact_index_v2 as artifact_index_v2
+from tools import smoke_poke_engine_legal_choices as legal_choice_smoke
 from tools.build_poke_engine_wheel import (
     BuildPokeEngineError,
     _normalize_materialized_base,
     apply_downstream_patch,
 )
 
-PATCH_PATH = Path(
-    "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch"
-)
+from battlebelief_core.canonicalization import manifest_digest
+
 ROOT = Path(__file__).resolve().parents[2]
+PATCH_PATH = (
+    ROOT / "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch"
+)
 
 
 def _run_git(repository: Path, *arguments: str) -> str:
@@ -166,3 +172,213 @@ def test_v2_source_schema_rejects_the_immutable_v1_identity() -> None:
     schema = json.loads((ROOT / "schemas/manifests/engine-source-v2.schema.json").read_bytes())
 
     assert list(Draft202012Validator(schema).iter_errors(source))
+
+
+def _v2_source_and_build() -> tuple[dict[str, object], dict[str, object]]:
+    source = json.loads((ROOT / "artifacts/gen9ou/m2/engine-v2/engine-source.json").read_bytes())
+    build = json.loads(
+        (
+            ROOT
+            / "packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/data-v2/"
+            / "engine-build-ubuntu-24.04-x86_64-cp312.json"
+        ).read_bytes()
+    )
+    return source, build
+
+
+def test_v2_index_requires_the_exact_source_patch_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    source, build = _v2_source_and_build()
+    build["downstream_patch_digest"] = "sha256:" + "0" * 64
+    monkeypatch.setattr(
+        artifact_index_v2, "inspect_wheel", lambda *_args, **_kwargs: build["wheel"]
+    )
+
+    with pytest.raises(artifact_index_v2.ArtifactIndexV2Error, match="downstream patch identity"):
+        artifact_index_v2._build_cell(
+            build,
+            source_digest=manifest_digest(source),
+            patch_digest=source["downstream_patch"]["sha256"],
+            wheel_path=ROOT / "missing.whl",
+        )
+
+
+def test_v2_index_rejects_a_non_string_source_patch_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    source, build = _v2_source_and_build()
+    build["downstream_patch_digest"] = None
+    monkeypatch.setattr(
+        artifact_index_v2, "inspect_wheel", lambda *_args, **_kwargs: build["wheel"]
+    )
+
+    with pytest.raises(artifact_index_v2.ArtifactIndexV2Error, match="downstream patch identity"):
+        artifact_index_v2._build_cell(
+            build,
+            source_digest=manifest_digest(source),
+            patch_digest=source["downstream_patch"]["sha256"],
+            wheel_path=ROOT / "missing.whl",
+        )
+
+
+def test_v2_candidate_index_contains_no_sentinel_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, _build = _v2_source_and_build()
+    committed_index = json.loads(
+        (
+            ROOT
+            / "packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/data-v2/"
+            / "engine-artifact-index.json"
+        ).read_bytes()
+    )
+    committed_cells = {cell["cell_id"]: cell for cell in committed_index["cells"]}
+    builds = []
+    for cell_id in sorted(artifact_index_v2.EXPECTED_CELLS):
+        builds.append({"cell_id": cell_id, "wheel": {"filename": f"{cell_id}.whl"}})
+
+    def fake_build_cell(
+        build: dict[str, object], *, source_digest: str, patch_digest: str, wheel_path: Path
+    ) -> dict[str, object]:
+        cell = dict(committed_cells[build["cell_id"]])
+        cell.pop("sentinel_fixture_digest", None)
+        cell.pop("sentinel_result_digest", None)
+        cell.pop("sentinel_configuration_digest", None)
+        cell["source_manifest_digest"] = source_digest
+        return cell
+
+    monkeypatch.setattr(artifact_index_v2, "_build_cell", fake_build_cell)
+    index = artifact_index_v2.create_artifact_index_v2(
+        source_manifest=source,
+        build_manifests=builds,
+        wheel_paths={
+            f"{cell_id}.whl": ROOT / "missing.whl" for cell_id in artifact_index_v2.EXPECTED_CELLS
+        },
+        fixture_digest="sha256:" + "a" * 64,
+        availability_status="candidate",
+        evidence_by_cell=None,
+    )
+
+    assert all(
+        not {"sentinel_fixture_digest", "sentinel_result_digest", "sentinel_configuration_digest"}
+        & cell.keys()
+        for cell in index["cells"]
+    )
+    schema = json.loads(
+        (ROOT / "schemas/manifests/engine-artifact-index-v2.schema.json").read_bytes()
+    )
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(index)) == []
+    )
+
+
+def test_v2_available_workflow_separates_build_and_sentinel_namespaces() -> None:
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/poke-engine-legal-choice.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    steps = workflow["jobs"]["legal-choice-available-index"]["steps"]
+    downloads = [
+        step["with"]
+        for step in steps
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+
+    assert downloads == [
+        {
+            "pattern": "legal-choice-build-*",
+            "path": "${{ runner.temp }}/v2-builds",
+            "merge-multiple": "true",
+        },
+        {
+            "pattern": "legal-choice-sentinel-*",
+            "path": "${{ runner.temp }}/v2-evidence",
+            "merge-multiple": "true",
+        },
+    ]
+
+
+def _run_legal_choice_smoke(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_bytes: bytes,
+    build: dict[str, object],
+) -> int:
+    source_path = tmp_path / "engine-source.json"
+    build_path = tmp_path / "engine-build.json"
+    output_path = tmp_path / "sentinel.json"
+    source_path.write_bytes(source_bytes)
+    build_path.write_bytes(json.dumps(build, separators=(",", ":")).encode("utf-8") + b"\n")
+    monkeypatch.setattr(
+        legal_choice_smoke,
+        "load_fixture_bundle",
+        lambda _root: SimpleNamespace(
+            fixture_digest="sha256:" + "a" * 64,
+            configuration_digest="sha256:" + "b" * 64,
+        ),
+    )
+    monkeypatch.setattr(legal_choice_smoke, "_run_checks", lambda: {})
+    return legal_choice_smoke.main(
+        [
+            "--cell-id",
+            "ubuntu-24.04-x86_64-cp312",
+            "--source-manifest",
+            str(source_path),
+            "--build-manifest",
+            str(build_path),
+            "--fixture-root",
+            str(tmp_path),
+            "--output",
+            str(output_path),
+        ]
+    )
+
+
+def test_legal_choice_smoke_rejects_duplicate_manifest_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = b'{"schema_id":"first","schema_id":"second"}\n'
+    build = {"wheel": {"sha256": "sha256:" + "c" * 64}}
+
+    assert _run_legal_choice_smoke(tmp_path, monkeypatch, source, build) == 1
+
+
+def test_legal_choice_smoke_reports_missing_manifest_keys_without_traceback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = b'{"schema_id":"urn:battlebelief:schema:manifest:engine-source:v2"}\n'
+    build = {"schema_id": "urn:battlebelief:schema:manifest:engine-build:v2"}
+
+    assert _run_legal_choice_smoke(tmp_path, monkeypatch, source, build) == 1
+
+
+def test_v2_verifiers_convert_expected_runtime_failures_to_status_codes(tmp_path: Path) -> None:
+    from tools import verify_published_engine_release_v2 as release_verifier
+    from tools import verify_published_wheel_manifest_v2 as wheel_verifier
+
+    missing = tmp_path / "missing"
+    assert (
+        wheel_verifier.main(
+            [
+                "--source-manifest",
+                str(missing / "source.json"),
+                "--build-manifest",
+                str(missing / "build.json"),
+                "--wheel",
+                str(missing / "wheelhouse" / "wheel.whl"),
+            ]
+        )
+        == 1
+    )
+    assert (
+        release_verifier.main(
+            [
+                "--release-metadata",
+                str(missing / "release.json"),
+                "--bundle-root",
+                str(missing / "bundle"),
+                "--manifest-root",
+                str(missing / "manifest"),
+                "--expected-repository",
+                "chrismaghuhn/BattleBelief",
+            ]
+        )
+        == 1
+    )
