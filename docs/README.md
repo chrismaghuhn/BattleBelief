@@ -4,7 +4,7 @@ title: BattleBelief-Dokumentation
 document_type: guide
 status: accepted
 normative: false
-version: 5
+version: 6
 applies_to:
   - repository
 effective_from: 2026-08-03
@@ -12,7 +12,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-07
 ---
 
 # BattleBelief-Dokumentation
@@ -98,6 +98,9 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [ADR-0004 Sauberer Showdown-Runtime-Adapter](adr/ADR-0004-clean-showdown-runtime-adapter.md)
 - [ADR-0005 Task-25-v1-Windows-Provenienzgrenze](adr/ADR-0005-task-25-v1-windows-provenance-boundary.md)
 - [ADR-0006 poke-engine Runtime-Mapping-Grenze](adr/ADR-0006-poke-engine-runtime-mapping-boundary.md)
+- [ADR-0007 Versioniertes Differential-Corpus-Format](adr/ADR-0007-differential-corpus-format.md)
+- [ADR-0008 Differential-Result-Klassifikation v1](adr/ADR-0008-differential-result-classification.md)
+- [ADR-0009 Differential-Harness- und Qualification-Trennung](adr/ADR-0009-differential-harness-qualification-separation.md)
 - [Forschungsstrategie und Experimentfolge](roadmap/research-strategy-and-experiments.md)
 - [Roadmap](roadmap/milestones.md)
 - [M0-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m0-foundation.md)
