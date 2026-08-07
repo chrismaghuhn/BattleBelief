@@ -43,6 +43,7 @@ last_reviewed: 2026-08-07
 - Modify `tools/create_engine_artifact_index.py` only if shared index assembly is needed — preserve its v1 default and add a separate v2 profile.
 - Create `tools/smoke_poke_engine_legal_choices.py` — actual installed-wheel binding smoke with deterministic state fixtures.
 - Create `packages/battlebelief-runtime/tests/adapters/poke_engine/test_legal_choices.py` — runtime-side import and canonical-result contract checks that do not implement Task 27.
+- Create `packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/legal_choice_probe.py` — v2 capability sentinel that checks the native legal-choice result without invoking search.
 - Create `tests/tooling/test_poke_engine_legal_choice_binding.py` — patch application, closure, v2 manifest, and verifier regressions.
 - Modify `tests/tooling/test_engine_artifact_schemas.py`, `tests/tooling/test_build_poke_engine_wheel.py`, and related tooling tests — v2 coverage while retaining all v1 assertions.
 - Modify `.github/workflows/pr.yml` — add v2 candidate build/stage/verification jobs without changing the frozen v1 artifact job or release closure.
