@@ -424,14 +424,19 @@ def _path_safety_errors(path: Path, expected_root: Path, root: Path) -> list[str
     errors = _ancestor_path_safety_errors(path, root)
     errors.extend(_ancestor_path_safety_errors(expected_root, root))
     try:
+        path.absolute().relative_to(root.absolute())
+        expected_root.absolute().relative_to(root.absolute())
+    except ValueError:
+        return errors
+    try:
         metadata = path.lstat()
     except FileNotFoundError:
         return errors
     except OSError:
-        errors.append(f"{path.relative_to(root)}: governed path metadata is unreadable")
+        errors.append(f"{_artifact_display_path(path, root)}: governed path metadata is unreadable")
         return errors
     if _is_link_or_reparse_entry(path, metadata):
-        error = f"{path.relative_to(root)}: symlinked artifact paths are not allowed"
+        error = f"{_artifact_display_path(path, root)}: symlinked artifact paths are not allowed"
         if error not in errors:
             errors.append(error)
     try:
@@ -443,7 +448,8 @@ def _path_safety_errors(path: Path, expected_root: Path, root: Path) -> list[str
         resolved.relative_to(resolved_expected_root)
     except (OSError, ValueError):
         errors.append(
-            f"{path.relative_to(root)}: resolved artifact path escapes its governed directory"
+            f"{_artifact_display_path(path, root)}: "
+            "resolved artifact path escapes its governed directory"
         )
     return errors
 

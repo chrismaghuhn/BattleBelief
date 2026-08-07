@@ -508,6 +508,23 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
 
+    provenance_index_path = (
+        tmp_path / "artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance/index.json"
+    )
+    original_provenance_index_bytes = provenance_index_path.read_bytes()
+    outside_provenance_bytes = tmp_path.parent / f"{tmp_path.name}-outside.bin"
+    outside_provenance_bytes.write_bytes(b"outside provenance bytes")
+    provenance_index = _document(provenance_index_path)
+    provenance_index["transition_adapter"]["source"]["path"] = str(
+        outside_provenance_bytes.resolve()
+    )
+    provenance_index_path.write_text(json.dumps(provenance_index), encoding="utf-8")
+    outside_path_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("outside trusted root" in error for error in outside_path_errors)
+    assert all(str(tmp_path) not in error for error in outside_path_errors)
+    provenance_index_path.write_bytes(original_provenance_index_bytes)
+    outside_provenance_bytes.unlink()
+
     original_manifest_bytes = manifest_path.read_bytes()
     original_second_evidence_bytes = (
         evidence_dir / f"{evidence_documents[1]['evidence_id']}.json"
