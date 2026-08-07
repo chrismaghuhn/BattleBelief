@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:evaluation:capability-qualification:v1",
+  "title": "BattleBelief synthetic capability qualification evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "capability_id",
+    "required_fixture_count",
+    "required_environment_count",
+    "result_count",
+    "all_required_fixtures_present",
+    "environment_matrix_complete",
+    "all_executed",
+    "all_results_match",
+    "identities_match",
+    "contains_synthetic",
+    "capability_status",
+    "exact_eligible"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "capability_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^gen9\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2,7}$"
+    },
+    "required_fixture_count": {"type": "integer", "minimum": 0},
+    "required_environment_count": {"type": "integer", "minimum": 0},
+    "result_count": {"type": "integer", "minimum": 0},
+    "all_required_fixtures_present": {"type": "boolean"},
+    "environment_matrix_complete": {"type": "boolean"},
+    "all_executed": {"type": "boolean"},
+    "all_results_match": {"type": "boolean"},
+    "identities_match": {"type": "boolean"},
+    "contains_synthetic": {"type": "boolean"},
+    "capability_status": {"const": "unknown"},
+    "exact_eligible": {"const": false}
+  }
+}

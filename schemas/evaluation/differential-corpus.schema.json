@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:evaluation:differential-corpus:v1",
+  "title": "BattleBelief differential corpus index v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_id",
+    "corpus_version",
+    "corpus_digest",
+    "schema_bindings",
+    "canonicalization",
+    "catalog",
+    "ruleset",
+    "normalization",
+    "classifier",
+    "fixtures",
+    "coverage"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "corpus_id": {"$ref": "#/$defs/id"},
+    "corpus_version": {"$ref": "#/$defs/version"},
+    "corpus_digest": {"$ref": "#/$defs/digest"},
+    "schema_bindings": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/schema_binding"}
+    },
+    "canonicalization": {"$ref": "#/$defs/canonicalization"},
+    "catalog": {"$ref": "#/$defs/catalog"},
+    "ruleset": {"$ref": "#/$defs/ruleset"},
+    "normalization": {"$ref": "#/$defs/normalization"},
+    "classifier": {"$ref": "#/$defs/classifier"},
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/fixture_entry"}
+    },
+    "coverage": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/coverage_entry"}
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "schema_id": {
+      "type": "string",
+      "pattern": "^urn:battlebelief:schema:[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*:v[1-9][0-9]*$"
+    },
+    "capability_id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^gen9\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2,7}$"
+    },
+    "schema_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "schema_version", "schema_digest"],
+      "properties": {
+        "schema_id": {"$ref": "#/$defs/schema_id"},
+        "schema_version": {"const": 1},
+        "schema_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "canonicalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalization_id",
+        "canonicalization_version",
+        "canonicalization_digest"
+      ],
+      "properties": {
+        "canonicalization_id": {"$ref": "#/$defs/id"},
+        "canonicalization_version": {"$ref": "#/$defs/version"},
+        "canonicalization_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_id", "catalog_version", "catalog_digest"],
+      "properties": {
+        "catalog_id": {"$ref": "#/$defs/id"},
+        "catalog_version": {"$ref": "#/$defs/version"},
+        "catalog_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "ruleset_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format_id", "ruleset_id", "ruleset_version"],
+      "properties": {
+        "format_id": {"const": "gen9ou"},
+        "ruleset_id": {"$ref": "#/$defs/id"},
+        "ruleset_version": {"const": 1}
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleset_id", "ruleset_digest", "snapshot"],
+      "properties": {
+        "ruleset_id": {"$ref": "#/$defs/id"},
+        "ruleset_digest": {"$ref": "#/$defs/digest"},
+        "snapshot": {"$ref": "#/$defs/ruleset_snapshot"}
+      }
+    },
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_version", "profile_digest"],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/id"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "classifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classifier_id",
+        "classifier_version",
+        "classifier_source_digest",
+        "known_divergence_definitions"
+      ],
+      "properties": {
+        "classifier_id": {"$ref": "#/$defs/id"},
+        "classifier_version": {"$ref": "#/$defs/version"},
+        "classifier_source_digest": {"$ref": "#/$defs/digest"},
+        "known_divergence_definitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/known_divergence_definition"}
+        }
+      }
+    },
+    "known_divergence_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["known_divergence_id", "affected_capability_ids"],
+      "properties": {
+        "known_divergence_id": {"$ref": "#/$defs/id"},
+        "affected_capability_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/capability_id"}
+        }
+      }
+    },
+    "fixture_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture_id", "path", "fixture_digest"],
+      "properties": {
+        "fixture_id": {"$ref": "#/$defs/id"},
+        "path": {
+          "type": "string",
+          "pattern": "^fixtures/[a-z][a-z0-9]*(?:-[a-z0-9]+)*\\.json$"
+        },
+        "fixture_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "coverage_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability_id",
+        "coverage_kind",
+        "fixture_ids",
+        "known_divergence_id"
+      ],
+      "properties": {
+        "capability_id": {"$ref": "#/$defs/capability_id"},
+        "coverage_kind": {"enum": ["reviewed_fixture", "known_boundary"]},
+        "fixture_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "known_divergence_id": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]
+        }
+      }
+    }
+  }
+}

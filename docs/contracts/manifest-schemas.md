@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 19
+version: 20
 applies_to:
   - manifests
   - release
@@ -34,6 +34,10 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | Engine-Capability manifest v2 | [`engine-capability-v2.schema.json`](../../schemas/manifests/engine-capability-v2.schema.json) |
 | Engine-Capability evidence v1 | [`engine-capability-evidence.schema.json`](../../schemas/manifests/engine-capability-evidence.schema.json) |
 | Engine-Capability migration loss report v1 | [`engine-capability-migration-loss-report.schema.json`](../../schemas/manifests/engine-capability-migration-loss-report.schema.json) |
+| Differential-Corpus v1 | [`differential-corpus.schema.json`](../../schemas/evaluation/differential-corpus.schema.json) |
+| Differential-Fixture v1 | [`differential-fixture.schema.json`](../../schemas/evaluation/differential-fixture.schema.json) |
+| Differential-Result v1 | [`differential-result.schema.json`](../../schemas/evaluation/differential-result.schema.json) |
+| Capability-Qualification v1 | [`capability-qualification.schema.json`](../../schemas/evaluation/capability-qualification.schema.json) |
 | Evaluation-Claim | [`evaluation-claim.schema.json`](../../schemas/manifests/evaluation-claim.schema.json) |
 | Ruleset-Snapshot | [`ruleset-snapshot.schema.json`](../../schemas/manifests/ruleset-snapshot.schema.json) |
 | Dataset-Provenance | [`dataset-manifest.schema.json`](../../schemas/manifests/dataset-manifest.schema.json) |

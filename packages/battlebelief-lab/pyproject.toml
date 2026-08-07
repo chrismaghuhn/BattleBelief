@@ -25,3 +25,15 @@ battlebelief-runtime = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/battlebelief_lab"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schemas/evaluation/differential-corpus.schema.json" = "battlebelief_lab/differential/schemas/differential-corpus.schema.json"
+"schemas/evaluation/differential-fixture.schema.json" = "battlebelief_lab/differential/schemas/differential-fixture.schema.json"
+"schemas/evaluation/differential-result.schema.json" = "battlebelief_lab/differential/schemas/differential-result.schema.json"
+"schemas/evaluation/capability-qualification.schema.json" = "battlebelief_lab/differential/schemas/capability-qualification.schema.json"
+
+[tool.hatch.build.targets.sdist.force-include]
+"../../schemas/evaluation/differential-corpus.schema.json" = "schemas/evaluation/differential-corpus.schema.json"
+"../../schemas/evaluation/differential-fixture.schema.json" = "schemas/evaluation/differential-fixture.schema.json"
+"../../schemas/evaluation/differential-result.schema.json" = "schemas/evaluation/differential-result.schema.json"
+"../../schemas/evaluation/capability-qualification.schema.json" = "schemas/evaluation/capability-qualification.schema.json"

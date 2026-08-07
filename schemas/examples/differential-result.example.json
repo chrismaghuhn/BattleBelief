@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "fixture_id": "synthetic-result",
+  "fixture_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "execution_status": "completed",
+  "divergence_class": "match",
+  "failure_class": null,
+  "failure_origin": null,
+  "differing_fields": [],
+  "known_divergence_id": null,
+  "synthetic": true,
+  "provenance": {
+    "corpus": {"corpus_id": "gen9ou-differential", "corpus_version": "1", "corpus_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+    "ruleset": {"ruleset_id": "gen9ou-ruleset", "ruleset_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+    "catalog": {"catalog_id": "gen9ou-engine-capabilities", "catalog_version": "1", "catalog_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
+    "oracle": {"source_manifest_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "build_manifest_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+    "engine": {"source_manifest_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "build_manifest_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "wheel_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"},
+    "runtime_adapter": {"adapter_id": "poke-engine-transition", "adapter_version": "1", "source_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"},
+    "environment": {"environment_id": "synthetic-golden", "environment_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"},
+    "canonicalization": {"profile_id": "canonicalization-profile", "profile_version": "1", "profile_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"},
+    "result_schema": {"schema_id": "urn:battlebelief:schema:evaluation:differential-result:v1", "schema_version": "1", "schema_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"}
+  },
+  "runner": {"runner_id": "battlebelief-differential-runner", "runner_version": "1", "runner_source_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"},
+  "classifier": {"classifier_id": "battlebelief-differential-classifier", "classifier_version": "1", "classifier_source_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"},
+  "seed": {"seed_id": "synthetic-seed", "seed_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+}
