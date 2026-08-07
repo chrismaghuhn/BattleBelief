@@ -133,7 +133,36 @@ def install_profile(
         run(command)
 
 
+def smoke_verified_poke_engine_port(output: Path) -> None:
+    """Run the bounded Task-27 port smoke in an already isolated search environment."""
+
+    from battlebelief_core.domain.engine_capabilities import CapabilityCatalog
+    from battlebelief_runtime.adapters.poke_engine.transition_model import (
+        _run_bounded_conformance_smoke,
+    )
+
+    catalog_document = json.loads(
+        (ROOT / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json").read_text(encoding="utf-8")
+    )
+    if not isinstance(catalog_document, dict):
+        raise RuntimeError("capability catalog is malformed")
+    report = _run_bounded_conformance_smoke(
+        CapabilityCatalog.from_document(catalog_document),
+    )
+    output.write_text(
+        json.dumps(report.to_dict(), sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
 def main() -> int:
+    if len(sys.argv) == 3 and sys.argv[1] == "--verified-poke-engine-port":
+        smoke_verified_poke_engine_port(Path(sys.argv[2]))
+        print("PASS: verified poke-engine port conformance")
+        return 0
+    if len(sys.argv) != 1:
+        raise RuntimeError("unsupported smoke_packages arguments")
     uv = shutil.which("uv")
     if uv is None:
         raise RuntimeError("uv executable is required")
@@ -187,9 +216,15 @@ def main() -> int:
                     "-c",
                     "import importlib.util, sys; "
                     "import battlebelief_runtime; "
+                    "from battlebelief_runtime.adapters.poke_engine import "
+                    "MappingReport, PokeEngineMappingFailure, PokeEngineTransitionModel, "
+                    "RequiredCapabilities; "
                     "from battlebelief_runtime.public_api import runtime_status; "
                     "assert importlib.util.find_spec('poke_engine') is None; "
                     "assert 'poke_engine' not in sys.modules; "
+                    "assert all(value is not None for value in "
+                    "(MappingReport, PokeEngineMappingFailure, PokeEngineTransitionModel, "
+                    "RequiredCapabilities)); "
                     "assert runtime_status() == " + repr(RUNTIME_STATUS),
                 ]
             ],

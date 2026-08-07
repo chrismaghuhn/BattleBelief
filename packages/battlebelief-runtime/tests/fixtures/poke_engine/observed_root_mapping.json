@@ -1,0 +1,39 @@
+{
+  "fixture_id": "observed-root-mapping-v1",
+  "request": {
+    "request_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "room_id": "battle-gen9ou-task27",
+    "rqid": 27
+  },
+  "safe_submissions": [
+    {
+      "kind": "move",
+      "move_id": "tackle",
+      "slot": 1,
+      "terastallize": false
+    },
+    {
+      "kind": "move",
+      "move_id": "tackle",
+      "slot": 1,
+      "terastallize": true
+    },
+    {
+      "kind": "switch",
+      "slot": 2
+    },
+    {
+      "kind": "move",
+      "move_id": "protect",
+      "slot": 2,
+      "terastallize": false
+    },
+    {
+      "kind": "move",
+      "move_id": "protect",
+      "slot": 2,
+      "terastallize": true
+    }
+  ],
+  "schema_version": 1
+}

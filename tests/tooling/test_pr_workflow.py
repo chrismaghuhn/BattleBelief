@@ -95,6 +95,16 @@ def test_repository_contracts_run_m15_semantic_validation() -> None:
     assert "uv run python tools/validate_m15_registration.py" in contracts_step["run"]
 
 
+def test_quality_mypy_checks_the_real_runtime_transition_protocol_assignment() -> None:
+    workflow = _load_workflow()
+    mypy = next(step for step in workflow["jobs"]["quality"]["steps"] if step.get("name") == "Mypy")
+    assert "uv run mypy\n" in mypy["run"]
+    assert (
+        "uv run mypy packages/battlebelief-runtime/tests/adapters/poke_engine/"
+        "test_port_conformance.py"
+    ) in mypy["run"]
+
+
 def test_engine_build_failure_has_a_controlled_maturin_diagnostic() -> None:
     workflow = _load_workflow()
     steps = workflow["jobs"]["artifact-build"]["steps"]
@@ -175,6 +185,16 @@ def test_runtime_search_smoke_installs_only_published_binary_wheels() -> None:
     assert "status == 'available'" in sentinel["run"]
     assert "--staged-wheel" not in sentinel["run"]
     assert "engine-publication-bundle" not in str(job)
+    conformance = next(
+        step
+        for step in steps
+        if step.get("name") == "Run bounded Runtime poke-engine port conformance twice"
+    )
+    assert "tools/smoke_packages.py --verified-poke-engine-port" in conformance["run"]
+    assert "runtime-port-conformance-1.json" in conformance["run"]
+    assert "runtime-port-conformance-2.json" in conformance["run"]
+    assert "monte_carlo" not in conformance["run"]
+    assert "search(" not in conformance["run"]
 
 
 def test_artifact_index_closes_the_immutable_published_release() -> None:

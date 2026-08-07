@@ -1,0 +1,130 @@
+{
+  "field": {
+    "terrain": "none",
+    "terrain_turns_remaining": 0,
+    "trick_room": false,
+    "trick_room_turns_remaining": 0,
+    "weather": "none",
+    "weather_turns_remaining": 0
+  },
+  "fixture_id": "complete-world-mapping-v1",
+  "format": "gen9ou",
+  "generation": 9,
+  "schema_version": 1,
+  "sides": {
+    "p1": {
+      "active_index": 0,
+      "force_switch": false,
+      "force_trapped": false,
+      "pokemon": [
+        {
+          "ability": "static",
+          "attack": 100,
+          "base_ability": "static",
+          "base_types": ["electric", "typeless"],
+          "defense": 100,
+          "evs": [0, 0, 0, 0, 0, 0],
+          "hp": 120,
+          "id": "pikachu",
+          "item": "lightball",
+          "level": 50,
+          "maxhp": 120,
+          "moves": [
+            {"disabled": false, "id": "tackle", "pp": 32},
+            {"disabled": false, "id": "protect", "pp": 16}
+          ],
+          "nature": "serious",
+          "special_attack": 100,
+          "special_defense": 100,
+          "speed": 110,
+          "status": "none",
+          "tera_type": "fire",
+          "terastallized": false,
+          "types": ["electric", "typeless"]
+        },
+        {
+          "ability": "levitate",
+          "attack": 90,
+          "base_ability": "levitate",
+          "base_types": ["electric", "ghost"],
+          "defense": 100,
+          "evs": [0, 0, 0, 0, 0, 0],
+          "hp": 100,
+          "id": "rotom",
+          "item": "leftovers",
+          "level": 50,
+          "maxhp": 100,
+          "moves": [
+            {"disabled": false, "id": "thunderbolt", "pp": 24}
+          ],
+          "nature": "serious",
+          "special_attack": 105,
+          "special_defense": 100,
+          "speed": 90,
+          "status": "none",
+          "tera_type": "ghost",
+          "terastallized": false,
+          "types": ["electric", "ghost"]
+        }
+      ],
+      "side_conditions": {}
+    },
+    "p2": {
+      "active_index": 0,
+      "force_switch": false,
+      "force_trapped": false,
+      "pokemon": [
+        {
+          "ability": "runaway",
+          "attack": 100,
+          "base_ability": "runaway",
+          "base_types": ["normal", "typeless"],
+          "defense": 100,
+          "evs": [0, 0, 0, 0, 0, 0],
+          "hp": 140,
+          "id": "eevee",
+          "item": "eviolite",
+          "level": 50,
+          "maxhp": 140,
+          "moves": [
+            {"disabled": false, "id": "tackle", "pp": 32},
+            {"disabled": false, "id": "protect", "pp": 16}
+          ],
+          "nature": "serious",
+          "special_attack": 100,
+          "special_defense": 100,
+          "speed": 80,
+          "status": "none",
+          "tera_type": "normal",
+          "terastallized": false,
+          "types": ["normal", "typeless"]
+        },
+        {
+          "ability": "waterabsorb",
+          "attack": 90,
+          "base_ability": "waterabsorb",
+          "base_types": ["water", "typeless"],
+          "defense": 100,
+          "evs": [0, 0, 0, 0, 0, 0],
+          "hp": 130,
+          "id": "vaporeon",
+          "item": "leftovers",
+          "level": 50,
+          "maxhp": 130,
+          "moves": [
+            {"disabled": false, "id": "surf", "pp": 24}
+          ],
+          "nature": "serious",
+          "special_attack": 110,
+          "special_defense": 100,
+          "speed": 70,
+          "status": "none",
+          "tera_type": "water",
+          "terastallized": false,
+          "types": ["water", "typeless"]
+        }
+      ],
+      "side_conditions": {}
+    }
+  }
+}

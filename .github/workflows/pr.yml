@@ -37,7 +37,9 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check .
       - name: Mypy
-        run: uv run mypy
+        run: |
+          uv run mypy
+          uv run mypy packages/battlebelief-runtime/tests/adapters/poke_engine/test_port_conformance.py
       - name: Repository contracts
         run: |
           uv run python tools/check_versions.py
@@ -559,6 +561,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Second Runtime search sentinel failed' }
           & "${{ env.SEARCH_PYTHON }}" -c "from pathlib import Path; assert Path(r'${{ runner.temp }}/runtime-search-sentinel-1.json').read_bytes() == Path(r'${{ runner.temp }}/runtime-search-sentinel-2.json').read_bytes()"
           if ($LASTEXITCODE -ne 0) { throw 'Runtime search sentinel evidence differs' }
+      - name: Run bounded Runtime poke-engine port conformance twice
+        shell: pwsh
+        run: |
+          & "${{ env.SEARCH_PYTHON }}" tools/smoke_packages.py --verified-poke-engine-port "${{ runner.temp }}/runtime-port-conformance-1.json"
+          if ($LASTEXITCODE -ne 0) { throw 'First Runtime port conformance failed' }
+          & "${{ env.SEARCH_PYTHON }}" tools/smoke_packages.py --verified-poke-engine-port "${{ runner.temp }}/runtime-port-conformance-2.json"
+          if ($LASTEXITCODE -ne 0) { throw 'Second Runtime port conformance failed' }
+          & "${{ env.SEARCH_PYTHON }}" -c "from pathlib import Path; assert Path(r'${{ runner.temp }}/runtime-port-conformance-1.json').read_bytes() == Path(r'${{ runner.temp }}/runtime-port-conformance-2.json').read_bytes()"
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime port conformance evidence differs' }
 
   dependency-review:
     name: dependency-review
