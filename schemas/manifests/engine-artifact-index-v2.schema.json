@@ -15,7 +15,7 @@
     "source_tree_digest": { "$ref": "#/$defs/sha256" },
     "downstream_patch_digest": { "$ref": "#/$defs/sha256" },
     "repository_url": { "const": "https://github.com/chrismaghuhn/BattleBelief" },
-    "release_tag": { "const": "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices" },
+    "release_tag": { "const": "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1" },
     "release_prerelease": { "const": true },
     "release_assets_immutable": { "const": true },
     "cells": {
@@ -49,7 +49,7 @@
         "architecture": { "const": "x86_64" },
         "features": { "const": ["poke-engine/gen9", "poke-engine/terastallization"] },
         "adapter_version": { "const": "battlebelief-poke-engine-v2-legal-choices" },
-        "release_tag": { "const": "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices" },
+        "release_tag": { "const": "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1" },
         "release_asset_url": { "type": "string", "format": "uri", "pattern": "^https://github\\.com/chrismaghuhn/BattleBelief/releases/download/engine-poke-engine-v0\\.0\\.49-bcf13823-v2-legal-choices/[A-Za-z0-9._-]+\\.whl$" },
         "sentinel_fixture_digest": { "$ref": "#/$defs/sha256" },
         "sentinel_result_digest": { "$ref": "#/$defs/sha256" },

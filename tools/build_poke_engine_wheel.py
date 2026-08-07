@@ -1037,7 +1037,7 @@ LEGAL_CHOICE_SOURCE_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-source:
 LEGAL_CHOICE_BUILD_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-build:v2"
 LEGAL_CHOICE_INDEX_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-artifact-index:v2"
 LEGAL_CHOICE_ADAPTER_VERSION = "battlebelief-poke-engine-v2-legal-choices"
-LEGAL_CHOICE_RELEASE_TAG = "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices"
+LEGAL_CHOICE_RELEASE_TAG = "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1"
 LEGAL_CHOICE_PATCH_RELATIVE_PATH = (
     "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch"
 )
