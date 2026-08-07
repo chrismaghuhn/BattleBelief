@@ -82,7 +82,7 @@ def _build_cell(
         "maturin_version": "1.7.1",
         "locked": True,
         "no_default_features": True,
-        "features": FEATURES,
+        "features": list(FEATURES),
         "target_triple": expected_target,
         "architecture": "x86_64",
         "adapter_version": LEGAL_CHOICE_ADAPTER_VERSION,
