@@ -83,8 +83,8 @@ verify_source_checkout(checkout, base_source_manifest)
 patch_bytes = patch_path.read_bytes()
 if _sha256(patch_bytes) != source_manifest["downstream_patch"]["sha256"]:
     _fail("downstream patch digest differs")
-_run(("git", "apply", "--check", "--whitespace=error", "--verbose", str(patch_path)), cwd=checkout)
-_run(("git", "apply", "--whitespace=error", "--verbose", str(patch_path)), cwd=checkout)
+_run(("git", "apply", "--check", "--unidiff-zero", "--whitespace=error", "--verbose", str(patch_path)), cwd=checkout)
+_run(("git", "apply", "--unidiff-zero", "--whitespace=error", "--verbose", str(patch_path)), cwd=checkout)
 verify_no_patch_offsets_or_fuzz(checkout)
 verify_post_patch_source_closure(checkout, source_manifest["source_files"])
 ```

@@ -1,35 +1,32 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 8b1d7e05436c812b298925aaf09da5221614fe49..abb4377faceb8b2011e4716caf339eafe14945f2 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -191 +191 @@ name = "poke-engine"
+-version = "0.0.48"
++version = "0.0.49"
+@@ -200 +200 @@ name = "poke_engine"
+-version = "0.0.48"
++version = "0.0.49"
 diff --git a/poke-engine-py/Cargo.toml b/poke-engine-py/Cargo.toml
 index 60a7af3119348468fa632d716744a973484d5fab..9f0043c1c105a68d997fcf0698f699c005035d73 100644
 --- a/poke-engine-py/Cargo.toml
 +++ b/poke-engine-py/Cargo.toml
-@@ -1,7 +1,7 @@
- [package]
- name = "poke_engine"
- edition = "2021"
+@@ -4 +4 @@ edition = "2021"
 -version = "0.0.48"
 +version = "0.0.49"
- 
- [lib]
- name = "poke_engine"
 diff --git a/poke-engine-py/pyproject.toml b/poke-engine-py/pyproject.toml
 index d28b20e9dd6806bd18036c3360189af1ac9b0083..2518ee7943a666c45b904c195118b45427d4f6f1 100644
 --- a/poke-engine-py/pyproject.toml
 +++ b/poke-engine-py/pyproject.toml
-@@ -8,5 +8,5 @@ build-backend = "maturin"
- 
- [project]
- name = "poke-engine"
+@@ -11 +11 @@ name = "poke-engine"
 -version = "0.0.48"
 +version = "0.0.49"
- readme = "readme.md"
 diff --git a/poke-engine-py/python/poke_engine/poke_engine.pyi b/poke-engine-py/python/poke_engine/poke_engine.pyi
 index 96306e403a633dd79e336b30b9b7bf8b975fced9..80b017f363d257420a71aed2b6f049c0c9e92efa 100644
 --- a/poke-engine-py/python/poke_engine/poke_engine.pyi
 +++ b/poke-engine-py/python/poke_engine/poke_engine.pyi
-@@ -447,6 +447,15 @@ def mcts(
-     """
-     ...
- 
+@@ -449,0 +450,9 @@ def mcts(
 +def legal_choices(py_state: State) -> Tuple[List[str], List[str]]:
 +    """
 +    Enumerate the native legal root choices for both sides without searching.
@@ -39,25 +36,13 @@ index 96306e403a633dd79e336b30b9b7bf8b975fced9..80b017f363d257420a71aed2b6f049c0
 +    """
 +    ...
 +
- def generate_instructions(
-     py_state: State,
-     side_one_move: str,
 diff --git a/poke-engine-py/python/tests/test_poke_engine.py b/poke-engine-py/python/tests/test_poke_engine.py
 index 8b0490c0c5ede25e0560a9167eba08919e35df8a..d5bf156c71c3af5e13c4e6e867c87f5bffd7d816 100644
 --- a/poke-engine-py/python/tests/test_poke_engine.py
 +++ b/poke-engine-py/python/tests/test_poke_engine.py
-@@ -9,6 +9,7 @@ from poke_engine import (
-     generate_instructions,
-     calculate_damage,
-     iterative_deepening_expectiminimax,
+@@ -11,0 +12 @@ from poke_engine import (
 +    legal_choices,
-     Weather,
-     Terrain,
- )
-@@ -96,3 +97,108 @@ def test_calculate_damage():
- def test_generate_instructions_errors_when_move_does_not_exist():
-     with pytest.raises(ValueError):
-         generate_instructions(state, "not_a_move", "ember")
+@@ -98,0 +100,105 @@ def test_generate_instructions_errors_when_move_does_not_exist():
 +
 +
 +def _pokemon(name, moves, *, hp=100):
@@ -167,10 +152,7 @@ diff --git a/poke-engine-py/src/lib.rs b/poke-engine-py/src/lib.rs
 index 032da2e0e0bf5a28adb1d84ea34c0403c9bad51a..86e8cde8fc8db6df63616b4424579ce7a783db66 100644
 --- a/poke-engine-py/src/lib.rs
 +++ b/poke-engine-py/src/lib.rs
-@@ -963,6 +963,21 @@ fn id(py_state: PyState, duration_ms: u64) -> PyResult<PyIterativeDeepeningResul
-     Ok(py_id_result)
- }
- 
+@@ -965,0 +966,15 @@ fn id(py_state: PyState, duration_ms: u64) -> PyResult<PyIterativeDeepeningResul
 +#[pyfunction]
 +fn legal_choices(py_state: PyState) -> PyResult<(Vec<String>, Vec<String>)> {
 +    let state: State = py_state.into();
@@ -186,14 +168,5 @@ index 032da2e0e0bf5a28adb1d84ea34c0403c9bad51a..86e8cde8fc8db6df63616b4424579ce7
 +    Ok((side_one_choices, side_two_choices))
 +}
 +
- #[derive(Clone)]
- #[pyclass(
-     name = "StateInstructions",
-@@ -1129,6 +1144,7 @@ fn py_poke_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
-     m.add_function(wrap_pyfunction!(calculate_damage, m)?)?;
-     m.add_function(wrap_pyfunction!(generate_instructions, m)?)?;
-     m.add_function(wrap_pyfunction!(id, m)?)?;
+@@ -1131,0 +1147 @@ fn py_poke_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
 +    m.add_function(wrap_pyfunction!(legal_choices, m)?)?;
-     m.add_function(wrap_pyfunction!(mcts, m)?)?;
-     m.add_class::<PyState>()?;
-     m.add_class::<PySide>()?;

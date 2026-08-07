@@ -353,11 +353,26 @@ def apply_downstream_patch(
     patch_argument = str(patch_path.resolve(strict=True))
     _run_patch_command(
         checkout,
-        ("apply", "--check", "--whitespace=error", "--verbose", "--no-recount", patch_argument),
+        (
+            "apply",
+            "--check",
+            "--unidiff-zero",
+            "--whitespace=error",
+            "--verbose",
+            "--no-recount",
+            patch_argument,
+        ),
     )
     _run_patch_command(
         checkout,
-        ("apply", "--whitespace=error", "--verbose", "--no-recount", patch_argument),
+        (
+            "apply",
+            "--unidiff-zero",
+            "--whitespace=error",
+            "--verbose",
+            "--no-recount",
+            patch_argument,
+        ),
     )
     if _git(checkout, "diff", "--check"):
         _fail("downstream patch application differs")
@@ -1066,7 +1081,7 @@ def create_downstream_source_manifest(
         "downstream_patch": {
             "path": LEGAL_CHOICE_PATCH_RELATIVE_PATH,
             "role": "legal-choice-binding",
-            "format": "git-diff-binary-full-index-v1",
+            "format": "git-diff-binary-full-index-unified-zero-v1",
             "application": "git-apply-exact-v1",
             "size": len(patch_bytes),
             "sha256": patch_digest,
@@ -1110,7 +1125,7 @@ def validate_downstream_source_manifest(
     expected_patch = {
         "path": LEGAL_CHOICE_PATCH_RELATIVE_PATH,
         "role": "legal-choice-binding",
-        "format": "git-diff-binary-full-index-v1",
+        "format": "git-diff-binary-full-index-unified-zero-v1",
         "application": "git-apply-exact-v1",
         "size": len(patch_bytes),
         "sha256": _sha256(patch_bytes),

@@ -99,7 +99,7 @@
       "properties": {
         "path": { "const": "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch" },
         "role": { "const": "legal-choice-binding" },
-        "format": { "const": "git-diff-binary-full-index-v1" },
+        "format": { "const": "git-diff-binary-full-index-unified-zero-v1" },
         "application": { "const": "git-apply-exact-v1" },
         "size": { "type": "integer", "minimum": 1 },
         "sha256": { "$ref": "#/$defs/sha256" }
