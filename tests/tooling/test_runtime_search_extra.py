@@ -11,51 +11,51 @@ from battlebelief_runtime.adapters.poke_engine.artifact import (
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_ROOT = ROOT / "packages/battlebelief-runtime"
-RELEASE_TAG = "engine-poke-engine-v0.0.48-bcf13823-v1"
+RELEASE_TAG = "engine-poke-engine-v0.0.49-bcf13823-v2-legal-choices-r1"
 RELEASE_ROOT = f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{RELEASE_TAG}/"
-INDEX_DIGEST = "sha256:5b4f59849ff01c6024b7b5f78f95f5457f3f69030bf46822d9f323c911908d98"
+INDEX_DIGEST = "sha256:d098fb14aa802d2899c0479b7fa0e18ff7f42ffd1a915dafcd0bcb6e58bc60c6"
 WHEELS = (
     (
         "3.12",
         "linux",
         "x86_64",
-        "poke_engine-0.0.48-cp312-cp312-linux_x86_64.whl",
-        "2f566d435691873278203e6e13ea0247a4c3d675735d2f9e7117812b32988c84",
+        "poke_engine-0.0.49-cp312-cp312-linux_x86_64.whl",
+        "498c056f0f2e8acb3690f6d6f509c7c4256799fefc952c5212b4757cf33bb6f9",
     ),
     (
         "3.13",
         "linux",
         "x86_64",
-        "poke_engine-0.0.48-cp313-cp313-linux_x86_64.whl",
-        "0426bae7bada0d8ed576bde65381eb726c9bbecd28d59f491b0c4409420f5131",
+        "poke_engine-0.0.49-cp313-cp313-linux_x86_64.whl",
+        "597266fd2cfea5928327d3e2fb23d51b7880f2e7d2527400b56070376710f38e",
     ),
     (
         "3.14",
         "linux",
         "x86_64",
-        "poke_engine-0.0.48-cp314-cp314-linux_x86_64.whl",
-        "895b44026f5eed78223a37e568e0d426ee7e6e98178abf333298364bca46a8e0",
+        "poke_engine-0.0.49-cp314-cp314-linux_x86_64.whl",
+        "4b4879dae04652fed4139c9bb46903b9011bb09f13a2d3855da8561c92c5da96",
     ),
     (
         "3.12",
         "win32",
         "AMD64",
-        "poke_engine-0.0.48-cp312-none-win_amd64.whl",
-        "0678b467f6109dcbff9612bfdff765a0faab825068e5c456d1250f0aac05c05a",
+        "poke_engine-0.0.49-cp312-none-win_amd64.whl",
+        "d9b35f68d896f2183245a1f043ff57236d15ccbec875ad5218bae5aae0a21895",
     ),
     (
         "3.13",
         "win32",
         "AMD64",
-        "poke_engine-0.0.48-cp313-none-win_amd64.whl",
-        "8828c4730a70940a09d49d6e5d776f18dddf6b16e726dffdbe86e7499dd5c653",
+        "poke_engine-0.0.49-cp313-none-win_amd64.whl",
+        "8d0fb2a6d4cf5c2e91901d7024d8efea59c0837cf68dfb488910911971b230c9",
     ),
     (
         "3.14",
         "win32",
         "AMD64",
-        "poke_engine-0.0.48-cp314-none-win_amd64.whl",
-        "11502307bc5ecd37e351c47317f401a1cdbe50f013c8defbe88262238a74352e",
+        "poke_engine-0.0.49-cp314-none-win_amd64.whl",
+        "5a212d8c93f4919f742a53392fbf9a93be7c00d30521842f212c0b5a195cb3a4",
     ),
 )
 
@@ -99,8 +99,8 @@ def test_uv_lock_binds_all_search_urls_and_hashes_without_source_fallback() -> N
 
 
 def test_runtime_packages_the_exact_available_artifact_sidecars() -> None:
-    repository_data = ROOT / "artifacts/gen9ou/m2/engine"
-    runtime_data = RUNTIME_ROOT / "src/battlebelief_runtime/adapters/poke_engine/data"
+    repository_data = ROOT / "artifacts/gen9ou/m2/engine-v2"
+    runtime_data = RUNTIME_ROOT / "src/battlebelief_runtime/adapters/poke_engine/data-v2"
     expected_names = {
         "engine-source.json",
         "engine-artifact-index.json",
