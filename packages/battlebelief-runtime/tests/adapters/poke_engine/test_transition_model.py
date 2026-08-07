@@ -164,7 +164,53 @@ def test_native_exception_is_sanitized_and_charged_one_invoked_transition() -> N
 
     assert caught.value.failure_class == "native_exception"
     assert caught.value.work_units == 1
+    assert caught.value.__context__ is None
+    assert caught.value.__cause__ is None
     assert "mallory" not in str(caught.value)
+    assert "mallory" not in "".join(__import__("traceback").format_exception(caught.value))
+
+
+@pytest.mark.parametrize("total", [5.0, 50.0, 150.0])
+def test_chance_mass_must_be_close_to_native_hundred_percent(total: float) -> None:
+    model, prepared = _model_and_world()
+    p2 = next(action for action in model.legal_actions(prepared, "p2") if action.kind == "move")
+    model._generate_instructions = lambda *_: [  # type: ignore[method-assign]
+        type(
+            "NativeInstruction", (), {"percentage": total, "state": prepared._opaque.native_state}
+        )()
+    ]
+
+    with pytest.raises(PokeEngineMappingFailure) as caught:
+        model.transition(prepared, prepared.root_actions[0], p2)
+
+    assert caught.value.failure_class == "chance_normalization_failure"
+    assert caught.value.work_units == 1
+
+
+def test_chance_mass_accepts_small_f32_rounding_error() -> None:
+    model, prepared = _model_and_world()
+    p2 = next(action for action in model.legal_actions(prepared, "p2") if action.kind == "move")
+    model._generate_instructions = lambda *_: [  # type: ignore[method-assign]
+        type(
+            "NativeInstruction",
+            (),
+            {"percentage": 99.99999, "state": prepared._opaque.native_state},
+        )()
+    ]
+
+    outcome = model.transition(prepared, prepared.root_actions[0], p2)
+    assert outcome.work.units == 1
+
+
+def test_switch_switch_transition_reports_speed_ordering() -> None:
+    model, prepared = _model_and_world()
+    p1 = prepared.root_actions[2]
+    p2 = next(action for action in model.legal_actions(prepared, "p2") if action.kind == "switch")
+
+    outcome = model.transition(prepared, p1, p2)
+    values = {capability.value for capability in outcome.required_capabilities}
+    assert "gen9.transition.switch.active-slot" in values
+    assert "gen9.transition.order.speed" in values
 
 
 def test_player_validation_fails_closed() -> None:
@@ -177,10 +223,7 @@ def test_player_validation_fails_closed() -> None:
         model.terminal_value(prepared, "p3")  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("artifact_case", ["wrong_wheel", "wrong_build", "wrong_cell"])
-def test_artifact_identity_failures_are_typed(
-    artifact_case: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_artifact_identity_failure_is_typed(monkeypatch: pytest.MonkeyPatch) -> None:
     from battlebelief_runtime.adapters.poke_engine import transition_model
 
     def fail_verification(**_: object) -> None:
@@ -191,7 +234,6 @@ def test_artifact_identity_failures_are_typed(
     with pytest.raises(PokeEngineMappingFailure) as caught:
         _model()
 
-    assert artifact_case in {"wrong_wheel", "wrong_build", "wrong_cell"}
     assert caught.value.failure_class == "artifact_identity_mismatch"
     assert caught.value.work_units == 0
 

@@ -2,6 +2,7 @@
   "expected": {
     "minimum_successors": 1,
     "p1_terastallized": true,
+    "p1_active_types": ["fire", "typeless"],
     "work_units": 1
   },
   "fixture_id": "joint-transition-mapping-v1",

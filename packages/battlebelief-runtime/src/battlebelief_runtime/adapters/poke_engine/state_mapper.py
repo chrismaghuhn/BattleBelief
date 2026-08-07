@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, NoReturn, cast
@@ -10,6 +9,7 @@ from typing import Any, Literal, NoReturn, cast
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_core.domain.records.public_projection import observed_state_digest
 from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_core.domain.state.values import HpPrecision
 
 
 class _StateMappingError(ValueError):
@@ -57,6 +57,7 @@ def _token(value: object) -> str:
 class _ObservedRoot:
     root_player: Literal["p1", "p2"]
     digest: str = field(repr=False)
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = field(repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,8 +65,19 @@ class _MappedNativeState:
     native_state: str = field(repr=False)
     view_digests: tuple[str, str] = field(repr=False)
     active_indexes: tuple[int, int]
+    active_types: tuple[tuple[str, str], tuple[str, str]]
     terastallized: tuple[bool, bool]
     terminal_outcome: Literal["p1", "p2", "tie"] | None
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = field(repr=False)
+
+
+def _observed_hp_precision(state: ObservedState, player: Literal["p1", "p2"]) -> tuple[str, int]:
+    side = state.side(player)
+    if side.active_slot is not None and 1 <= side.active_slot <= len(side.pokemon):
+        observation = side.pokemon[side.active_slot - 1].hp
+        if observation is not None:
+            return observation.precision.value, observation.maximum
+    return HpPrecision.PERCENT.value, 100
 
 
 def map_observed_root(state: ObservedState) -> _ObservedRoot:
@@ -82,9 +94,16 @@ def map_observed_root(state: ObservedState) -> _ObservedRoot:
         or state.our_side not in {"p1", "p2"}
     ):
         _fail("unsupported_mapping")
+    public_hp = []
+    for player in ("p1", "p2"):
+        if player == state.our_side:
+            public_hp.append((HpPrecision.PERCENT.value, 100))
+        else:
+            public_hp.append(_observed_hp_precision(state, player))
     return _ObservedRoot(
         root_player=cast(Literal["p1", "p2"], state.our_side),
         digest=observed_state_digest(state),
+        public_hp=cast(tuple[tuple[str, int], tuple[str, int]], tuple(public_hp)),
     )
 
 
@@ -260,7 +279,14 @@ def _side(native: Any, value: object) -> Any:
 
 
 def map_complete_world(
-    native: Any, document: Mapping[str, object], observed_digest: str
+    native: Any,
+    document: Mapping[str, object],
+    observed_digest: str,
+    *,
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = (
+        (HpPrecision.PERCENT.value, 100),
+        (HpPrecision.PERCENT.value, 100),
+    ),
 ) -> _MappedNativeState:
     """Map a complete hypothetical world through a path distinct from observation."""
 
@@ -292,10 +318,19 @@ def map_complete_world(
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
         _fail("native_exception")
-    return map_native_state(native, state, observed_digest)
+    return map_native_state(native, state, observed_digest, public_hp=public_hp)
 
 
-def map_serialized_state(native: Any, state_value: str, observed_digest: str) -> _MappedNativeState:
+def map_serialized_state(
+    native: Any,
+    state_value: str,
+    observed_digest: str,
+    *,
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = (
+        (HpPrecision.PERCENT.value, 100),
+        (HpPrecision.PERCENT.value, 100),
+    ),
+) -> _MappedNativeState:
     if type(state_value) is not str or not state_value:
         _fail("malformed_native_result")
     try:
@@ -304,7 +339,7 @@ def map_serialized_state(native: Any, state_value: str, observed_digest: str) ->
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
         _fail("malformed_native_result")
-    return map_native_state(native, state, observed_digest)
+    return map_native_state(native, state, observed_digest, public_hp=public_hp)
 
 
 def map_native_state(
@@ -314,6 +349,10 @@ def map_native_state(
     *,
     prior_view_digests: tuple[str, str] | None = None,
     source_state: Any | None = None,
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = (
+        (HpPrecision.PERCENT.value, 100),
+        (HpPrecision.PERCENT.value, 100),
+    ),
 ) -> _MappedNativeState:
     """Freeze a native state and derive separate, leakage-resistant player views."""
 
@@ -325,6 +364,10 @@ def map_native_state(
         indexes = tuple(int(side.active_index) for side in sides)
         terastallized = tuple(
             bool(side.pokemon[index].terastallized)
+            for side, index in zip(sides, indexes, strict=True)
+        )
+        active_types = tuple(
+            tuple(_effective_types(side.pokemon[index]))
             for side, index in zip(sides, indexes, strict=True)
         )
         defeated = tuple(all(int(pokemon.hp) <= 0 for pokemon in side.pokemon) for side in sides)
@@ -347,6 +390,7 @@ def map_native_state(
                 player,
                 None if prior_view_digests is None else prior_view_digests[index],
                 source_state,
+                public_hp,
             )
             for index, player in enumerate(players)
         )
@@ -354,8 +398,10 @@ def map_native_state(
             native_state=serialized,
             view_digests=cast(tuple[str, str], views),
             active_indexes=cast(tuple[int, int], indexes),
+            active_types=cast(tuple[tuple[str, str], tuple[str, str]], active_types),
             terastallized=cast(tuple[bool, bool], terastallized),
             terminal_outcome=terminal,
+            public_hp=public_hp,
         )
     except _StateMappingError:
         raise
@@ -371,6 +417,7 @@ def _view_digest(
     player: Literal["p1", "p2"],
     prior_view_digest: str | None,
     source_state: Any | None,
+    public_hp: tuple[tuple[str, int], tuple[str, int]],
 ) -> str:
     own_index = 0 if player == "p1" else 1
     sides = (state.side_one, state.side_two)
@@ -412,37 +459,73 @@ def _view_digest(
             "prior_view_digest": prior_view_digest,
             "player": player,
             "own_private": private,
-            "public_transition_delta": _public_transition_delta(source_state, state),
+            "public_transition_delta": _public_transition_delta(
+                source_state, state, player=player, public_hp=public_hp
+            ),
         }
     return manifest_digest(view_document)
 
 
-def _public_active(side: Any) -> dict[str, object]:
+def _public_active(
+    side: Any,
+    *,
+    own: bool,
+    hp_precision: str,
+    hp_maximum: int,
+) -> dict[str, object]:
     index = int(side.active_index)
     active = side.pokemon[index]
     hp = int(active.hp)
     maxhp = int(active.maxhp)
-    hp_divisor = math.gcd(hp, maxhp)
+    if own or hp_precision == HpPrecision.EXACT.value:
+        hp_value: object = [hp, maxhp]
+    else:
+        denominator = hp_maximum if hp_precision == HpPrecision.PIXEL.value else 100
+        hp_value = round((hp / maxhp) * denominator)
     return {
         "active_index": index,
         "id": active.id,
-        "hp_fraction": [hp // hp_divisor, maxhp // hp_divisor],
+        "hp": {"current": hp_value, "precision": hp_precision},
         "status": active.status,
-        "types": list(active.types),
+        "types": _effective_types(active),
         "terastallized": bool(active.terastallized),
         "tera_type": active.tera_type if bool(active.terastallized) else None,
     }
 
 
-def _public_transition_delta(source: Any, target: Any) -> dict[str, object]:
+def _effective_types(active: Any) -> list[str]:
+    if bool(active.terastallized):
+        return [str(active.tera_type).lower(), "typeless"]
+    return [str(value).lower() for value in active.types]
+
+
+def _public_transition_delta(
+    source: Any,
+    target: Any,
+    *,
+    player: Literal["p1", "p2"],
+    public_hp: tuple[tuple[str, int], tuple[str, int]],
+) -> dict[str, object]:
     delta: dict[str, object] = {}
     side_deltas: dict[str, object] = {}
     for side_id, source_side, target_side in (
         ("p1", source.side_one, target.side_one),
         ("p2", source.side_two, target.side_two),
     ):
-        before = _public_active(source_side)
-        after = _public_active(target_side)
+        side_index = 0 if side_id == "p1" else 1
+        precision, maximum = public_hp[side_index]
+        before = _public_active(
+            source_side,
+            own=side_id == player,
+            hp_precision=precision,
+            hp_maximum=maximum,
+        )
+        after = _public_active(
+            target_side,
+            own=side_id == player,
+            hp_precision=precision,
+            hp_maximum=maximum,
+        )
         changed = {key: value for key, value in after.items() if before.get(key) != value}
         if changed:
             side_deltas[side_id] = changed

@@ -79,6 +79,8 @@ class MappingReport:
     failure_class: str | None = None
 
     def __post_init__(self) -> None:
+        if self.classification not in {"mapped", "transitioned", "failed"}:
+            raise ValueError("mapping report classification is invalid")
         for value in (self.classification, self.adapter_id, self.adapter_version):
             if type(value) is not str or _TOKEN.fullmatch(value) is None:
                 raise ValueError("mapping report identity must be canonical")

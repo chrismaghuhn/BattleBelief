@@ -68,7 +68,7 @@ _EXPECTED_FEATURES = ("poke-engine/gen9", "poke-engine/terastallization")
 _EXPECTED_CATALOG_DIGEST = "sha256:2adcf3c13b89f88c81a05368fd330fbc72fddcda91654433a04f8e21d75fdb11"
 # adapter-source-digest:start
 _EXPECTED_ADAPTER_SOURCE_DIGEST = (
-    "sha256:12d128f8c1bd967934e3367a26898689295afa10bb392e4555f4be8ce9df62aa"
+    "sha256:453b854f6dfd7cff527cbcc15869873f0cd94df9660b1c5d1959af954975cc5f"
 )
 # adapter-source-digest:end
 _EXPECTED_CORE_CONTRACT_DIGEST = (
@@ -81,6 +81,7 @@ _SOURCE_FILES = (
     "mapping_report.py",
     "transition_model.py",
 )
+_PERCENT_MASS_TOLERANCE = Decimal("0.0001")
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,8 +100,10 @@ class _PokeEngineWorld:
     root_player: Literal["p1", "p2"]
     view_digests: tuple[str, str] = field(repr=False)
     active_indexes: tuple[int, int]
+    _active_types: tuple[tuple[str, str], tuple[str, str]]
     terastallized: tuple[bool, bool]
     terminal_outcome: Literal["p1", "p2", "tie"] | None
+    public_hp: tuple[tuple[str, int], tuple[str, int]] = field(repr=False)
     root_bindings: tuple[_ActionBinding, ...] = field(repr=False)
     required_capabilities: tuple[CapabilityId, ...]
     report: MappingReport = field(repr=False)
@@ -193,6 +196,15 @@ def _backend_digest(identity: EngineArtifactIdentity) -> str:
     )
 
 
+def _sanitize_failure(failure: PokeEngineMappingFailure) -> PokeEngineMappingFailure:
+    """Remove interpreter exception chaining before a public failure escapes."""
+
+    failure.__context__ = None
+    failure.__cause__ = None
+    failure.__suppress_context__ = True
+    return failure
+
+
 def _import_verified_native(verified: VerifiedEngineArtifact) -> ModuleType:
     previous_bytecode_setting = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
@@ -247,6 +259,22 @@ class PokeEngineTransitionModel:
     """Concrete verified Runtime adapter; it performs no eligibility decision."""
 
     def __init__(
+        self,
+        *,
+        catalog: CapabilityCatalog,
+        _artifact_environment: RuntimeEnvironment | None = None,
+        _staged_wheel: Path | None = None,
+    ) -> None:
+        try:
+            self._initialize(
+                catalog=catalog,
+                _artifact_environment=_artifact_environment,
+                _staged_wheel=_staged_wheel,
+            )
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
+
+    def _initialize(
         self,
         *,
         catalog: CapabilityCatalog,
@@ -327,9 +355,30 @@ class PokeEngineTransitionModel:
         try:
             return safe_submissions_from_document(document)
         except _ActionMappingError as error:
-            self._raise_failure(error.failure_class, work_units=0)
+            failure_class = error.failure_class
+        self._raise_failure(failure_class, work_units=0)
 
     def prepare_battle_root(
+        self,
+        *,
+        observed_state: ObservedState,
+        safe_submissions: SafeSubmissionSet,
+        complete_world: Mapping[str, object],
+        ruleset_digest: str,
+        root_identity: PreparedRootIdentity | None = None,
+    ) -> PreparedWorld[_PokeEngineWorld]:
+        try:
+            return self._prepare_battle_root_impl(
+                observed_state=observed_state,
+                safe_submissions=safe_submissions,
+                complete_world=complete_world,
+                ruleset_digest=ruleset_digest,
+                root_identity=root_identity,
+            )
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
+
+    def _prepare_battle_root_impl(
         self,
         *,
         observed_state: ObservedState,
@@ -346,7 +395,12 @@ class PokeEngineTransitionModel:
             observed_digest = observed.digest
             request_digest = request_identity_digest(safe_submissions.request_identity)
             safe_digest = safe_submission_set_digest(safe_submissions)
-            mapped = map_complete_world(self._backend.native, complete_world, observed.digest)
+            mapped = map_complete_world(
+                self._backend.native,
+                complete_world,
+                observed.digest,
+                public_hp=observed.public_hp,
+            )
             expected_root = PreparedRootIdentity.create(
                 request_identity_digest=request_digest,
                 safe_submission_set_digest=safe_digest,
@@ -365,7 +419,19 @@ class PokeEngineTransitionModel:
                         safe_digest=safe_digest,
                         work_units=0,
                     )
-                if root_identity != expected_root:
+                if root_identity.safe_submission_set_digest != safe_digest:
+                    self._raise_failure(
+                        "safe_submission_mismatch",
+                        observed_digest=observed_digest,
+                        request_digest=request_digest,
+                        safe_digest=safe_digest,
+                        work_units=0,
+                    )
+                if (
+                    root_identity.observed_state_digest != expected_root.observed_state_digest
+                    or root_identity.root_player != expected_root.root_player
+                    or root_identity.ruleset_digest != expected_root.ruleset_digest
+                ):
                     self._raise_failure(
                         "safe_submission_mismatch",
                         observed_digest=observed_digest,
@@ -374,6 +440,26 @@ class PokeEngineTransitionModel:
                         work_units=0,
                     )
             selected_root = expected_root if root_identity is None else root_identity
+            if root_identity is not None:
+                if root_identity.backend_identity_digest != expected_root.backend_identity_digest:
+                    self._raise_failure(
+                        "adapter_identity_mismatch",
+                        observed_digest=observed_digest,
+                        request_digest=request_digest,
+                        safe_digest=safe_digest,
+                        work_units=0,
+                    )
+                if (
+                    root_identity.capability_catalog_digest
+                    != expected_root.capability_catalog_digest
+                ):
+                    self._raise_failure(
+                        "capability_ambiguity",
+                        observed_digest=observed_digest,
+                        request_digest=request_digest,
+                        safe_digest=safe_digest,
+                        work_units=0,
+                    )
             state = self._state_from_string(mapped.native_state)
             choices = self._legal_choice_values(state)
             player_index = 0 if observed.root_player == "p1" else 1
@@ -416,15 +502,17 @@ class PokeEngineTransitionModel:
                 root_player=observed.root_player,
                 view_digests=mapped.view_digests,
                 active_indexes=mapped.active_indexes,
+                _active_types=mapped.active_types,
                 terastallized=mapped.terastallized,
                 terminal_outcome=mapped.terminal_outcome,
+                public_hp=mapped.public_hp,
                 root_bindings=root_bindings,
                 required_capabilities=requirements,
                 report=report,
             )
             return self.prepare_root(world, root_identity=selected_root, root_actions=root_actions)
-        except PokeEngineMappingFailure:
-            raise
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
         except (_StateMappingError, _ActionMappingError) as error:
             self._raise_failure(
                 error.failure_class,
@@ -504,10 +592,13 @@ class PokeEngineTransitionModel:
     def legal_actions(
         self, world: PreparedWorld[_PokeEngineWorld], player: Literal["p1", "p2"]
     ) -> tuple[SearchAction, ...]:
-        index = self._player_index(player)
-        if world._opaque.ply == 0 and player == world._opaque.root_player:
-            return world.root_actions
-        return tuple(binding.action for binding in self._deep_bindings(world, index))
+        try:
+            index = self._player_index(player)
+            if world._opaque.ply == 0 and player == world._opaque.root_player:
+                return world.root_actions
+            return tuple(binding.action for binding in self._deep_bindings(world, index))
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
 
     def transition(
         self,
@@ -516,17 +607,33 @@ class PokeEngineTransitionModel:
         p2_action: SearchAction,
     ) -> TransitionOutcome[_PokeEngineWorld]:
         try:
-            p1_binding = binding_for_action(self._bindings(world, 0), p1_action)
-            p2_binding = binding_for_action(self._bindings(world, 1), p2_action)
+            return self._transition_impl(world, p1_action, p2_action)
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
+
+    def _transition_impl(
+        self,
+        world: PreparedWorld[_PokeEngineWorld],
+        p1_action: SearchAction,
+        p2_action: SearchAction,
+    ) -> TransitionOutcome[_PokeEngineWorld]:
+        try:
+            state = self._state_from_string(world._opaque.native_state)
+            choices = self._legal_choice_values(state)
+            p1_binding = binding_for_action(
+                self._bindings(world, 0, state=state, choices=choices), p1_action
+            )
+            p2_binding = binding_for_action(
+                self._bindings(world, 1, state=state, choices=choices), p2_action
+            )
         except _ActionMappingError:
             self._raise_failure("invalid_joint_action", work_units=0)
-        state = self._state_from_string(world._opaque.native_state)
         try:
             instructions = self._generate_instructions(
                 state, p1_binding.native_choice, p2_binding.native_choice
             )
-        except PokeEngineMappingFailure:
-            raise
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
         except BaseException as error:
             if isinstance(error, (KeyboardInterrupt, SystemExit)):
                 raise
@@ -538,6 +645,7 @@ class PokeEngineTransitionModel:
                 instructions,
                 world._opaque.observed_state_digest,
                 world._opaque.view_digests,
+                world._opaque.public_hp,
             )
             capabilities = self._transition_capabilities(p1_action, p2_action)
             successors = self._successors(
@@ -557,8 +665,8 @@ class PokeEngineTransitionModel:
             except (TypeError, ValueError):
                 self._raise_failure("work_accounting_inconsistency", work_units=1)
             return outcome
-        except PokeEngineMappingFailure:
-            raise
+        except PokeEngineMappingFailure as failure:
+            raise _sanitize_failure(failure) from None
         except (_StateMappingError, _ActionMappingError) as error:
             self._raise_failure(error.failure_class, work_units=1)
         except (InvalidOperation, ArithmeticError, TypeError, ValueError):
@@ -586,10 +694,15 @@ class PokeEngineTransitionModel:
     def root_submission(
         self, world: PreparedWorld[_PokeEngineWorld], action: SearchAction
     ) -> BattleSubmission:
+        failure_class: str | None
         try:
             binding = binding_for_action(world._opaque.root_bindings, action)
         except _ActionMappingError:
-            self._raise_failure("safe_submission_mismatch", work_units=0)
+            failure_class = "safe_submission_mismatch"
+        else:
+            failure_class = None
+        if failure_class is not None:
+            self._raise_failure(failure_class, work_units=0)
         if binding.submission is None:
             self._raise_failure("safe_submission_mismatch", work_units=0)
         return binding.submission
@@ -629,14 +742,21 @@ class PokeEngineTransitionModel:
         return (tuple(result[0]), tuple(result[1]))
 
     def _deep_bindings(
-        self, world: PreparedWorld[_PokeEngineWorld], index: int
+        self,
+        world: PreparedWorld[_PokeEngineWorld],
+        index: int,
+        *,
+        state: Any | None = None,
+        choices: tuple[tuple[str, ...], tuple[str, ...]] | None = None,
     ) -> tuple[_ActionBinding, ...]:
-        state = self._state_from_string(world._opaque.native_state)
-        choices = self._legal_choice_values(state)
-        side = state.side_one if index == 0 else state.side_two
+        selected_state = (
+            self._state_from_string(world._opaque.native_state) if state is None else state
+        )
+        selected_choices = self._legal_choice_values(selected_state) if choices is None else choices
+        side = selected_state.side_one if index == 0 else selected_state.side_two
         try:
             return map_native_actions(
-                native_choices=choices[index],
+                native_choices=selected_choices[index],
                 force_switch=bool(side.force_switch),
                 catalog=self._catalog,
             )
@@ -644,12 +764,17 @@ class PokeEngineTransitionModel:
             self._raise_failure(error.failure_class, work_units=0)
 
     def _bindings(
-        self, world: PreparedWorld[_PokeEngineWorld], index: int
+        self,
+        world: PreparedWorld[_PokeEngineWorld],
+        index: int,
+        *,
+        state: Any | None = None,
+        choices: tuple[tuple[str, ...], tuple[str, ...]] | None = None,
     ) -> tuple[_ActionBinding, ...]:
         player = "p1" if index == 0 else "p2"
         if world._opaque.ply == 0 and player == world._opaque.root_player:
             return world._opaque.root_bindings
-        return self._deep_bindings(world, index)
+        return self._deep_bindings(world, index, state=state, choices=choices)
 
     def _generate_instructions(self, state: Any, p1_choice: str, p2_choice: str) -> Any:
         return self._backend.native.generate_instructions(state, p1_choice, p2_choice)
@@ -660,10 +785,25 @@ class PokeEngineTransitionModel:
         instructions: object,
         observed_digest: str,
         prior_view_digests: tuple[str, str],
+        public_hp: tuple[tuple[str, int], tuple[str, int]],
     ) -> tuple[tuple[_MappedNativeState, Fraction], ...]:
         if not isinstance(instructions, list) or not instructions:
             self._raise_failure("malformed_native_result", work_units=1)
         by_state: dict[str, tuple[_MappedNativeState, Fraction]] = {}
+        percentages: list[Decimal] = []
+        for instruction in instructions:
+            percentage = getattr(instruction, "percentage", None)
+            if type(percentage) not in {int, float} or isinstance(percentage, bool):
+                self._raise_failure("chance_normalization_failure", work_units=1)
+            numeric_percentage = cast(int | float, percentage)
+            if not math.isfinite(float(numeric_percentage)) or float(numeric_percentage) <= 0:
+                self._raise_failure("chance_normalization_failure", work_units=1)
+            try:
+                percentages.append(Decimal(str(numeric_percentage)))
+            except (InvalidOperation, ValueError):
+                self._raise_failure("chance_normalization_failure", work_units=1)
+        if abs(sum(percentages, Decimal(0)) - Decimal(100)) > _PERCENT_MASS_TOLERANCE:
+            self._raise_failure("chance_normalization_failure", work_units=1)
         for instruction in instructions:
             percentage = getattr(instruction, "percentage", None)
             if type(percentage) not in {int, float} or isinstance(percentage, bool):
@@ -685,6 +825,7 @@ class PokeEngineTransitionModel:
                 observed_digest,
                 prior_view_digests=prior_view_digests,
                 source_state=state,
+                public_hp=public_hp,
             )
             previous = by_state.get(mapped.native_state)
             by_state[mapped.native_state] = (
@@ -721,8 +862,10 @@ class PokeEngineTransitionModel:
                 root_player=source._opaque.root_player,
                 view_digests=mapped.view_digests,
                 active_indexes=mapped.active_indexes,
+                _active_types=mapped.active_types,
                 terastallized=mapped.terastallized,
                 terminal_outcome=mapped.terminal_outcome,
+                public_hp=mapped.public_hp,
                 root_bindings=source._opaque.root_bindings,
                 required_capabilities=_canonical_capabilities(
                     source.required_capabilities + capabilities
@@ -782,6 +925,7 @@ class PokeEngineTransitionModel:
             )
         if "switch" in {p1_action.kind, p2_action.kind}:
             values.append("gen9.transition.switch.active-slot")
+            values.append("gen9.transition.order.speed")
         if any(
             capability.value == "gen9.legality.terastallization.activation"
             for action in (p1_action, p2_action)
@@ -930,25 +1074,31 @@ def _run_bounded_conformance_smoke(
         complete_world=complete_world,
         ruleset_digest=manifest_digest({"fixture": "task27-bounded-gen9-tera"}),
     )
-    p1_action = next(
-        binding.action
-        for binding in prepared._opaque.root_bindings
-        if binding.native_choice == joint_document["p1_choice"]
-    )
-    p2_action = next(
-        binding.action
-        for binding in model._deep_bindings(prepared, 1)
-        if binding.native_choice == joint_document["p2_choice"]
-    )
+    try:
+        p1_action = next(
+            binding.action
+            for binding in prepared._opaque.root_bindings
+            if binding.native_choice == joint_document["p1_choice"]
+        )
+        p2_action = next(
+            binding.action
+            for binding in model._deep_bindings(prepared, 1)
+            if binding.native_choice == joint_document["p2_choice"]
+        )
+    except StopIteration:
+        raise RuntimeError("bounded joint fixture choice is unavailable") from None
     outcome = model.transition(prepared, p1_action, p2_action)
     expected = joint_document["expected"]
     work_units = expected.get("work_units")
     minimum_successors = expected.get("minimum_successors")
     p1_terastallized = expected.get("p1_terastallized")
+    p1_active_types = expected.get("p1_active_types")
     if (
         type(work_units) is not int
         or type(minimum_successors) is not int
         or type(p1_terastallized) is not bool
+        or not isinstance(p1_active_types, list)
+        or any(type(value) is not str for value in p1_active_types)
     ):
         raise RuntimeError("bounded joint fixture expectation is malformed")
     if (
@@ -956,6 +1106,10 @@ def _run_bounded_conformance_smoke(
         or len(outcome.successors) < minimum_successors
         or any(
             successor.world._opaque.terastallized[0] is not p1_terastallized
+            for successor in outcome.successors
+        )
+        or any(
+            tuple(successor.world._opaque._active_types[0]) != tuple(p1_active_types)
             for successor in outcome.successors
         )
     ):

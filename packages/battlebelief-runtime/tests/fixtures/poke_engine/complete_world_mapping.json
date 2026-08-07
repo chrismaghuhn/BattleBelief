@@ -38,7 +38,7 @@
           "special_defense": 100,
           "speed": 110,
           "status": "none",
-          "tera_type": "electric",
+          "tera_type": "fire",
           "terastallized": false,
           "types": ["electric", "typeless"]
         },

@@ -122,6 +122,7 @@ def test_failure_contains_only_stable_class_report_and_deterministic_work() -> N
                 tier="gen9ou",
                 battle_started=True,
                 our_side="p1",
+                turn=1,
             ),
             safe_submissions=model.safe_submissions_from_document(
                 _doc("observed_root_mapping.json")
@@ -136,3 +137,15 @@ def test_failure_contains_only_stable_class_report_and_deterministic_work() -> N
     assert failure.report.failure_class == failure.failure_class
     assert str(failure) == "poke_engine mapping failed: unsupported_mapping"
     assert "mallory" not in repr(failure.report)
+
+
+def test_mapping_report_classification_is_closed() -> None:
+    model, _prepared_world = _prepared()
+    for classification in ("mapped", "transitioned", "failed"):
+        report = model._report(
+            classification=classification,
+            work_units=0,
+        )
+        assert report.classification == classification
+    with pytest.raises(ValueError):
+        model._report(classification="other", work_units=0)

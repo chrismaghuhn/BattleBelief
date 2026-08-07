@@ -254,7 +254,9 @@ def _apply_choice(state: _State, side_index: int, choice: str, damage: int) -> N
     if choice == "No Move":
         return
     if choice.endswith("-tera"):
-        side.pokemon[int(side.active_index.value)].terastallized = True
+        active = side.pokemon[int(side.active_index.value)]
+        active.terastallized = True
+        active.types = (active.tera_type, "typeless")
         choice = choice.removesuffix("-tera")
     if choice != "protect":
         target = opponent.pokemon[int(opponent.active_index.value)]

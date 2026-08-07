@@ -241,6 +241,60 @@ def test_request_identity_mismatch_is_distinct_from_stale_safe_set() -> None:
     assert caught.value.work_units == 0
 
 
+def test_root_backend_identity_mismatch_is_not_reported_as_stale_safe_set() -> None:
+    model = _model()
+    prepared = _prepared(model)
+    mismatched_root = PreparedRootIdentity.create(
+        request_identity_digest=prepared.root_identity.request_identity_digest,
+        safe_submission_set_digest=prepared.root_identity.safe_submission_set_digest,
+        observed_state_digest=prepared.root_identity.observed_state_digest,
+        root_player=prepared.root_identity.root_player,
+        ruleset_digest=prepared.root_identity.ruleset_digest,
+        backend_identity_digest="sha256:" + "9" * 64,
+        capability_catalog_digest=prepared.root_identity.capability_catalog_digest,
+    )
+
+    with pytest.raises(PokeEngineMappingFailure) as caught:
+        model.prepare_battle_root(
+            observed_state=_observed(),
+            safe_submissions=model.safe_submissions_from_document(
+                _doc("observed_root_mapping.json")
+            ),
+            complete_world=_doc("complete_world_mapping.json"),
+            ruleset_digest=_RULESET,
+            root_identity=mismatched_root,
+        )
+
+    assert caught.value.failure_class == "adapter_identity_mismatch"
+
+
+def test_root_catalog_identity_mismatch_is_capability_ambiguity() -> None:
+    model = _model()
+    prepared = _prepared(model)
+    mismatched_root = PreparedRootIdentity.create(
+        request_identity_digest=prepared.root_identity.request_identity_digest,
+        safe_submission_set_digest=prepared.root_identity.safe_submission_set_digest,
+        observed_state_digest=prepared.root_identity.observed_state_digest,
+        root_player=prepared.root_identity.root_player,
+        ruleset_digest=prepared.root_identity.ruleset_digest,
+        backend_identity_digest=prepared.root_identity.backend_identity_digest,
+        capability_catalog_digest="sha256:" + "9" * 64,
+    )
+
+    with pytest.raises(PokeEngineMappingFailure) as caught:
+        model.prepare_battle_root(
+            observed_state=_observed(),
+            safe_submissions=model.safe_submissions_from_document(
+                _doc("observed_root_mapping.json")
+            ),
+            complete_world=_doc("complete_world_mapping.json"),
+            ruleset_digest=_RULESET,
+            root_identity=mismatched_root,
+        )
+
+    assert caught.value.failure_class == "capability_ambiguity"
+
+
 def test_unknown_native_depth_choice_fails_closed() -> None:
     model = _model()
     prepared = _prepared(model)

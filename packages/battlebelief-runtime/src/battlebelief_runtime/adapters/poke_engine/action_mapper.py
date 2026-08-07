@@ -43,6 +43,10 @@ class _ActionBinding:
 def safe_submissions_from_document(document: Mapping[str, object]) -> SafeSubmissionSet:
     if not isinstance(document, Mapping):
         _fail("missing_field")
+    if set(document) != {"schema_version", "fixture_id", "request", "safe_submissions"}:
+        _fail("unsupported_mapping")
+    if document.get("schema_version") != 1 or type(document.get("fixture_id")) is not str:
+        _fail("unsupported_mapping")
     request_value = document.get("request")
     submissions_value = document.get("safe_submissions")
     if not isinstance(request_value, Mapping) or not isinstance(submissions_value, Sequence):
@@ -53,6 +57,8 @@ def safe_submissions_from_document(document: Mapping[str, object]) -> SafeSubmis
     rqid = request_value["rqid"]
     request_digest = request_value["request_digest"]
     if type(room_id) is not str or type(rqid) is not int or type(request_digest) is not str:
+        _fail("unsupported_mapping")
+    if not room_id or not request_digest:
         _fail("unsupported_mapping")
     submissions: list[BattleSubmission] = []
     for value in submissions_value:
@@ -106,8 +112,8 @@ def _submission_choice(
     active_move_ids: tuple[str, ...],
 ) -> str:
     if submission.kind is ActionKind.MOVE:
-        assert submission.move_id is not None
-        assert submission.slot is not None
+        if submission.move_id is None or submission.slot is None:
+            _fail("safe_submission_mismatch")
         if (
             submission.slot > len(active_move_ids)
             or active_move_ids[submission.slot - 1] != submission.move_id
@@ -115,7 +121,8 @@ def _submission_choice(
             _fail("safe_submission_mismatch")
         return submission.move_id + ("-tera" if submission.terastallize else "")
     if submission.kind is ActionKind.SWITCH:
-        assert submission.slot is not None
+        if submission.slot is None:
+            _fail("safe_submission_mismatch")
         if submission.slot > len(team_ids):
             _fail("safe_submission_mismatch")
         return f"switch {team_ids[submission.slot - 1]}"

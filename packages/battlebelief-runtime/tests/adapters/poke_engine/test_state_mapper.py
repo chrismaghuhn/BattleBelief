@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from battlebelief_core.domain.state.observed_state import ObservedState
+from battlebelief_core.domain.state.pokemon_view import PokemonView
+from battlebelief_core.domain.state.values import HpObservation, HpPrecision
 from battlebelief_runtime.adapters.poke_engine import (
     PokeEngineMappingFailure,
     PokeEngineTransitionModel,
@@ -203,8 +205,8 @@ def test_unchanged_hidden_baseline_does_not_enter_deeper_player_view() -> None:
         action for action in model.legal_actions(second, "p2") if action.kind == "move"
     )
 
-    first_outcome = model.transition(first, first.root_actions[0], first_p2)
-    second_outcome = model.transition(second, second.root_actions[0], second_p2)
+    first_outcome = model.transition(first, first.root_actions[3], first_p2)
+    second_outcome = model.transition(second, second.root_actions[3], second_p2)
 
     assert {
         model.player_view(successor.world, "p1").view_digest
@@ -213,6 +215,86 @@ def test_unchanged_hidden_baseline_does_not_enter_deeper_player_view() -> None:
         model.player_view(successor.world, "p1").view_digest
         for successor in second_outcome.successors
     }
+
+
+def test_deep_opponent_hp_projection_uses_public_precision_not_hidden_maxhp() -> None:
+    model = _model()
+    safe = model.safe_submissions_from_document(_document("observed_root_mapping.json"))
+    first_world = _document("complete_world_mapping.json")
+    second_world = _document("complete_world_mapping.json")
+    first_active = first_world["sides"]["p2"]["pokemon"][0]  # type: ignore[index]
+    second_active = second_world["sides"]["p2"]["pokemon"][0]  # type: ignore[index]
+    first_active["hp"], first_active["maxhp"] = 70, 140
+    second_active["hp"], second_active["maxhp"] = 50, 100
+
+    first = model.prepare_battle_root(
+        observed_state=_observed(),
+        safe_submissions=safe,
+        complete_world=first_world,
+        ruleset_digest=_RULESET,
+    )
+    second = model.prepare_battle_root(
+        observed_state=_observed(),
+        safe_submissions=safe,
+        complete_world=second_world,
+        ruleset_digest=_RULESET,
+    )
+    first_p2 = next(action for action in model.legal_actions(first, "p2") if action.kind == "move")
+    second_p2 = next(
+        action for action in model.legal_actions(second, "p2") if action.kind == "move"
+    )
+
+    first_outcome = model.transition(first, first.root_actions[3], first_p2)
+    second_outcome = model.transition(second, second.root_actions[3], second_p2)
+
+    assert {
+        model.information_state_key(model.player_view(item.world, "p1"))
+        for item in first_outcome.successors
+    } == {
+        model.information_state_key(model.player_view(item.world, "p1"))
+        for item in second_outcome.successors
+    }
+
+
+def test_pixel_precision_uses_fixed_public_denominator_for_deep_opponent_hp() -> None:
+    model = _model()
+    safe = model.safe_submissions_from_document(_document("observed_root_mapping.json"))
+    first_world = _document("complete_world_mapping.json")
+    second_world = _document("complete_world_mapping.json")
+    first_active = first_world["sides"]["p2"]["pokemon"][0]  # type: ignore[index]
+    second_active = second_world["sides"]["p2"]["pokemon"][0]  # type: ignore[index]
+    first_active["hp"], first_active["maxhp"] = 24, 48
+    second_active["hp"], second_active["maxhp"] = 50, 100
+    observed = _observed()
+    opponent = replace(
+        PokemonView.new("p2", "eevee"),
+        active=True,
+        hp=HpObservation(current=24, maximum=48, precision=HpPrecision.PIXEL),
+    )
+    observed = replace(observed, p2=replace(observed.p2, active_slot=1, pokemon=(opponent,)))
+
+    first = model.prepare_battle_root(
+        observed_state=observed,
+        safe_submissions=safe,
+        complete_world=first_world,
+        ruleset_digest=_RULESET,
+    )
+    second = model.prepare_battle_root(
+        observed_state=observed,
+        safe_submissions=safe,
+        complete_world=second_world,
+        ruleset_digest=_RULESET,
+    )
+    first_p2 = next(action for action in model.legal_actions(first, "p2") if action.kind == "move")
+    second_p2 = next(
+        action for action in model.legal_actions(second, "p2") if action.kind == "move"
+    )
+    first_outcome = model.transition(first, first.root_actions[3], first_p2)
+    second_outcome = model.transition(second, second.root_actions[3], second_p2)
+
+    assert {
+        model.player_view(item.world, "p1").view_digest for item in first_outcome.successors
+    } == {model.player_view(item.world, "p1").view_digest for item in second_outcome.successors}
 
 
 @pytest.mark.parametrize("mutation", ["missing", "unsupported", "wrong_generation"])
@@ -278,4 +360,7 @@ def test_native_world_constructor_exception_is_typed_and_sanitized() -> None:
         )
 
     assert caught.value.failure_class == "native_exception"
+    assert caught.value.__context__ is None
+    assert caught.value.__cause__ is None
     assert "mallory" not in str(caught.value)
+    assert "mallory" not in "".join(__import__("traceback").format_exception(caught.value))

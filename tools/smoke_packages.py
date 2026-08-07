@@ -148,7 +148,6 @@ def smoke_verified_poke_engine_port(output: Path) -> None:
         raise RuntimeError("capability catalog is malformed")
     report = _run_bounded_conformance_smoke(
         CapabilityCatalog.from_document(catalog_document),
-        fixture_root=ROOT / "packages/battlebelief-runtime/tests/fixtures/poke_engine",
     )
     output.write_text(
         json.dumps(report.to_dict(), sort_keys=True, separators=(",", ":")) + "\n",
