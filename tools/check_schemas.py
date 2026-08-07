@@ -178,6 +178,10 @@ _FRONTMATTER_CONTRACT_VERSION = re.compile(r"^version: ([1-9][0-9]*)$", re.MULTI
 _PROFILE_CONTRACT_ID = re.compile(r"^Contract ID: `([a-z][a-z0-9-]*)`\s*$", re.MULTILINE)
 _PROFILE_CONTRACT_VERSION = re.compile(r"^Contract version: `([1-9][0-9]*)`\s*$", re.MULTILINE)
 
+_QUALIFICATION_PROVENANCE_RELATIVE = Path(
+    "artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance"
+)
+
 
 def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
     if schema_name in CATALOG_SCHEMA_NAMES:
@@ -387,25 +391,176 @@ def _is_link_or_reparse_entry(path: Path, metadata: object) -> bool:
     return bool(is_junction()) if callable(is_junction) else False
 
 
+def _ancestor_path_safety_errors(path: Path, root: Path) -> list[str]:
+    """Reject links/reparse points in the lexical path from the trusted root."""
+
+    errors: list[str] = []
+    try:
+        relative_parts = path.absolute().relative_to(root.absolute()).parts
+    except ValueError:
+        return [f"{_artifact_display_path(path, root)}: path is outside trusted root"]
+    current = root
+    candidates = (root, *[current := current / part for part in relative_parts])
+    for candidate in candidates:
+        try:
+            metadata = candidate.lstat()
+        except FileNotFoundError:
+            break
+        except OSError:
+            errors.append(
+                f"{_artifact_display_path(candidate, root)}: governed path metadata is unreadable"
+            )
+            continue
+        if _is_link_or_reparse_entry(candidate, metadata):
+            errors.append(
+                f"{_artifact_display_path(candidate, root)}: symlinked artifact paths are not allowed"
+            )
+    return errors
+
+
 def _path_safety_errors(path: Path, expected_root: Path, root: Path) -> list[str]:
     """Inspect governed path metadata without opening artifact contents."""
 
+    errors = _ancestor_path_safety_errors(path, root)
+    errors.extend(_ancestor_path_safety_errors(expected_root, root))
     try:
         metadata = path.lstat()
     except FileNotFoundError:
-        return []
+        return errors
     except OSError:
-        return [f"{path.relative_to(root)}: governed path metadata is unreadable"]
-    errors: list[str] = []
+        errors.append(f"{path.relative_to(root)}: governed path metadata is unreadable")
+        return errors
     if _is_link_or_reparse_entry(path, metadata):
-        errors.append(f"{path.relative_to(root)}: symlinked artifact paths are not allowed")
+        error = f"{path.relative_to(root)}: symlinked artifact paths are not allowed"
+        if error not in errors:
+            errors.append(error)
     try:
+        trusted_root = root.resolve(strict=True)
+        resolved_expected_root = expected_root.resolve(strict=True)
         resolved = path.resolve(strict=True)
-        resolved.relative_to(expected_root.resolve(strict=True))
+        resolved_expected_root.relative_to(trusted_root)
+        resolved.relative_to(trusted_root)
+        resolved.relative_to(resolved_expected_root)
     except (OSError, ValueError):
         errors.append(
             f"{path.relative_to(root)}: resolved artifact path escapes its governed directory"
         )
+    return errors
+
+
+def _raw_sha256(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _validate_qualification_provenance(
+    root: Path,
+    expected_document: Mapping[str, Any],
+    provenance_index_path: Path,
+    provenance_root: Path,
+    schema_root: Path,
+) -> list[str]:
+    """Resolve every qualifying closure digest to governed, hashed bytes."""
+
+    errors: list[str] = []
+    try:
+        index_document = load_json_strict(provenance_index_path)
+    except (RegistrationValidationError, TypeError, ValueError) as error:
+        return [f"qualification provenance index could not be loaded: {error}"]
+    if not isinstance(index_document, dict):
+        return ["qualification provenance index must be an object"]
+
+    def mapping_at(*keys: str) -> Mapping[str, Any] | None:
+        value: Any = index_document
+        for key in keys:
+            if not isinstance(value, Mapping):
+                return None
+            value = value.get(key)
+        return value if isinstance(value, Mapping) else None
+
+    def resolve_entry(
+        label: str, entry: Mapping[str, Any] | None, expected_root: Path
+    ) -> Path | None:
+        if entry is None:
+            errors.append(f"qualification provenance {label} entry is missing")
+            return None
+        relative_path = entry.get("path")
+        digest = entry.get("digest")
+        if not isinstance(relative_path, str) or not isinstance(digest, str):
+            errors.append(f"qualification provenance {label} entry is incomplete")
+            return None
+        candidate = root / Path(relative_path)
+        safety_errors = _path_safety_errors(candidate, expected_root, root)
+        if safety_errors:
+            errors.extend(f"qualification provenance {error}" for error in safety_errors)
+            return None
+        try:
+            candidate.relative_to(expected_root)
+        except ValueError:
+            errors.append(f"qualification provenance {label} path escapes its directory")
+            return None
+        if not candidate.is_file():
+            errors.append(f"qualification provenance {label} bytes are missing")
+            return None
+        try:
+            actual_digest = _raw_sha256(candidate)
+        except OSError:
+            errors.append(f"qualification provenance {label} bytes are unreadable")
+            return None
+        if actual_digest != digest:
+            errors.append(f"qualification provenance {label} digest does not match bytes")
+            return None
+        return candidate
+
+    adapter = mapping_at("transition_adapter")
+    if adapter is None:
+        errors.append("qualification provenance transition adapter entry is missing")
+    else:
+        if adapter.get("id") != expected_document.get("transition_adapter_id"):
+            errors.append("qualification provenance transition adapter ID does not match")
+        if adapter.get("version") != expected_document.get("transition_adapter_version"):
+            errors.append("qualification provenance transition adapter version does not match")
+
+    for field, location in {
+        "transition_adapter_source_digest": ("transition_adapter", "source"),
+        "transition_model_contract_digest": ("transition_adapter", "contract"),
+        "transition_adapter_conformance_digest": ("transition_adapter", "conformance"),
+        "oracle_source_manifest_digest": ("oracle", "source"),
+        "oracle_build_manifest_digest": ("oracle", "build"),
+        "ruleset_digest": ("ruleset",),
+        "corpus_digest": ("corpus",),
+        "runner_source_digest": ("runner",),
+        "classifier_source_digest": ("classifier",),
+        "qualification_result_digest": ("qualification_result",),
+    }.items():
+        resolve_entry(
+            field,
+            mapping_at(*location),
+            provenance_root,
+        )
+        entry = mapping_at(*location)
+        if entry is not None and entry.get("digest") != expected_document.get(field):
+            errors.append(f"qualification provenance {field} does not match manifest")
+
+    result_schema = mapping_at("qualification_result_schema")
+    schema_path = resolve_entry("qualification result schema", result_schema, schema_root)
+    if result_schema is not None:
+        if result_schema.get("schema_id") != expected_document.get(
+            "qualification_result_schema_id"
+        ):
+            errors.append("qualification provenance result schema ID does not match manifest")
+        if schema_path is not None:
+            try:
+                schema_document = load_json_strict(schema_path)
+            except (RegistrationValidationError, TypeError, ValueError) as error:
+                errors.append(
+                    f"qualification provenance result schema could not be loaded: {error}"
+                )
+            else:
+                if not isinstance(schema_document, Mapping) or schema_document.get(
+                    "$id"
+                ) != result_schema.get("schema_id"):
+                    errors.append("qualification provenance result schema ID does not match bytes")
+
     return errors
 
 
@@ -563,6 +718,8 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     migration_source_directory = capability_root / "migration-sources"
     migration_report_directory = capability_root / "migration-reports"
     engine_root = root / "artifacts/gen9ou/m2/engine"
+    qualification_provenance_root = root / _QUALIFICATION_PROVENANCE_RELATIVE
+    qualification_index_path = qualification_provenance_root / "index.json"
     source_path = engine_root / "engine-source.json"
     index_path = engine_root / "engine-artifact-index.json"
     evidence_directory = capability_root / "evidence"
@@ -576,6 +733,8 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         (evidence_directory, capability_root),
         (migration_source_directory, capability_root),
         (migration_report_directory, capability_root),
+        (qualification_provenance_root, qualification_provenance_root.parent),
+        (qualification_index_path, qualification_provenance_root),
     )
     for path, expected_root in initial_governed_paths:
         errors.extend(_path_safety_errors(path, expected_root, root))
@@ -605,6 +764,11 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         governed_paths.extend((path, capability_root) for path in capability_root.rglob("*"))
     if engine_root.exists():
         governed_paths.extend((path, engine_root) for path in engine_root.rglob("*"))
+    if qualification_provenance_root.exists():
+        governed_paths.extend(
+            (path, qualification_provenance_root)
+            for path in qualification_provenance_root.rglob("*")
+        )
     for path, expected_root in sorted(governed_paths):
         errors.extend(_path_safety_errors(path, expected_root, root))
     if errors:
@@ -679,6 +843,38 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     # being replaced by a secondary KeyError.
     if structural_errors:
         return errors
+    build_documents: dict[str, Mapping[str, Any]] = {}
+    build_paths: dict[str, Path] = {}
+    build_structural_errors: list[str] = []
+    build_schema = load_json_strict(
+        _schema_path_for_example(schema_root, "engine-build.schema.json")
+    )
+    for cell in index_document["cells"]:
+        cell_id = cell["cell_id"]
+        build_path = engine_root / f"engine-build-{cell_id}.json"
+        build_paths[cell_id] = build_path
+        if not build_path.is_file():
+            build_structural_errors.append(
+                f"{index_path.relative_to(root)}: build manifest missing for {cell_id}"
+            )
+            continue
+        build_document = load_document(build_path)
+        if build_document is None:
+            build_structural_errors.append(
+                f"{build_path.relative_to(root)}: build manifest could not be loaded"
+            )
+            continue
+        build_structural_errors.extend(
+            f"{build_path.relative_to(root)}: {schema_issue_summary(issue)}"
+            for issue in Draft202012Validator(
+                build_schema, format_checker=FormatChecker()
+            ).iter_errors(build_document)
+        )
+        if isinstance(build_document, dict):
+            build_documents[cell_id] = build_document
+    errors.extend(build_structural_errors)
+    if build_structural_errors:
+        return errors
     source_documents_by_id = {
         path.stem: document
         for path, document in migration_source_documents
@@ -738,6 +934,26 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
                     manifest_document, catalog, evidence_documents
                 )
             )
+            if any(
+                claim["status"] in {"exact", "bounded_approximation"}
+                for claim in manifest_document["claims"]
+            ):
+                qualifying_claim = next(
+                    claim
+                    for claim in manifest_document["claims"]
+                    if claim["status"] in {"exact", "bounded_approximation"}
+                )
+                first_reference = qualifying_claim["evidence_refs"][0]
+                errors.extend(
+                    f"{manifest_path.relative_to(root)}: {error}"
+                    for error in _validate_qualification_provenance(
+                        root,
+                        {**manifest_document, **first_reference},
+                        qualification_index_path,
+                        qualification_provenance_root,
+                        schema_root,
+                    )
+                )
             qualifying_claims = {
                 claim["capability_id"]
                 for claim in manifest_document["claims"]
@@ -771,11 +987,8 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
         )
     for cell in index_document["cells"]:
         cell_id = cell["cell_id"]
-        build_path = engine_root / f"engine-build-{cell_id}.json"
-        if not build_path.is_file():
-            errors.append(f"{index_path.relative_to(root)}: build manifest missing for {cell_id}")
-            continue
-        build_document = load_json_strict(build_path)
+        build_path = build_paths[cell_id]
+        build_document = build_documents[cell_id]
         if manifest_digest(build_document) != cell["build_manifest_digest"]:
             errors.append(f"{build_path.relative_to(root)}: canonical digest does not match index")
         if build_document.get("cell_id") != cell_id:

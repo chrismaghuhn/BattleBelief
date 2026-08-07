@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -29,6 +30,75 @@ MANIFEST_PATH = (
 
 def _document(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_qualification_provenance(
+    root: Path, *, adapter_id: str, adapter_version: str, result_schema_id: str
+) -> dict[str, object]:
+    provenance_root = root / "artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance"
+    provenance_root.mkdir(parents=True)
+
+    def write_bytes(name: str, content: bytes) -> dict[str, str]:
+        path = provenance_root / name
+        path.write_bytes(content)
+        return {
+            "path": path.relative_to(root).as_posix(),
+            "digest": "sha256:" + hashlib.sha256(content).hexdigest(),
+        }
+
+    closure = {
+        "transition_adapter": {
+            "id": adapter_id,
+            "version": adapter_version,
+            "source": write_bytes("adapter-source.bin", b"adapter source bytes"),
+            "contract": write_bytes("transition-contract.bin", b"transition contract bytes"),
+            "conformance": write_bytes("adapter-conformance.bin", b"adapter conformance bytes"),
+        },
+        "oracle": {
+            "source": write_bytes("oracle-source.bin", b"oracle source bytes"),
+            "build": write_bytes("oracle-build.bin", b"oracle build bytes"),
+        },
+        "ruleset": write_bytes("ruleset.bin", b"ruleset bytes"),
+        "corpus": write_bytes("corpus.bin", b"corpus bytes"),
+        "runner": write_bytes("runner.bin", b"runner bytes"),
+        "classifier": write_bytes("classifier.bin", b"classifier bytes"),
+    }
+    schema_path = root / "schemas/evaluation/fixture-result.schema.json"
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text(
+        json.dumps({"$id": result_schema_id, "type": "object"}), encoding="utf-8"
+    )
+    schema_bytes = schema_path.read_bytes()
+    result_schema = {
+        "path": schema_path.relative_to(root).as_posix(),
+        "digest": "sha256:" + hashlib.sha256(schema_bytes).hexdigest(),
+        "schema_id": result_schema_id,
+    }
+    closure["qualification_result_schema"] = result_schema
+    closure["qualification_result"] = write_bytes("qualification-result.json", b"result bytes")
+    index_path = provenance_root / "index.json"
+    index_path.write_text(json.dumps(closure), encoding="utf-8")
+
+    fields = {
+        "transition_adapter_source_digest": closure["transition_adapter"]["source"]["digest"],
+        "transition_model_contract_digest": closure["transition_adapter"]["contract"]["digest"],
+        "transition_adapter_conformance_digest": closure["transition_adapter"]["conformance"][
+            "digest"
+        ],
+        "oracle_source_manifest_digest": closure["oracle"]["source"]["digest"],
+        "oracle_build_manifest_digest": closure["oracle"]["build"]["digest"],
+        "ruleset_digest": closure["ruleset"]["digest"],
+        "corpus_digest": closure["corpus"]["digest"],
+        "runner_source_digest": closure["runner"]["digest"],
+        "classifier_source_digest": closure["classifier"]["digest"],
+        "qualification_result_schema_id": result_schema_id,
+        "qualification_result_digest": closure["qualification_result"]["digest"],
+    }
+    return {
+        **fields,
+        "transition_adapter_id": adapter_id,
+        "transition_adapter_version": adapter_version,
+    }
 
 
 def _target_binding() -> dict[str, object]:
@@ -397,6 +467,45 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
         (evidence_dir / f"{document['evidence_id']}.json").write_text(
             json.dumps(document), encoding="utf-8"
         )
+    synthetic_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("qualification provenance" in error for error in synthetic_errors)
+
+    closure_fields = _write_qualification_provenance(
+        tmp_path,
+        adapter_id=str(evidence["transition_adapter_id"]),
+        adapter_version=str(evidence["transition_adapter_version"]),
+        result_schema_id=str(evidence["qualification_result_schema_id"]),
+    )
+    evidence.update(closure_fields)
+    references = []
+    for document in evidence_documents:
+        document.update(closure_fields)
+        references.append({**document, "evidence_digest": manifest_digest(document)})
+        references[-1].pop("schema_version")
+        (evidence_dir / f"{document['evidence_id']}.json").write_text(
+            json.dumps(document), encoding="utf-8"
+        )
+    manifest.update(
+        {
+            field: closure_fields[field]
+            for field in (
+                "transition_adapter_id",
+                "transition_adapter_version",
+                "transition_adapter_source_digest",
+                "transition_model_contract_digest",
+                "transition_adapter_conformance_digest",
+                "oracle_source_manifest_digest",
+                "oracle_build_manifest_digest",
+                "ruleset_digest",
+                "corpus_digest",
+                "runner_source_digest",
+                "classifier_source_digest",
+            )
+        }
+    )
+    manifest["claims"][0]["evidence_refs"] = references
+    manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
 
     second_documents: list[dict[str, object]] = []

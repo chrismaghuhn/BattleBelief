@@ -84,6 +84,17 @@ IDs and digests are unique within a manifest. The five adapter fields are either
 all `null` or all present. They
 name the later BattleBelief transition adapter.
 
+For a qualifying claim, the non-engine qualification closure resolves through
+the repository-relative
+`artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance/index.json`.
+Its entries name the immutable transition-adapter, oracle, ruleset, corpus,
+runner, classifier, and qualification-result bytes; the validator rejects
+missing, escaping, symlinked, or digest-mismatched entries before accepting a
+claim. The qualification-result schema entry must resolve to a supported schema
+document whose `$id` matches `qualification_result_schema_id`. This provenance
+index and its referenced bytes are data-only qualification inputs and do not
+qualify a capability by themselves.
+
 The Task 25 artifact/sentinel probe is not that adapter binding. It supports
 private build and health properties only: it does not establish transition
 mapping, oracle parity, search eligibility, or strength. The initial v2

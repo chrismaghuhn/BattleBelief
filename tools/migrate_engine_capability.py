@@ -89,6 +89,12 @@ def _require_binding(
     return source_digest, index_digest, environment_bindings, canonicalization_contract_digest
 
 
+def _v2_compatible_id(value: str) -> str:
+    """Map a schema-valid v1 ID into the narrower v2 ID grammar."""
+
+    return value if value[0].isalpha() else f"v1-{value}"
+
+
 def migrate_v1_document(
     source: Mapping[str, object],
     catalog: Mapping[str, object],
@@ -104,12 +110,11 @@ def migrate_v1_document(
     source_digest, index_digest, environment_bindings, canonicalization_digest = _require_binding(
         unqualified_target_binding, catalog_value
     )
-    source_document_id = (
-        str(source_document_id)
-        if source_document_id is not None
-        else str(source_document["manifest_id"])
+    source_manifest_id = _v2_compatible_id(str(source_document["manifest_id"]))
+    source_document_id = _v2_compatible_id(
+        str(source_document_id) if source_document_id is not None else source_manifest_id
     )
-    target_manifest_id = f"{source_document['manifest_id']}-v2-unqualified"
+    target_manifest_id = f"{source_manifest_id}-v2-unqualified"
     loss_report_id = (
         str(loss_report_id)
         if loss_report_id is not None

@@ -75,10 +75,10 @@ def test_v2_manifest_and_evidence_digest_freeze_is_key_order_independent() -> No
     evidence_round_trip = json.loads(json.dumps(evidence, sort_keys=True))
 
     assert manifest_digest(manifest_round_trip) == (
-        "sha256:f4fdcf97d3adec5385ee01d6fc38a6a967959ca52cb107768ea9bd9c2a4a2620"
+        "sha256:8b201bc59876e9d69217ea8f98bd5468c51452a764a61e65ec4c29414d1e0fe3"
     )
     assert manifest_digest(evidence_round_trip) == (
-        "sha256:4a42baab36bd108a7a9ce3447020a75e87fa5989ab1d32239ebaf8971ae542ba"
+        "sha256:a0f1675b8cf1fc7c9eed730c230e6dac5886fc0c340e94526a2fb069b8850d1b"
     )
 
 
@@ -88,5 +88,5 @@ def test_v2_catalog_is_the_only_capability_id_authority() -> None:
     assert values == sorted(values)
     assert len(values) == 13
     assert manifest_digest(catalog) == (
-        "sha256:afb2ccb91e38c05598805d8c092541de3f00208476cfebee63d07c156572603d"
+        "sha256:2adcf3c13b89f88c81a05368fd330fbc72fddcda91654433a04f8e21d75fdb11"
     )

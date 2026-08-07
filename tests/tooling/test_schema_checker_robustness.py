@@ -151,6 +151,76 @@ def test_artifact_validator_rejects_symlinked_governed_directory_before_read(
     assert opened_targets == []
 
 
+def test_artifact_validator_rejects_symlinked_ancestor_before_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    external_root = tmp_path / "external-artifacts"
+    shutil.copytree(root / "artifacts/gen9ou", external_root)
+    local_gen9ou = root / "artifacts/gen9ou"
+    shutil.rmtree(local_gen9ou)
+    try:
+        os.symlink(external_root, local_gen9ou, target_is_directory=True)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"symlink creation unavailable: {error}")
+
+    opened_targets: list[Path] = []
+    load_json_strict = schema_checker.load_json_strict
+
+    def guarded_load(path: Path) -> object:
+        resolved = Path(path).resolve(strict=False)
+        if external_root.resolve(strict=False) in resolved.parents:
+            opened_targets.append(Path(path))
+        return load_json_strict(path)
+
+    monkeypatch.setattr(schema_checker, "load_json_strict", guarded_load)
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert any(
+        "artifacts/gen9ou" in error.replace("\\", "/")
+        and "symlinked artifact paths are not allowed" in error
+        for error in errors
+    )
+    assert opened_targets == []
+
+
+def test_path_safety_walks_ancestor_metadata_before_resolving(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "repo"
+    governed = root / "artifacts/gen9ou/m2/engine-capabilities"
+    governed.mkdir(parents=True)
+    target = governed / "missing.json"
+    ancestor = root / "artifacts/gen9ou"
+    original = schema_checker._is_link_or_reparse_entry
+
+    def fake_link_check(path: Path, metadata: object) -> bool:
+        return path == ancestor or original(path, metadata)
+
+    monkeypatch.setattr(schema_checker, "_is_link_or_reparse_entry", fake_link_check)
+    errors = schema_checker._path_safety_errors(target, governed, root)
+
+    assert any(
+        "artifacts/gen9ou" in error.replace("\\", "/")
+        and "symlinked artifact paths are not allowed" in error
+        for error in errors
+    )
+
+
+def test_malformed_engine_build_is_reported_without_exception_or_absolute_path(
+    tmp_path: Path,
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    build_path = next((root / "artifacts/gen9ou/m2/engine").glob("engine-build-*.json"))
+    build_path.write_text("{", encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    assert errors
+    assert any("document could not be loaded" in error for error in errors)
+    assert all(str(tmp_path) not in error for error in errors)
+
+
 def test_reparse_point_metadata_is_rejected_without_symlink_privilege(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -6,7 +6,7 @@
   "format": "gen9ou",
   "capability_contract_id": "contract-engine-capabilities",
   "capability_contract_version": "2",
-  "capability_contract_digest": "sha256:4221cb9fedb8ef3f2046160e78cd955df00e40513bb78db788a3b9171816bee1",
+  "capability_contract_digest": "sha256:0b01b68ef6f4b07d72384d260428094b48ab24bfa7eb432b3f7c0d36208795c5",
   "canonicalization_contract_id": "canonicalization-profile",
   "canonicalization_contract_version": "1",
   "canonicalization_contract_digest": "sha256:ce1152a2ca7341a57539dcdcc90080d566b3c9bebc44276c2ba7af8edac3f505",

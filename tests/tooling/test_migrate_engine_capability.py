@@ -4,6 +4,7 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+from jsonschema import Draft202012Validator, FormatChecker
 from tools.canonicalize_manifest import manifest_digest
 from tools.migrate_engine_capability import migrate_v1_document
 
@@ -95,6 +96,50 @@ def test_v1_migration_is_fail_closed_and_records_deterministic_loss() -> None:
     changed_target = deepcopy(migrated)
     changed_target["migration"]["source_digest"] = "sha256:" + "0" * 64
     assert manifest_digest(changed_target) != report["target_digest"]
+
+
+def test_v1_migration_canonicalizes_a_digit_leading_manifest_id() -> None:
+    source = json.loads(
+        (ROOT / "schemas" / "examples" / "engine-capability.example.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    source["manifest_id"] = "1engine"
+    source_before = deepcopy(source)
+    source_digest = manifest_digest(source)
+    v1_schema = json.loads(
+        (ROOT / "schemas" / "manifests" / "engine-capability.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    catalog = json.loads(
+        (ROOT / "artifacts" / "gen9ou" / "m2" / "engine-capability-catalog-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert (
+        list(Draft202012Validator(v1_schema, format_checker=FormatChecker()).iter_errors(source))
+        == []
+    )
+
+    migrated, report = migrate_v1_document(source, catalog, _target_binding())
+
+    assert migrated["manifest_id"] == "v1-1engine-v2-unqualified"
+    assert migrated["migration"]["source_document_id"] == "v1-1engine"
+    assert report["source_document_id"] == "v1-1engine"
+    assert source == source_before
+    assert migrated["migration"]["source_digest"] == source_digest
+    assert report["source_digest"] == source_digest
+
+    migrated_override, override_report = migrate_v1_document(
+        source,
+        catalog,
+        _target_binding(),
+        source_document_id="2archived-source",
+    )
+    assert migrated_override["migration"]["source_document_id"] == "v1-2archived-source"
+    assert override_report["source_document_id"] == "v1-2archived-source"
 
 
 def test_migration_closure_is_a_curated_immutable_core_value() -> None:
