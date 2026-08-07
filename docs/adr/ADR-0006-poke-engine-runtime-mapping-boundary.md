@@ -72,12 +72,17 @@ Die Entscheidung umfasst:
   `SafeSubmissionSet`;
 - tiefere Backend-Aktionen werden auf den engine-neutralen `SearchAction`-
   Vertrag abgebildet;
-- eine erfolgreiche Abbildung liefert eine vorbereitete Backend-Welt samt
-  kataloggebundenen Required-Capabilities, andernfalls einen typisierten
-  Mapping-Fehler;
-- Backend-native States, Choices, Results, Strings und Exceptions bleiben
-  Runtime-intern und überqueren keine öffentlichen Core-Grenzen;
-- der Mapping-Report ist sanitisiert und enthält keine private Welt;
+- eine erfolgreiche Abbildung liefert einen Runtime-eigenen, opaken
+  `PreparedWorld`-Portwert samt kataloggebundenen Required-Capabilities,
+  andernfalls einen typisierten Mapping-Fehler;
+- Native `poke_engine`-States, Choices, Results, Strings und Exceptions
+  bleiben Runtime-intern. Nur der opake `PreparedWorld`-Portwert überquert
+  diese Adapter/Core-Port-Grenze;
+- der öffentliche Runtime-`MappingReport` ist vollständig („lossless“)
+  hinsichtlich der für die Mappingentscheidung relevanten Feld-, Feature- und
+  Capability-Präsenz, Mapping-Klassifikation und typisierten Failure-Ursache;
+  er ist zugleich sanitisiert und enthält keine Hidden-World-Werte, nativen
+  State-Dumps, Pfade, Hostnamen oder rohen Exceptions;
 - Mapping-Verhalten wird zentral mit deterministischen Fixtures und
   Port-Conformance-Tests geprüft, statt in späteren Search-Algorithmen
   dupliziert zu werden.
