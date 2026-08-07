@@ -97,6 +97,7 @@ Dokumente mit `status: accepted` und `normative: true`.
 - [ADR-0003 BattleBelief-Naming und Drei-Pakete-Monorepo](adr/ADR-0003-battlebelief-naming.md)
 - [ADR-0004 Sauberer Showdown-Runtime-Adapter](adr/ADR-0004-clean-showdown-runtime-adapter.md)
 - [ADR-0005 Task-25-v1-Windows-Provenienzgrenze](adr/ADR-0005-task-25-v1-windows-provenance-boundary.md)
+- [ADR-0006 poke-engine Runtime-Mapping-Grenze](adr/ADR-0006-poke-engine-runtime-mapping-boundary.md)
 - [Forschungsstrategie und Experimentfolge](roadmap/research-strategy-and-experiments.md)
 - [Roadmap](roadmap/milestones.md)
 - [M0-Implementierungsplan](superpowers/plans/2026-07-29-battlebelief-m0-foundation.md)
