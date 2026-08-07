@@ -1036,3 +1036,4 @@ def test_lab_wheel_configuration_force_includes_authoritative_differential_schem
             "schemas/evaluation/differential-result.schema.json"
         ),
     }
+    assert pyproject["tool"]["hatch"]["build"]["hooks"]["custom"] == {"path": "hatch_build.py"}

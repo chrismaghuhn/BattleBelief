@@ -32,6 +32,7 @@ _CORPUS_SCHEMA_FILENAME = "differential-corpus.schema.json"
 _FIXTURE_SCHEMA_FILENAME = "differential-fixture.schema.json"
 _CORPUS_SCHEMA_ID = "urn:battlebelief:schema:evaluation:differential-corpus:v1"
 _FIXTURE_SCHEMA_ID = "urn:battlebelief:schema:evaluation:differential-fixture:v1"
+_MAX_CANONICAL_JSON_NESTING = 1_000
 _LOCAL_ABSOLUTE_PATH_RE = re.compile(r"(?:[A-Za-z]:[\\/]|\\\\|(?<![A-Za-z0-9])/(?:[^\\s/]+))")
 _HOSTNAME_RE = re.compile(
     r"(?i)\b(?:localhost|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}|"
@@ -178,6 +179,7 @@ def _load_canonical_json(path: Path) -> dict[str, Any]:
     except (OSError, UnicodeDecodeError) as error:
         raise CorpusValidationError(f"cannot load canonical JSON document {path.name}") from error
     document = _parse_json_object(text, path.name)
+    _validate_canonical_json_nesting(document)
     try:
         canonical_bytes = canonicalize(document)
     except (CanonicalizationError, OverflowError, RecursionError) as error:
@@ -185,6 +187,20 @@ def _load_canonical_json(path: Path) -> dict[str, Any]:
     if raw_bytes != canonical_bytes:
         raise CorpusValidationError(f"canonical JSON bytes differ for {path.name}")
     return document
+
+
+def _validate_canonical_json_nesting(value: object) -> None:
+    """Reject deeply nested input before canonicalization can depend on interpreter limits."""
+
+    pending: list[tuple[object, int]] = [(value, 0)]
+    while pending:
+        current, depth = pending.pop()
+        if depth > _MAX_CANONICAL_JSON_NESTING:
+            raise CorpusValidationError("canonical JSON value is invalid")
+        if isinstance(current, Mapping):
+            pending.extend((nested_value, depth + 1) for nested_value in current.values())
+        elif isinstance(current, list):
+            pending.extend((nested_value, depth + 1) for nested_value in current)
 
 
 def _source_schema_directory() -> Path:
