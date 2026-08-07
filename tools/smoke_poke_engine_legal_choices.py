@@ -34,6 +34,7 @@ def _pokemon(name: str, moves: list[Any], *, hp: int = 100) -> Any:
         special_attack=100,
         special_defense=100,
         speed=100,
+        terastallized=True,
         moves=moves,
     )
 
