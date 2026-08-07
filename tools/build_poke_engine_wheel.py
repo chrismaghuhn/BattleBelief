@@ -320,10 +320,9 @@ def _normalize_materialized_base(checkout: Path, commit: str = UPSTREAM_COMMIT) 
 
     _run(("git", "config", "core.autocrlf", "false"), cwd=checkout)
     _run(("git", "config", "core.eol", "lf"), cwd=checkout)
-    _run(("git", "reset", "--hard", "--quiet", commit), cwd=checkout)
-    for entry in _git(checkout, "ls-files", "--stage", "-z").split(b"\0"):
-        if not entry:
-            continue
+    entries = [entry for entry in _git(checkout, "ls-files", "--stage", "-z").split(b"\0") if entry]
+    source_blobs: list[tuple[str, bytes]] = []
+    for entry in entries:
         try:
             metadata, raw_path = entry.split(b"\t", 1)
             mode, _object_id, _stage = metadata.split(maxsplit=2)
@@ -341,8 +340,24 @@ def _normalize_materialized_base(checkout: Path, commit: str = UPSTREAM_COMMIT) 
         try:
             if destination.is_symlink():
                 _fail("source line-ending policy differs")
+            blob = _git(checkout, "show", f"{commit}:{path}")
+            current = destination.read_bytes()
+        except OSError:
+            _fail("source line-ending policy differs")
+        if current != blob and not (
+            b"\r" not in blob and current.replace(b"\r\n", b"\n") == blob
+        ):
+            _fail("base source tree is dirty")
+        source_blobs.append((path, blob))
+    status = _git(checkout, "status", "--porcelain=v1", "--untracked-files=all")
+    if any(line and line[:1] != b" " for line in status.splitlines()):
+        _fail("base source tree is dirty")
+    _run(("git", "reset", "--hard", "--quiet", commit), cwd=checkout)
+    for path, blob in source_blobs:
+        destination = checkout / Path(path)
+        try:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(_git(checkout, "show", f"{commit}:{path}"))
+            destination.write_bytes(blob)
         except OSError:
             _fail("source line-ending policy differs")
 
@@ -1176,8 +1191,12 @@ def verify_downstream_source_checkout(
     """Verify and apply the downstream patch exactly once to a clean base."""
 
     validate_downstream_source_manifest(source_manifest, base_manifest, patch_path)
-    verify_source_checkout(checkout, base_manifest)
+    if _git_value(checkout, "rev-parse", "HEAD", label="base source commit") != UPSTREAM_COMMIT:
+        _fail("base source commit differs")
+    if _git_value(checkout, "rev-parse", "HEAD^{tree}", label="base source tree") != UPSTREAM_TREE:
+        _fail("base source tree differs")
     _normalize_materialized_base(checkout)
+    verify_source_checkout(checkout, base_manifest)
     try:
         patch_digest = _sha256(patch_path.read_bytes())
     except OSError:
