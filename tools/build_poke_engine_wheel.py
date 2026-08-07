@@ -315,11 +315,36 @@ def _run_patch_command(checkout: Path, arguments: Sequence[str]) -> None:
         _fail("downstream patch application differs")
 
 
-def _normalize_materialized_base(checkout: Path) -> None:
+def _normalize_materialized_base(checkout: Path, commit: str = UPSTREAM_COMMIT) -> None:
     """Make the controlled checkout byte-oriented across Windows and Linux."""
 
     _run(("git", "config", "core.autocrlf", "false"), cwd=checkout)
-    _run(("git", "reset", "--hard", "--quiet", UPSTREAM_COMMIT), cwd=checkout)
+    _run(("git", "config", "core.eol", "lf"), cwd=checkout)
+    _run(("git", "reset", "--hard", "--quiet", commit), cwd=checkout)
+    for entry in _git(checkout, "ls-files", "--stage", "-z").split(b"\0"):
+        if not entry:
+            continue
+        try:
+            metadata, raw_path = entry.split(b"\t", 1)
+            mode, _object_id, _stage = metadata.split(maxsplit=2)
+            path = raw_path.decode("utf-8", errors="strict")
+        except (UnicodeDecodeError, ValueError):
+            _fail("source line-ending policy differs")
+        if mode not in (b"100644", b"100755") or (
+            not path
+            or "\\" in path
+            or Path(path).is_absolute()
+            or any(part in ("", ".", "..") for part in PurePosixPath(path).parts)
+        ):
+            _fail("source line-ending policy differs")
+        destination = checkout / Path(path)
+        try:
+            if destination.is_symlink():
+                _fail("source line-ending policy differs")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(_git(checkout, "show", f"{commit}:{path}"))
+        except OSError:
+            _fail("source line-ending policy differs")
 
 
 def apply_downstream_patch(

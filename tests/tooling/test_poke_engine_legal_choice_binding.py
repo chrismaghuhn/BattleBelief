@@ -10,6 +10,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from tools.build_poke_engine_wheel import (
     BuildPokeEngineError,
+    _normalize_materialized_base,
     apply_downstream_patch,
 )
 
@@ -132,6 +133,16 @@ def test_downstream_patch_rejects_post_patch_closure_mismatch(tmp_path: Path) ->
             patch_sha256="sha256:" + hashlib.sha256(patch.read_bytes()).hexdigest(),
             expected_source_files=expected_records,
         )
+
+
+def test_materialized_base_normalization_rewrites_crlf_to_git_blob_bytes(tmp_path: Path) -> None:
+    checkout, base_commit, _base_tree, _patch, _expected_records = _create_checkout(tmp_path)
+    _run_git(checkout, "config", "core.autocrlf", "true")
+    (checkout / "src.txt").write_bytes(b"before\r\n")
+
+    _normalize_materialized_base(checkout, base_commit)
+
+    assert (checkout / "src.txt").read_bytes() == b"before\n"
 
 
 def test_v2_source_manifest_binds_base_patch_and_resulting_closure() -> None:
