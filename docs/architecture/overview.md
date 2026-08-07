@@ -4,7 +4,7 @@ title: Systemüberblick
 document_type: architecture
 status: accepted
 normative: false
-version: 1
+version: 2
 applies_to:
   - all
 effective_from: 2026-07-29
@@ -12,7 +12,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-07-29
+last_reviewed: 2026-08-05
 ---
 
 # Systemüberblick
@@ -55,23 +55,38 @@ Quelle der aktuell erlaubten eigenen Aktionen.
 - Legal-/Heuristikfallback: Livepfad bei fehlender Eligibility; Teil des
   Gesamtsystems und der primären Winrate.
 
-## Offline und Live
+## Offline, Snapshot und Battle
 
 ```text
 Offline:
   Replays / Self-Play / kuratierte Daten
   → Parquet + DuckDB
-  → versionierter Meta-Snapshot
+  → versionierter, content-addressed Meta-Snapshot
+
+Runtime:
+  Snapshot-Artefakt validieren und öffnen
+  → speicherneutrale MetaPriorSnapshot-Sicht für den Core
 
 Battle:
-  SQLite-Adapter lädt MetaPriorSnapshot
-  → danach Belief und Search ausschließlich im RAM
+  statisches Snapshot-Wissen teilen
+  → kleines battle-lokales Working Set
+  → entscheidungslokale Search-Projektion
+  → Belief und Search ohne SQL- oder Dateizugriff im Hot Path
 ```
 
-## Zugehörige Verträge
+Das konkrete Runtime-Artefakt ist nicht vorab auf SQLite, Arrow oder ein
+eigenes Binärformat festgelegt. Dateiformat, Memory Mapping und
+Low-Level-Repräsentation werden durch einen reproduzierbaren Benchmark gewählt.
+Die fachliche Grenze und die Lebensdauern werden in
+[Memory-Hierarchie und battle-lokale Working Sets](memory-hierarchy.md)
+erklärt.
+
+## Zugehörige Verträge und Architektur
 
 - [Codegrenzen](code-boundaries.md)
+- [Memory-Hierarchie und battle-lokale Working Sets](memory-hierarchy.md)
 - [Protocol und State](../contracts/protocol-state.md)
 - [Legal-Action und Fallback-Safety](../contracts/legal-action-safety.md)
 - [Engine-Capabilities](../contracts/engine-capabilities.md)
+- [Belief und Open World](../contracts/belief-open-world.md)
 - [Search-v0](../contracts/search-v0.md)
