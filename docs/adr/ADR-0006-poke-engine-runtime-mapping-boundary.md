@@ -2,7 +2,7 @@
 document_id: adr-0006-poke-engine-runtime-mapping-boundary
 title: "ADR-0006: poke-engine Runtime-Mapping-Grenze"
 document_type: adr
-status: proposed
+status: accepted
 normative: false
 version: 1
 applies_to:
@@ -57,9 +57,9 @@ Hidden-Information-Grenze gefährden.
 
 ## Entscheidung
 
-Die beabsichtigte Maintainer-Auswahl ist **Option A**. Dieser ADR ist zunächst
-`proposed`; die Entscheidung gilt erst nach ausdrücklicher Maintainer-
-Freigabe als angenommen.
+Die Maintainer-Auswahl ist **Option A**. Die ausdrückliche Maintainer-
+Freigabe wurde am 2026-08-07 erteilt; ADR-0006 ist damit akzeptiert.
+`normative: false` bleibt bestehen.
 
 Die Mapping-Schicht liegt konzeptionell im bestehenden Runtime-Adapterbereich
 `battlebelief-runtime/adapters/poke_engine`. Sie implementiert den bereits
@@ -135,4 +135,4 @@ Dieser ADR allein begründet keine:
 - Strength-, Evaluation- oder Release-Aussage;
 - Änderung des bereits gemergten Task-26-Core-Ports oder anderer Core-APIs.
 
-MD-07 remains unapproved until Maintainer accepts ADR-0006.
+MD-07 Option A is approved by the Maintainer.

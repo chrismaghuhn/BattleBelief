@@ -210,7 +210,7 @@ No decision below is resolved by this plan. The recommendation is a review propo
 - **Disadvantages:** A needs exhaustive negative fixtures; B invites divergence; C makes a non-authoritative backend authoritative and risks hidden-information leakage.
 - **Recommendation:** A in `battlebelief-runtime/adapters/poke_engine`, returning either a prepared world and required capability IDs or a typed mapping failure. Root submissions map only from `SafeSubmissionSet`; deeper actions use engine-neutral `SearchAction` IDs.
 - **Consequences:** mapping mismatch is ineligible, never “best effort.” The mapping report records field/capability presence but no private world in a public decision record.
-- **Decision record:** [ADR-0006 poke-engine Runtime-Mapping-Grenze](../../adr/ADR-0006-poke-engine-runtime-mapping-boundary.md) bereitet diese Empfehlung zur Maintainer-Freigabe vor; MD-07 bleibt bis dahin unapproved.
+- **Decision record:** [ADR-0006 poke-engine Runtime-Mapping-Grenze](../../adr/ADR-0006-poke-engine-runtime-mapping-boundary.md) dokumentiert die erteilte Maintainer-Freigabe; MD-07 ist als Option A akzeptiert.
 
 ### MD-08 — capability-ID taxonomy and manifest evolution
 
