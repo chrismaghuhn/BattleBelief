@@ -507,6 +507,15 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
+    provenance_file = (
+        tmp_path
+        / "artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance/adapter-source.bin"
+    )
+    original_provenance_bytes = provenance_file.read_bytes()
+    provenance_file.write_bytes(b"tampered adapter source")
+    provenance_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("transition_adapter_source_digest" in error for error in provenance_errors)
+    provenance_file.write_bytes(original_provenance_bytes)
 
     second_documents: list[dict[str, object]] = []
     second_references: list[dict[str, object]] = []
