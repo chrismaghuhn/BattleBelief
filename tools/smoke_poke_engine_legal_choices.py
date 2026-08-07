@@ -39,9 +39,7 @@ def _pokemon(name: str, moves: list[Any], *, hp: int = 100) -> Any:
     )
 
 
-def _state(
-    side_one: list[Any], *, force_switch: bool = False, force_trapped: bool = False
-) -> Any:
+def _state(side_one: list[Any], *, force_switch: bool = False, force_trapped: bool = False) -> Any:
     from poke_engine import Move, Side, State  # type: ignore[import-not-found]
 
     return State(
@@ -111,9 +109,7 @@ def _run_checks() -> dict[str, Any]:
     if ordinary.to_string() != before:
         raise ValueError("legal-choice enumeration mutated the caller state")
     if any(
-        choice != "No Move" and choice != choice.lower()
-        for side in canonical
-        for choice in side
+        choice != "No Move" and choice != choice.lower() for side in canonical for choice in side
     ):
         raise ValueError("native choice strings are not canonical")
     return {

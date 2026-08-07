@@ -303,7 +303,10 @@ def _verify_manifest_closure(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     distribution = build.get("distribution")
     wheel = build.get("wheel")
-    if distribution != {"name": "poke-engine", "version": _V1_DISTRIBUTION_VERSION} or not isinstance(wheel, dict):
+    if distribution != {
+        "name": "poke-engine",
+        "version": _V1_DISTRIBUTION_VERSION,
+    } or not isinstance(wheel, dict):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     expected_cell = {
         "wheel_filename": wheel.get("filename"),
@@ -326,9 +329,7 @@ def _verify_manifest_closure(
     if cell.get("availability_status") not in allowed_statuses:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     filename = cell.get("wheel_filename")
-    expected_url = (
-        f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{_V1_RELEASE_TAG}/{filename}"
-    )
+    expected_url = f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{_V1_RELEASE_TAG}/{filename}"
     if cell.get("release_asset_url") != expected_url:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     for field in (
@@ -394,7 +395,9 @@ def _verify_manifest_closure_v2(
     }
     if any(source.get(key) != value for key, value in fixed_source.items()):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
-    if source_digest != manifest_digest(source) or source_digest != _require_digest(cell.get("source_manifest_digest")):
+    if source_digest != manifest_digest(source) or source_digest != _require_digest(
+        cell.get("source_manifest_digest")
+    ):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     build = _load_canonical(
         data_root / f"engine-build-{environment.cell_id}.json",
@@ -465,7 +468,9 @@ def _verify_manifest_closure_v2(
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     distribution = build.get("distribution")
     wheel = build.get("wheel")
-    if distribution != {"name": "poke-engine", "version": _DISTRIBUTION_VERSION} or not isinstance(wheel, dict):
+    if distribution != {"name": "poke-engine", "version": _DISTRIBUTION_VERSION} or not isinstance(
+        wheel, dict
+    ):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     expected_cell = {
         "wheel_filename": wheel.get("filename"),
@@ -488,7 +493,9 @@ def _verify_manifest_closure_v2(
     if cell.get("availability_status") not in allowed_statuses:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     filename = cell.get("wheel_filename")
-    expected_url = f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{_RELEASE_TAG}/{filename}"
+    expected_url = (
+        f"https://github.com/chrismaghuhn/BattleBelief/releases/download/{_RELEASE_TAG}/{filename}"
+    )
     if cell.get("release_asset_url") != expected_url:
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     for field in (
@@ -670,7 +677,10 @@ def _verify_installation(
     staged_wheel: Path | None,
     expected_version: str = _V1_DISTRIBUTION_VERSION,
 ) -> tuple[Path, Path]:
-    if distribution.metadata.get("Name") != "poke-engine" or distribution.version != expected_version:
+    if (
+        distribution.metadata.get("Name") != "poke-engine"
+        or distribution.version != expected_version
+    ):
         _fail(EngineFailureClass.ARTIFACT_MISMATCH)
     root, dist_info, distribution_paths = _distribution_root_and_info(distribution)
     record_relative = f"{dist_info}/RECORD"

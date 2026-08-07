@@ -264,7 +264,11 @@ def _collect_materialized_source_records(checkout: Path) -> list[dict[str, objec
             content = (checkout / Path(path)).read_bytes()
         except (OSError, UnicodeDecodeError, ValueError):
             _fail("post-patch source closure is unreadable")
-        if Path(path).is_absolute() or "\\" in path or any(part == ".." for part in Path(path).parts):
+        if (
+            Path(path).is_absolute()
+            or "\\" in path
+            or any(part == ".." for part in Path(path).parts)
+        ):
             _fail("post-patch source path differs")
         records.append(
             {
@@ -344,9 +348,7 @@ def _normalize_materialized_base(checkout: Path, commit: str = UPSTREAM_COMMIT) 
             current = destination.read_bytes()
         except OSError:
             _fail("source line-ending policy differs")
-        if current != blob and not (
-            b"\r" not in blob and current.replace(b"\r\n", b"\n") == blob
-        ):
+        if current != blob and not (b"\r" not in blob and current.replace(b"\r\n", b"\n") == blob):
             _fail("base source tree is dirty")
         source_blobs.append((path, blob))
     status = _git(checkout, "status", "--porcelain=v1", "--untracked-files=all")
@@ -416,9 +418,11 @@ def apply_downstream_patch(
     )
     if _git(checkout, "diff", "--check"):
         _fail("downstream patch application differs")
-    changed_paths = _git(checkout, "diff", "--name-only", "--no-renames").decode(
-        "utf-8", errors="strict"
-    ).splitlines()
+    changed_paths = (
+        _git(checkout, "diff", "--name-only", "--no-renames")
+        .decode("utf-8", errors="strict")
+        .splitlines()
+    )
     if sorted(changed_paths) != patch_paths:
         _fail("downstream patch application differs")
     actual_records = _collect_materialized_source_records(checkout)
@@ -744,7 +748,9 @@ def inspect_wheel(
 
     if not re.fullmatch(r"0\.0\.(?:48|49)", distribution_version):
         _fail("wheel distribution identity differs")
-    expected_filename = f"poke_engine-{distribution_version}-{python_tag}-{abi_tag}-{platform_tag}.whl"
+    expected_filename = (
+        f"poke_engine-{distribution_version}-{python_tag}-{abi_tag}-{platform_tag}.whl"
+    )
     if wheel_path.name != expected_filename or wheel_path.suffix != ".whl":
         _fail("wheel filename differs")
     try:
@@ -1348,9 +1354,11 @@ def build_one_downstream_wheel(
         rustc_executable=rustc_executable,
     )
     _run(actual_arguments, cwd=checkout, environment=environment)
-    changed_paths = _git(checkout, "diff", "--name-only", "--no-renames").decode(
-        "utf-8", errors="strict"
-    ).splitlines()
+    changed_paths = (
+        _git(checkout, "diff", "--name-only", "--no-renames")
+        .decode("utf-8", errors="strict")
+        .splitlines()
+    )
     patch_paths = _patch_paths(patch_path.read_bytes())
     if sorted(changed_paths) != patch_paths:
         _fail("source tree changed during downstream build")

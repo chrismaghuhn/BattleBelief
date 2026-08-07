@@ -151,7 +151,9 @@ def test_v2_source_manifest_binds_base_patch_and_resulting_closure() -> None:
     source = json.loads(source_path.read_bytes())
     schema = json.loads(schema_path.read_bytes())
 
-    assert list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(source)) == []
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(source)) == []
+    )
     assert source["base_commit"] == "bcf13823abc162a608e187b26bbf683f759f385e"
     assert source["downstream_patch"]["role"] == "legal-choice-binding"
     assert source["source_file_count"] == len(source["source_files"])
@@ -161,8 +163,6 @@ def test_v2_source_schema_rejects_the_immutable_v1_identity() -> None:
     source = json.loads((ROOT / "artifacts/gen9ou/m2/engine-v2/engine-source.json").read_bytes())
     source = deepcopy(source)
     source["schema_version"] = 1
-    schema = json.loads(
-        (ROOT / "schemas/manifests/engine-source-v2.schema.json").read_bytes()
-    )
+    schema = json.loads((ROOT / "schemas/manifests/engine-source-v2.schema.json").read_bytes())
 
     assert list(Draft202012Validator(schema).iter_errors(source))

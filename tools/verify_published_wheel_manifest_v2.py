@@ -56,7 +56,9 @@ def verify_manifest_wheel_binding_v2(
     if build.get("source_tree_digest") != source.get("source_tree_digest"):
         raise ManifestWheelBindingError("v2 source tree digest differs")
     patch = source.get("downstream_patch")
-    if not isinstance(patch, Mapping) or build.get("downstream_patch_digest") != patch.get("sha256"):
+    if not isinstance(patch, Mapping) or build.get("downstream_patch_digest") != patch.get(
+        "sha256"
+    ):
         raise ManifestWheelBindingError("v2 downstream patch digest differs")
     python = build.get("python")
     wheel = build.get("wheel")

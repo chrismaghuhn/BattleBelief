@@ -68,7 +68,11 @@ def _verify_manifest_closure(
     }:
         _fail("v2 release index identity differs")
     cells = index.get("cells")
-    if not isinstance(cells, list) or len(cells) != 6 or not all(isinstance(cell, dict) for cell in cells):
+    if (
+        not isinstance(cells, list)
+        or len(cells) != 6
+        or not all(isinstance(cell, dict) for cell in cells)
+    ):
         _fail("v2 release cell closure differs")
     cell_ids = [cell.get("cell_id") for cell in cells]
     if set(cell_ids) != EXPECTED_CELLS or len(set(cell_ids)) != 6:

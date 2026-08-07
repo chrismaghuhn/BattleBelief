@@ -63,7 +63,11 @@ def _build_cell(
     python = build.get("python")
     distribution = build.get("distribution")
     wheel = build.get("wheel")
-    if not isinstance(python, dict) or not isinstance(distribution, dict) or not isinstance(wheel, dict):
+    if (
+        not isinstance(python, dict)
+        or not isinstance(distribution, dict)
+        or not isinstance(wheel, dict)
+    ):
         _fail("build manifest structure differs")
     cell_id = build.get("cell_id")
     if not isinstance(cell_id, str) or cell_id not in EXPECTED_CELLS:
@@ -240,9 +244,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if len(manifest_paths) != 6:
             _fail("build manifest closure differs")
         builds = [_strict_canonical(path) for path in manifest_paths]
-        wheel_paths = {
-            path.name: path for path in args.input_root.rglob("*.whl")
-        }
+        wheel_paths = {path.name: path for path in args.input_root.rglob("*.whl")}
         if len(wheel_paths) != 6:
             _fail("wheel closure differs")
         bundle = load_fixture_bundle(args.fixture_root)
