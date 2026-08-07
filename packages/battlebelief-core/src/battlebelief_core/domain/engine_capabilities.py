@@ -22,6 +22,18 @@ _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _FORMAT = "gen9ou"
 _CANONICAL_DECIMAL_RE = re.compile(r"^(?:0|0\.[0-9]*[1-9]|[1-9][0-9]*(?:\.[0-9]*[1-9])?)$")
 
+# Registered fail-closed identity for the v1 -> v2 migration.  Keeping these
+# values in Core lets writers and repository readers share one authority.
+ENGINE_CAPABILITY_V1_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
+ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID = "battlebelief.engine-capability-v1-to-v2"
+ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION = "1"
+ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES = (
+    "approximated",
+    "exact",
+    "known-divergences",
+    "unsupported",
+)
+
 
 def _nonempty(value: object, name: str) -> str:
     if type(value) is not str or not value:
@@ -352,10 +364,17 @@ class CapabilityMigrationClosure:
 
     def __post_init__(self) -> None:
         _schema_id(self.source_schema_id, "source_schema_id")
+        if self.source_schema_id != ENGINE_CAPABILITY_V1_SCHEMA_ID:
+            raise ValueError("migration source schema must be the registered v1 schema")
         _canonical_id(self.source_document_id, "source_document_id")
         _digest(self.source_digest, "source_digest")
         _nonempty(self.migrator_id, "migrator_id")
         _nonempty(self.migrator_version, "migrator_version")
+        if (
+            self.migrator_id != ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID
+            or self.migrator_version != ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION
+        ):
+            raise ValueError("migration must use the registered v1-to-v2 migrator")
         if (
             type(self.loss_codes) is not tuple
             or not self.loss_codes
@@ -366,6 +385,8 @@ class CapabilityMigrationClosure:
             raise ValueError("loss_codes must be a non-empty uniquely sorted tuple")
         for code in self.loss_codes:
             _canonical_id(code, "loss_code")
+        if self.loss_codes != ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES:
+            raise ValueError("migration must use the registered v1-to-v2 loss codes")
         _canonical_id(self.loss_report_id, "loss_report_id")
         _digest(self.loss_report_digest, "loss_report_digest")
 
@@ -702,6 +723,12 @@ class EngineCapabilityManifest:
             raise ValueError("claims must be uniquely sorted by capability value")
         for claim in self.claims:
             self.catalog.require(claim.capability_id)
+        if self.migration is not None and (
+            self.claims
+            or any(getattr(self, name) is not None for name in _ADAPTER_FIELDS)
+            or any(getattr(self, name) is not None for name in _OPTIONAL_CLOSURE_DIGEST_FIELDS)
+        ):
+            raise ValueError("migration target must remain unqualified")
         qualifying_claims = tuple(
             claim
             for claim in self.claims

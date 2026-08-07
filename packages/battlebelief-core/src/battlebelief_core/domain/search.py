@@ -326,7 +326,10 @@ class TransitionOutcome[WorldT]:
         root_catalog_digest = self.successors[0].world.root_identity.capability_catalog_digest
         _capabilities(preflight_capabilities, root_catalog_digest)
         preflight = frozenset(preflight_capabilities)
-        if not frozenset(self.required_capabilities).issubset(preflight):
+        runtime_requirements = frozenset(self.required_capabilities).union(
+            *(successor.world.required_capabilities for successor in self.successors)
+        )
+        if not runtime_requirements.issubset(preflight):
             raise ValueError("transition outcome requires an unpreflighted capability")
 
 

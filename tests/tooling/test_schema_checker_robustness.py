@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 from tools.check_schemas import (
     _validate_capability_catalog,
@@ -68,6 +70,38 @@ def test_artifact_validator_reports_malformed_discovered_evidence_without_except
 
     assert errors
     assert any("broken.json" in error and "evidence document" in error for error in errors)
+    assert all(str(tmp_path) not in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "relative_link",
+    (
+        Path("engine-capabilities/evidence/linked.json"),
+        Path("engine-capabilities/migration-sources/linked.json"),
+        Path("engine-capabilities/migration-reports/linked.json"),
+    ),
+)
+def test_artifact_validator_rejects_symlinked_governed_documents(
+    tmp_path: Path, relative_link: Path
+) -> None:
+    root = _copy_engine_artifacts(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+    link = root / "artifacts/gen9ou/m2" / relative_link
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.symlink(outside, link)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"symlink creation unavailable: {error}")
+
+    errors = _validate_engine_capability_artifacts(root)
+
+    normalized = relative_link.as_posix()
+    assert any(
+        normalized in error.replace("\\", "/")
+        and "symlinked artifact paths are not allowed" in error
+        for error in errors
+    )
 
 
 def test_artifact_validator_requires_evidence_filename_to_match_evidence_id(

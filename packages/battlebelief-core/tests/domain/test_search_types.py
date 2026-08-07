@@ -41,6 +41,9 @@ def _catalog(version: str = "1") -> CapabilityCatalog:
         canonicalization_contract_digest=_digest("e"),
         definitions=(
             CapabilityDefinition(value="gen9.battle.damage", description="Damage resolution."),
+            CapabilityDefinition(
+                value="gen9.transition.order.speed", description="Speed-based ordering."
+            ),
         ),
     )
 
@@ -362,6 +365,35 @@ class TestTransitionOutcome:
             outcome.require_preflight_subset(())
         with pytest.raises(ValueError):
             outcome.require_preflight_subset((_catalog("2").id_for("gen9.battle.damage"),))
+
+    def test_successor_world_capabilities_must_be_preflight_subset(self) -> None:
+        catalog = _catalog()
+        preflight_capability = catalog.id_for("gen9.battle.damage")
+        unpreflighted_capability = catalog.id_for("gen9.transition.order.speed")
+        root = _root()
+        source = PreparedWorld(
+            _opaque=_FrozenWorld(),
+            root_identity=root,
+            root_actions=(),
+            required_capabilities=(preflight_capability,),
+        )
+        successor = PreparedWorld(
+            _opaque=_FrozenWorld(),
+            root_identity=root,
+            root_actions=(),
+            required_capabilities=(unpreflighted_capability,),
+        )
+        outcome = TransitionOutcome(
+            successors=(TransitionSuccessor("outcome.a", successor, 1),),
+            probability_denominator=1,
+            work=TransitionWork(1),
+            required_capabilities=(preflight_capability,),
+        )
+
+        outcome.validate_against_source(source)
+        outcome.require_preflight_subset((preflight_capability, unpreflighted_capability))
+        with pytest.raises(ValueError, match="unpreflighted capability"):
+            outcome.require_preflight_subset((preflight_capability,))
 
     def test_transition_work_addition_is_deterministic(self) -> None:
         assert TransitionWork(2) + TransitionWork(3) == TransitionWork(5)

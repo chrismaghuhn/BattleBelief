@@ -20,6 +20,12 @@ def _document(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _refresh_migration_digests(target: dict[str, object], report: dict[str, object]) -> None:
+    report["loss_report_digest"] = manifest_digest(_migration_report_projection(report))
+    target["migration"]["loss_report_digest"] = report["loss_report_digest"]
+    report["target_digest"] = manifest_digest(target)
+
+
 def _target_binding() -> dict[str, object]:
     manifest = _document(INITIAL_MANIFEST)
     return {
@@ -133,9 +139,7 @@ def test_repository_validator_derives_loss_counts_from_v1_source(tmp_path: Path)
     target = _document(target_path)
 
     report["loss"]["exact"] = 999
-    report["loss_report_digest"] = manifest_digest(_migration_report_projection(report))
-    target["migration"]["loss_report_digest"] = report["loss_report_digest"]
-    report["target_digest"] = manifest_digest(target)
+    _refresh_migration_digests(target, report)
     target_path.write_text(json.dumps(target), encoding="utf-8")
     report_path.write_text(json.dumps(report), encoding="utf-8")
 
@@ -153,12 +157,58 @@ def test_repository_validator_enforces_v1_source_formats_on_readback(tmp_path: P
     source_digest = manifest_digest(source)
     target["migration"]["source_digest"] = source_digest
     report["source_digest"] = source_digest
-    report["loss_report_digest"] = manifest_digest(_migration_report_projection(report))
-    target["migration"]["loss_report_digest"] = report["loss_report_digest"]
-    report["target_digest"] = manifest_digest(target)
+    _refresh_migration_digests(target, report)
     source_path.write_text(json.dumps(source), encoding="utf-8")
     target_path.write_text(json.dumps(target), encoding="utf-8")
     report_path.write_text(json.dumps(report), encoding="utf-8")
 
     errors = _validate_engine_capability_artifacts(root)
     assert any("schema violation (format)" in error for error in errors)
+
+
+def test_repository_validator_requires_registered_migrator_identity(tmp_path: Path) -> None:
+    mutations = (
+        ("migrator_id", "battlebelief.other-migrator", "registered v1-to-v2 migrator"),
+        ("migrator_version", "999", "registered v1-to-v2 migrator"),
+        (
+            "loss_codes",
+            ["approximated", "exact", "unsupported"],
+            "registered v1-to-v2 loss codes",
+        ),
+    )
+    for index, (field, value, expected) in enumerate(mutations):
+        root, target_path, _, report_path = _write_migration_repository(
+            tmp_path / f"{index}-{field}"
+        )
+        target = _document(target_path)
+        report = _document(report_path)
+        target["migration"][field] = value
+        report[field] = value
+        _refresh_migration_digests(target, report)
+        target_path.write_text(json.dumps(target), encoding="utf-8")
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+
+        errors = _validate_engine_capability_artifacts(root)
+        assert any(expected in error for error in errors)
+
+
+def test_repository_validator_requires_migration_targets_to_remain_unqualified(
+    tmp_path: Path,
+) -> None:
+    root, target_path, _, report_path = _write_migration_repository(tmp_path)
+    target = _document(target_path)
+    report = _document(report_path)
+    target["claims"] = [
+        {
+            "capability_id": "gen9.transition.order.speed",
+            "status": "unsupported",
+            "evidence_refs": [],
+            "approximation": None,
+        }
+    ]
+    _refresh_migration_digests(target, report)
+    target_path.write_text(json.dumps(target), encoding="utf-8")
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    errors = _validate_engine_capability_artifacts(root)
+    assert any("migration target must remain unqualified" in error for error in errors)

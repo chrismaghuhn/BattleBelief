@@ -15,6 +15,10 @@ if str(_ROOT) not in sys.path:
 from jsonschema import Draft202012Validator, FormatChecker  # noqa: E402
 
 from battlebelief_core.domain.engine_capabilities import (  # noqa: E402
+    ENGINE_CAPABILITY_V1_SCHEMA_ID,
+    ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES,
+    ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID,
+    ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION,
     CapabilityApproximation,
     CapabilityCatalog,
     CapabilityClaim,
@@ -360,13 +364,29 @@ def _migration_report_projection(document: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-_V1_CAPABILITY_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
+_V1_CAPABILITY_SCHEMA_ID = ENGINE_CAPABILITY_V1_SCHEMA_ID
+
+
+def _artifact_display_path(path: Path, root: Path | None = None) -> str:
+    if root is not None:
+        try:
+            return path.relative_to(root).as_posix()
+        except ValueError:
+            pass
+    return path.name
+
+
+def _is_link_or_reparse_point(path: Path) -> bool:
+    is_junction = getattr(path, "is_junction", None)
+    return path.is_symlink() or (callable(is_junction) and bool(is_junction()))
 
 
 def _load_capability_evidence_documents(
     evidence_sources: Path | tuple[Path, ...],
     catalog: CapabilityCatalog,
     schema: dict[str, Any],
+    *,
+    display_root: Path | None = None,
 ) -> tuple[dict[str, CapabilityEvidenceRef], dict[str, Path], list[str]]:
     """Load every approved evidence document without hiding malformed files."""
 
@@ -374,7 +394,13 @@ def _load_capability_evidence_documents(
         if not evidence_sources.exists():
             return {}, {}, []
         if not evidence_sources.is_dir():
-            return {}, {}, [f"{evidence_sources}: evidence path is not a directory"]
+            return (
+                {},
+                {},
+                [
+                    f"{_artifact_display_path(evidence_sources, display_root)}: evidence path is not a directory"
+                ],
+            )
         paths = tuple(sorted(evidence_sources.glob("*.json")))
     else:
         paths = tuple(sorted(set(evidence_sources)))
@@ -385,10 +411,11 @@ def _load_capability_evidence_documents(
         try:
             document = load_json_strict(path)
         except (RegistrationValidationError, TypeError, ValueError) as error:
-            errors.append(f"{path}: evidence document could not be loaded: {error}")
+            label = _artifact_display_path(path, display_root)
+            errors.append(f"{label}: evidence document could not be loaded: {error}")
             continue
         errors.extend(
-            f"{path}: {schema_issue_summary(issue)}"
+            f"{_artifact_display_path(path, display_root)}: {schema_issue_summary(issue)}"
             for issue in Draft202012Validator(schema).iter_errors(document)
         )
         try:
@@ -404,7 +431,10 @@ def _load_capability_evidence_documents(
             documents[reference.evidence_id] = reference
             document_paths[reference.evidence_id] = path
         except (TypeError, ValueError) as error:
-            errors.append(f"{path}: capability evidence semantic validation failed: {error}")
+            errors.append(
+                f"{_artifact_display_path(path, display_root)}: "
+                f"capability evidence semantic validation failed: {error}"
+            )
     return documents, document_paths, errors
 
 
@@ -432,6 +462,33 @@ def _validate_migration_provenance(
     report_id = migration["loss_report_id"]
     if migration["source_schema_id"] != _V1_CAPABILITY_SCHEMA_ID:
         errors.append("migration source schema must be engine-capability v1")
+    if (
+        migration["migrator_id"] != ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID
+        or migration["migrator_version"] != ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION
+    ):
+        errors.append("migration must use the registered v1-to-v2 migrator")
+    if migration["loss_codes"] != list(ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES):
+        errors.append("migration must use the registered v1-to-v2 loss codes")
+    if manifest_document.get("claims"):
+        errors.append("migration target must remain unqualified")
+    if any(
+        manifest_document.get(name) is not None
+        for name in (
+            "transition_adapter_id",
+            "transition_adapter_version",
+            "transition_adapter_source_digest",
+            "transition_model_contract_digest",
+            "transition_adapter_conformance_digest",
+            "oracle_source_manifest_digest",
+            "oracle_build_manifest_digest",
+            "ruleset_digest",
+            "corpus_digest",
+            "runner_source_digest",
+            "classifier_source_digest",
+            "evidence_set_digest",
+        )
+    ):
+        errors.append("migration target must remain unqualified")
     source = source_documents.get(source_id)
     report = report_documents.get(report_id)
     if source is None:
@@ -495,6 +552,28 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
     ):
         return ["engine capability catalog or initial v2 manifest is missing"]
     evidence_directory = capability_root / "evidence"
+    governed_paths: list[tuple[Path, Path]] = [
+        (catalog_path, catalog_path.parent),
+        (engine_root, engine_root.parent),
+        (source_path, engine_root),
+        (index_path, engine_root),
+        (capability_root, capability_root.parent),
+        (evidence_directory, capability_root),
+        (migration_source_directory, capability_root),
+        (migration_report_directory, capability_root),
+    ]
+    if capability_root.exists() and not _is_link_or_reparse_point(capability_root):
+        governed_paths.extend((path, capability_root) for path in capability_root.rglob("*"))
+    for path, expected_root in sorted(governed_paths):
+        if _is_link_or_reparse_point(path):
+            errors.append(f"{path.relative_to(root)}: symlinked artifact paths are not allowed")
+        if path.exists():
+            try:
+                path.resolve(strict=True).relative_to(expected_root.resolve(strict=True))
+            except (OSError, ValueError):
+                errors.append(
+                    f"{path.relative_to(root)}: resolved artifact path escapes its governed directory"
+                )
     approved_paths = set(manifest_paths)
     if evidence_directory.is_dir():
         approved_paths.update(evidence_directory.glob("*.json"))
@@ -604,7 +683,10 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
             _schema_path_for_example(schema_root, "engine-capability-evidence.schema.json")
         )
         evidence_documents, evidence_paths, evidence_errors = _load_capability_evidence_documents(
-            _discover_capability_evidence_paths(capability_root), catalog, evidence_schema
+            _discover_capability_evidence_paths(capability_root),
+            catalog,
+            evidence_schema,
+            display_root=root,
         )
         errors.extend(evidence_errors)
         all_referenced_ids: set[str] = set()

@@ -9,6 +9,10 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 
 from battlebelief_core.domain.engine_capabilities import (
+    ENGINE_CAPABILITY_V1_SCHEMA_ID,
+    ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES,
+    ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID,
+    ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION,
     CapabilityCatalog,
     CapabilityMigrationClosure,
     EngineCapabilityManifest,
@@ -16,9 +20,10 @@ from battlebelief_core.domain.engine_capabilities import (
 )
 from tools.canonicalize_manifest import manifest_digest
 
-MIGRATOR_ID = "battlebelief.engine-capability-v1-to-v2"
-MIGRATOR_VERSION = "1"
-SOURCE_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-capability:v1"
+MIGRATOR_ID = ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_ID
+MIGRATOR_VERSION = ENGINE_CAPABILITY_V1_TO_V2_MIGRATOR_VERSION
+SOURCE_SCHEMA_ID = ENGINE_CAPABILITY_V1_SCHEMA_ID
+LOSS_CODES = ENGINE_CAPABILITY_V1_TO_V2_LOSS_CODES
 _ROOT = Path(__file__).resolve().parents[1]
 _V1_SCHEMA = _ROOT / "schemas/manifests/engine-capability.schema.json"
 _V2_SCHEMA = _ROOT / "schemas/manifests/engine-capability-v2.schema.json"
@@ -114,7 +119,7 @@ def migrate_v1_document(
         name: len(source_document[name])
         for name in ("exact", "approximated", "unsupported", "known_divergences")
     }
-    loss_codes = ("approximated", "exact", "known-divergences", "unsupported")
+    loss_codes = LOSS_CODES
     report_projection = {
         "report_id": loss_report_id,
         "source_document_id": source_document_id,
