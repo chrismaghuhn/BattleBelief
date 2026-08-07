@@ -231,8 +231,9 @@ def test_artifact_index_closes_the_immutable_published_release() -> None:
         'test "$(git rev-parse "${ENGINE_RELEASE_TAG}^{commit}")" = "$ENGINE_RELEASE_COMMIT"'
         in commands
     )
-    assert 'git diff --exit-code "$ENGINE_RELEASE_COMMIT" -- tools/build_poke_engine_wheel.py' not in (
-        commands
+    assert (
+        'git diff --exit-code "$ENGINE_RELEASE_COMMIT" -- tools/build_poke_engine_wheel.py'
+        not in (commands)
     )
     assert 'git show "${ENGINE_RELEASE_COMMIT}:.github/workflows/pr.yml"' in commands
     assert "current['jobs']['artifact-build'] == released['jobs']['artifact-build']" in commands
