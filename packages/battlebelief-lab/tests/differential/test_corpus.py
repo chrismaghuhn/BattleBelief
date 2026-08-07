@@ -386,12 +386,24 @@ def test_loads_the_reviewed_strict_gen9ou_corpus_v1_closure() -> None:
     corpus = DifferentialCorpus.load(_CORPUS_V1_PATH, catalog)
 
     assert corpus.corpus_digest == (
-        "sha256:2073b321604f4aba24bc0ac05b0ac734b83c6a95522f39d6fc6e961e42547bbd"
+        "sha256:0630f696c0ff07210202356aecc51fc1bb447f2cb4c04199b82ea3802d5cc21a"
     )
     assert len(corpus.fixtures) == 13
     assert set(corpus.capability_coverage) == {
         definition.value for definition in catalog.definitions
     }
+
+
+def test_forced_switch_fixture_binds_a_fainted_active_combatant_to_its_only_switch() -> None:
+    fixture_document = json.loads(
+        (_CORPUS_V1_PATH / "fixtures/forced-switch.json").read_text(encoding="utf-8")
+    )
+    active = fixture_document["initial_authoritative_full_state"]["players"]["p2"]["team"][0]
+    legal_actions = fixture_document["player_views"][1]["view"]["legal_actions"]
+
+    assert active["fainted"] is True
+    assert active["hp"]["current"] == 0
+    assert legal_actions == [{"kind": "switch", "target_slot": "p2b"}]
 
 
 def test_rejects_a_state_with_an_active_slot_owned_by_the_other_player() -> None:
