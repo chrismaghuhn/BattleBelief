@@ -507,6 +507,63 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     manifest["evidence_set_digest"] = manifest_digest({"evidence_refs": references})
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
+
+    original_manifest_bytes = manifest_path.read_bytes()
+    original_second_evidence_bytes = (
+        evidence_dir / f"{evidence_documents[1]['evidence_id']}.json"
+    ).read_bytes()
+    original_third_evidence_bytes = (
+        evidence_dir / f"{evidence_documents[2]['evidence_id']}.json"
+    ).read_bytes()
+
+    later_digest_document = copy.deepcopy(evidence_documents[1])
+    later_digest_document["qualification_result_digest"] = "sha256:" + "0" * 64
+    later_digest_path = evidence_dir / f"{later_digest_document['evidence_id']}.json"
+    later_digest_path.write_text(json.dumps(later_digest_document), encoding="utf-8")
+    later_digest_references = copy.deepcopy(references)
+    later_digest_reference = {
+        **later_digest_document,
+        "evidence_digest": manifest_digest(later_digest_document),
+    }
+    later_digest_reference.pop("schema_version")
+    later_digest_references[1] = later_digest_reference
+    later_digest_manifest = copy.deepcopy(manifest)
+    later_digest_manifest["claims"][0]["evidence_refs"] = later_digest_references
+    later_digest_manifest["evidence_set_digest"] = manifest_digest(
+        {"evidence_refs": later_digest_references}
+    )
+    manifest_path.write_text(json.dumps(later_digest_manifest), encoding="utf-8")
+    later_digest_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("qualification_result_digest" in error for error in later_digest_errors)
+    later_digest_path.write_bytes(original_second_evidence_bytes)
+
+    later_schema_document = copy.deepcopy(evidence_documents[2])
+    later_schema_document["qualification_result_schema_id"] = (
+        "urn:battlebelief:schema:fixture-result-alt:v2"
+    )
+    later_schema_path = evidence_dir / f"{later_schema_document['evidence_id']}.json"
+    later_schema_path.write_text(json.dumps(later_schema_document), encoding="utf-8")
+    later_schema_references = copy.deepcopy(references)
+    later_schema_reference = {
+        **later_schema_document,
+        "evidence_digest": manifest_digest(later_schema_document),
+    }
+    later_schema_reference.pop("schema_version")
+    later_schema_references[2] = later_schema_reference
+    later_schema_manifest = copy.deepcopy(manifest)
+    later_schema_manifest["claims"][0]["evidence_refs"] = later_schema_references
+    later_schema_manifest["evidence_set_digest"] = manifest_digest(
+        {"evidence_refs": later_schema_references}
+    )
+    manifest_path.write_text(json.dumps(later_schema_manifest), encoding="utf-8")
+    later_schema_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("result schema ID" in error for error in later_schema_errors)
+
+    manifest_path.write_bytes(original_manifest_bytes)
+    (evidence_dir / f"{evidence_documents[2]['evidence_id']}.json").write_bytes(
+        original_third_evidence_bytes
+    )
+
     provenance_file = (
         tmp_path
         / "artifacts/gen9ou/m2/differential/runs/qualification-v1/provenance/adapter-source.bin"
@@ -554,6 +611,30 @@ def test_qualified_manifest_validates_exact_directory_evidence_closure(tmp_path:
     )
     second_manifest_path.write_text(json.dumps(second_manifest), encoding="utf-8")
     assert _validate_engine_capability_artifacts(tmp_path) == []
+
+    second_manifest_bytes = second_manifest_path.read_bytes()
+    second_evidence_path = evidence_dir / f"{second_documents[1]['evidence_id']}.json"
+    second_evidence_bytes = second_evidence_path.read_bytes()
+    second_later_document = copy.deepcopy(second_documents[1])
+    second_later_document["qualification_result_digest"] = "sha256:" + "f" * 64
+    second_evidence_path.write_text(json.dumps(second_later_document), encoding="utf-8")
+    second_later_references = copy.deepcopy(second_references)
+    second_later_reference = {
+        **second_later_document,
+        "evidence_digest": manifest_digest(second_later_document),
+    }
+    second_later_reference.pop("schema_version")
+    second_later_references[1] = second_later_reference
+    second_later_manifest = copy.deepcopy(second_manifest)
+    second_later_manifest["claims"][1]["evidence_refs"] = second_later_references
+    second_later_manifest["evidence_set_digest"] = manifest_digest(
+        {"evidence_refs": [*references, *second_later_references]}
+    )
+    second_manifest_path.write_text(json.dumps(second_later_manifest), encoding="utf-8")
+    second_later_errors = _validate_engine_capability_artifacts(tmp_path)
+    assert any("qualification_result_digest" in error for error in second_later_errors)
+    second_manifest_path.write_bytes(second_manifest_bytes)
+    second_evidence_path.write_bytes(second_evidence_bytes)
 
     unsupported_evidence = copy.deepcopy(evidence_documents[0])
     unsupported_evidence["evidence_id"] = "unsupported-capability-evidence"

@@ -934,26 +934,20 @@ def _validate_engine_capability_artifacts(root: Path) -> list[str]:
                     manifest_document, catalog, evidence_documents
                 )
             )
-            if any(
-                claim["status"] in {"exact", "bounded_approximation"}
-                for claim in manifest_document["claims"]
-            ):
-                qualifying_claim = next(
-                    claim
-                    for claim in manifest_document["claims"]
-                    if claim["status"] in {"exact", "bounded_approximation"}
-                )
-                first_reference = qualifying_claim["evidence_refs"][0]
-                errors.extend(
-                    f"{manifest_path.relative_to(root)}: {error}"
-                    for error in _validate_qualification_provenance(
-                        root,
-                        {**manifest_document, **first_reference},
-                        qualification_index_path,
-                        qualification_provenance_root,
-                        schema_root,
+            for claim in manifest_document["claims"]:
+                if claim["status"] not in {"exact", "bounded_approximation"}:
+                    continue
+                for reference in claim["evidence_refs"]:
+                    errors.extend(
+                        f"{manifest_path.relative_to(root)}: {error}"
+                        for error in _validate_qualification_provenance(
+                            root,
+                            {**manifest_document, **reference},
+                            qualification_index_path,
+                            qualification_provenance_root,
+                            schema_root,
+                        )
                     )
-                )
             qualifying_claims = {
                 claim["capability_id"]
                 for claim in manifest_document["claims"]
