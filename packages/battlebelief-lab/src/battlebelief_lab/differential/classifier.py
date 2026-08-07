@@ -68,13 +68,16 @@ class DifferentialClassifier:
             raise ClassifierConfigurationError("fixture classifier version does not match")
         if fixture.classifier_source_digest != self.source_digest:
             raise ClassifierConfigurationError("fixture classifier source digest does not match")
+        known_divergence_id = fixture.known_divergence_id
+        if (
+            known_divergence_id is not None
+            and known_divergence_id not in self._known_divergence_ids
+        ):
+            raise ClassifierConfigurationError("fixture known divergence is not frozen")
         if not differing_fields:
             return DivergenceClass.MATCH
-        known_divergence_id = fixture.known_divergence_id
         if known_divergence_id is None:
             return DivergenceClass.UNCLASSIFIED
-        if known_divergence_id not in self._known_divergence_ids:
-            raise ClassifierConfigurationError("fixture known divergence is not frozen")
         return DivergenceClass.KNOWN_DIVERGENCE
 
 

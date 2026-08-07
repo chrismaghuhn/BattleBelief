@@ -23,7 +23,7 @@ def collect_errors(repository_root: Path) -> list[str]:
         return ["engine capability catalog is missing"]
     try:
         catalog = CapabilityCatalog.from_document(load_json_strict(catalog_path))
-    except (RegistrationValidationError, TypeError, ValueError):
+    except (OSError, RegistrationValidationError, TypeError, ValueError):
         return ["engine capability catalog is invalid"]
     corpus_directory = repository_root / "artifacts/gen9ou/m2/differential/corpus-v1"
     if not corpus_directory.is_dir():

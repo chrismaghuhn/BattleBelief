@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from types import MappingProxyType
 from typing import Literal
 
@@ -194,36 +194,12 @@ def _matches_expectation(
     expected_environment_digest = expectation.required_environments.get(
         result.provenance.environment_id
     )
-    provenance_fields = (
-        "corpus_id",
-        "corpus_version",
-        "corpus_digest",
-        "ruleset_id",
-        "ruleset_digest",
-        "catalog_id",
-        "catalog_version",
-        "catalog_digest",
-        "oracle_source_manifest_digest",
-        "oracle_build_manifest_digest",
-        "engine_source_manifest_digest",
-        "engine_build_manifest_digest",
-        "wheel_digest",
-        "runtime_adapter_id",
-        "runtime_adapter_version",
-        "runtime_adapter_source_digest",
-        "canonicalization_profile_id",
-        "canonicalization_profile_version",
-        "canonicalization_profile_digest",
-        "result_schema_id",
-        "result_schema_version",
-        "result_schema_digest",
-    )
     return (
         expected_fixture_digest == result.fixture_digest
         and expected_environment_digest == result.provenance.environment_digest
         and all(
             getattr(result.provenance, field_name) == getattr(expectation.provenance, field_name)
-            for field_name in provenance_fields
+            for field_name in _MATCHED_PROVENANCE_FIELDS
         )
         and (
             result.runner_id,
@@ -242,6 +218,14 @@ def _matches_expectation(
             expectation.classifier_source_digest,
         )
     )
+
+
+_EXPLICIT_PROVENANCE_FIELDS = frozenset({"environment_id", "environment_digest"})
+_MATCHED_PROVENANCE_FIELDS = tuple(
+    field.name
+    for field in fields(FixtureResultProvenance)
+    if field.name not in _EXPLICIT_PROVENANCE_FIELDS
+)
 
 
 __all__ = ["CapabilityQualificationEvidence", "CapabilityQualificationExpectation"]

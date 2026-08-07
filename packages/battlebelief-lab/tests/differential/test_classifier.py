@@ -62,3 +62,10 @@ def test_classifier_cannot_reclassify_an_unbound_known_divergence_in_place() -> 
 
     with pytest.raises(ClassifierConfigurationError, match="known divergence"):
         classifier.classify(_FixturePolicy(classifier, "new-after-run"), ("hp",))
+
+
+def test_classifier_rejects_an_unbound_known_divergence_even_when_sides_match() -> None:
+    classifier = DifferentialClassifier()
+
+    with pytest.raises(ClassifierConfigurationError, match="known divergence"):
+        classifier.classify(_FixturePolicy(classifier, "new-after-run"), ())

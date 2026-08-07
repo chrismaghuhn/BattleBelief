@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import battlebelief_lab.differential as differential
+import battlebelief_lab.differential.runner as runner_module
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_lab.differential.classifier import DifferentialClassifier, DivergenceClass
 from battlebelief_lab.differential.corpus import DifferentialFixture
@@ -19,6 +20,7 @@ from battlebelief_lab.differential.runner import (
     DifferentialExecutionSkip,
     DifferentialRunner,
     FixtureResultProvenance,
+    RunnerConfigurationError,
 )
 from battlebelief_runtime.adapters.poke_engine import MappingReport, PokeEngineMappingFailure
 
@@ -523,3 +525,34 @@ def test_private_fixture_handoff_retains_only_the_bound_corpus_digest() -> None:
     fixture = _fixture(classifier)
 
     assert fixture._corpus_digest_for_runner() == _digest("corpus")
+
+
+def test_runner_rejects_a_fixture_field_outside_the_frozen_comparison_surface() -> None:
+    classifier = DifferentialClassifier()
+    fixture = _fixture(classifier)
+    object.__setattr__(fixture, "declared_comparison_fields", ("unknown-field",))
+
+    with pytest.raises(RunnerConfigurationError, match="comparison field"):
+        DifferentialRunner(
+            oracle_executor=lambda _: CanonicalMechanicsObservation({"legal_actions": ["move-1"]}),
+            engine_executor=lambda _: CanonicalMechanicsObservation({"legal_actions": ["move-1"]}),
+            provenance=_provenance(),
+            classifier=classifier,
+        ).run_fixture(fixture)
+
+
+def test_result_schema_digest_sanitizes_an_unavailable_shallow_source_layout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _MissingResource:
+        def joinpath(self, *_parts: str) -> _MissingResource:
+            return self
+
+        def is_file(self) -> bool:
+            return False
+
+    monkeypatch.setattr(runner_module.resources, "files", lambda _: _MissingResource())
+    monkeypatch.setattr(runner_module, "__file__", str(Path(Path.cwd().anchor) / "runner.py"))
+
+    with pytest.raises(ValueError, match="schema resource is unavailable"):
+        runner_module._authoritative_result_schema_digest()

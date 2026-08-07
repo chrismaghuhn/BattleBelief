@@ -107,7 +107,7 @@ def _authoritative_result_schema_digest() -> str:
         )
         if source_path.is_file():
             return "sha256:" + sha256(source_path.read_bytes()).hexdigest()
-    except OSError as error:
+    except (IndexError, OSError) as error:
         raise ValueError(
             "authoritative differential-result schema resource is unavailable"
         ) from error
@@ -620,6 +620,10 @@ class DifferentialRunner:
         )
 
     def _validate_fixture_binding(self, fixture: DifferentialFixture) -> None:
+        if not set(fixture.declared_comparison_fields).issubset(_COMPARISON_FIELDS):
+            raise RunnerConfigurationError(
+                "fixture declares a comparison field this runner does not support"
+            )
         if (fixture.corpus_id, fixture.corpus_version) != (
             self._provenance.corpus_id,
             self._provenance.corpus_version,

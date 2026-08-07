@@ -62,6 +62,23 @@ def test_validator_rejects_duplicate_authoritative_catalog_members(tmp_path: Pat
     ]
 
 
+def test_validator_redacts_an_authoritative_catalog_read_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalog_path = tmp_path / "artifacts/gen9ou/m2/engine-capability-catalog-v1.json"
+    catalog_path.parent.mkdir(parents=True)
+    catalog_path.write_text("{}", encoding="utf-8")
+
+    def raise_read_error(*_arguments: object, **_keywords: object) -> object:
+        raise OSError("private catalog path")
+
+    monkeypatch.setattr(validate_differential_corpus, "load_json_strict", raise_read_error)
+
+    assert validate_differential_corpus.collect_errors(tmp_path) == [
+        "engine capability catalog is invalid"
+    ]
+
+
 def test_validator_redacts_corpus_failure_details(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

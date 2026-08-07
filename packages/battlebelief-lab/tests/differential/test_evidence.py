@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
+from dataclasses import fields, replace
 from hashlib import sha256
 from pathlib import Path
 
@@ -11,6 +11,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 import battlebelief_lab.differential as differential
+import battlebelief_lab.differential.evidence as evidence_module
 from battlebelief_core.canonicalization import manifest_digest
 from battlebelief_lab.differential.classifier import DivergenceClass
 from battlebelief_lab.differential.evidence import (
@@ -224,6 +225,12 @@ def test_identity_mismatch_is_not_exact(changed_result: FixtureResult) -> None:
 
     assert evidence.identities_match is False
     assert evidence.exact_eligible is False
+
+
+def test_evidence_provenance_comparison_covers_every_provenance_field() -> None:
+    assert set(evidence_module._EXPLICIT_PROVENANCE_FIELDS) | set(
+        evidence_module._MATCHED_PROVENANCE_FIELDS
+    ) == {field.name for field in fields(FixtureResultProvenance)}
 
 
 def test_capability_qualification_schema_rejects_an_exact_claim() -> None:

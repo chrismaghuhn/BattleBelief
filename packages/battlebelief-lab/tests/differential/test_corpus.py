@@ -385,7 +385,7 @@ def test_loads_the_reviewed_strict_gen9ou_corpus_v1_closure() -> None:
     corpus = DifferentialCorpus.load(_CORPUS_V1_PATH, catalog)
 
     assert corpus.corpus_digest == (
-        "sha256:1f68c70b2a3310f2a735c7224a4eb7a017b647f19f9e228dfdbd4eb6033f7f2d"
+        "sha256:2073b321604f4aba24bc0ac05b0ac734b83c6a95522f39d6fc6e961e42547bbd"
     )
     assert len(corpus.fixtures) == 13
     assert set(corpus.capability_coverage) == {
@@ -415,6 +415,22 @@ def test_rejects_a_terminal_value_that_does_not_match_its_terminal_state() -> No
     _refresh_fixture_digest(fixture_document)
 
     with pytest.raises(CorpusValidationError, match="terminal value does not match"):
+        DifferentialFixture.from_document(fixture_document)
+
+
+@pytest.mark.parametrize(("fainted", "current_hp"), [(True, 1), (False, 0)])
+def test_rejects_a_combatant_with_inconsistent_fainted_and_hp_state(
+    fainted: bool, current_hp: int
+) -> None:
+    fixture_document = _strict_fixture_document(
+        "inconsistent-fainted-state", ["gen9.legality.move.selection"]
+    )
+    combatant = fixture_document["initial_authoritative_full_state"]["players"]["p2"]["team"][0]
+    combatant["fainted"] = fainted
+    combatant["hp"]["current"] = current_hp
+    _refresh_fixture_digest(fixture_document)
+
+    with pytest.raises(CorpusValidationError, match="fainted state does not match HP"):
         DifferentialFixture.from_document(fixture_document)
 
 
@@ -456,6 +472,24 @@ def test_fixture_digest_vector_uses_rfc8785_payload_without_self_digest() -> Non
     assert DifferentialFixture.derive_digest(fixture) == (
         "sha256:74754af021fb0acce7b4923231c76d4ac7fbd22b105a50dbba441504370867a6"
     )
+
+
+def test_fixture_corpus_digest_is_bound_to_each_equal_fixture_instance() -> None:
+    fixture_document = _strict_fixture_document(
+        "independent-corpus-binding", ["gen9.legality.move.selection"]
+    )
+    first = DifferentialFixture.from_document(
+        fixture_document,
+        _corpus_digest_for_runner="sha256:" + "a" * 64,
+    )
+    second = DifferentialFixture.from_document(
+        fixture_document,
+        _corpus_digest_for_runner="sha256:" + "b" * 64,
+    )
+
+    assert first == second
+    assert first._corpus_digest_for_runner() == "sha256:" + "a" * 64
+    assert second._corpus_digest_for_runner() == "sha256:" + "b" * 64
 
 
 def test_corpus_index_digest_vector_uses_rfc8785_payload_without_self_digest() -> None:

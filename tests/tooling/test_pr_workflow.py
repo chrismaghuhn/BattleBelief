@@ -381,6 +381,7 @@ def test_differential_harness_smoke_is_data_only_and_synthetic() -> None:
         _CHECKOUT_ACTION,
         _SETUP_PYTHON_ACTION,
     ]
+    assert steps[0]["with"] == {"persist-credentials": "false"}
     assert steps[1]["with"] == {"python-version": "3.14"}
     assert [step.get("run") for step in steps if "run" in step] == [
         "python -m pip install uv==0.12.0",

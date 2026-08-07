@@ -2,7 +2,7 @@
 
 `gen9ou-differential` version `1` is the reviewed, data-only Task-28 corpus
 freeze. Its canonical index digest is
-`sha256:1f68c70b2a3310f2a735c7224a4eb7a017b647f19f9e228dfdbd4eb6033f7f2d`.
+`sha256:2073b321604f4aba24bc0ac05b0ac734b83c6a95522f39d6fc6e961e42547bbd`.
 
 The corpus contains 13 project-authored synthetic fixtures. Each is an
 RFC8785/JCS canonical JSON document with its own digest, and `index.json`

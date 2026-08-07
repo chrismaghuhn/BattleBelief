@@ -13,7 +13,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 from importlib import resources
 from importlib.resources.abc import Traversable
@@ -427,8 +427,12 @@ def _validate_transition_state(document: Mapping[str, object]) -> None:
             if slot_id == active_slot:
                 active_count += 1
             hp = _required_mapping(combatant_value, "hp")
-            if _integer(hp, "current") > _integer(hp, "maximum"):
+            current_hp = _integer(hp, "current")
+            if current_hp > _integer(hp, "maximum"):
                 raise CorpusValidationError("combatant current HP exceeds maximum HP")
+            fainted = combatant_value["fainted"]
+            if type(fainted) is not bool or fainted != (current_hp == 0):
+                raise CorpusValidationError("combatant fainted state does not match HP")
             moves = _required_sequence(combatant_value, "moves")
             move_ids: set[str] = set()
             for move_value in moves:
@@ -475,6 +479,7 @@ class DifferentialFixture:
     normalization_profile_version: str
     normalization_profile_digest: str
     known_divergence_id: str | None
+    _runner_corpus_digest: str | None = field(default=None, repr=False, compare=False)
 
     @staticmethod
     def derive_digest(document: Mapping[str, object]) -> str:
@@ -546,6 +551,11 @@ class DifferentialFixture:
         )
         if len(actor_ids) != len(joint_action_intent) or actor_ids != ("p1", "p2"):
             raise CorpusValidationError("joint action intent must contain p1 and p2 exactly once")
+        if _corpus_digest_for_runner is not None and (
+            type(_corpus_digest_for_runner) is not str
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", _corpus_digest_for_runner) is None
+        ):
+            raise CorpusValidationError("runner corpus digest is invalid")
         fixture = cls(
             corpus_id=_string(document, "corpus_id"),
             corpus_version=_string(document, "corpus_version"),
@@ -563,14 +573,9 @@ class DifferentialFixture:
             normalization_profile_version=_string(normalization, "profile_version"),
             normalization_profile_digest=_string(normalization, "profile_digest"),
             known_divergence_id=_optional_string(policy, "known_divergence_id"),
+            _runner_corpus_digest=_corpus_digest_for_runner,
         )
         _FIXTURE_EXECUTION_DOCUMENTS[fixture] = _canonical_json_copy(document)
-        if _corpus_digest_for_runner is not None and (
-            type(_corpus_digest_for_runner) is not str
-            or re.fullmatch(r"sha256:[0-9a-f]{64}", _corpus_digest_for_runner) is None
-        ):
-            raise CorpusValidationError("runner corpus digest is invalid")
-        _FIXTURE_CORPUS_DIGESTS[fixture] = _corpus_digest_for_runner
         return fixture
 
     def _execution_document_for_runner(self) -> dict[str, object]:
@@ -585,11 +590,10 @@ class DifferentialFixture:
     def _corpus_digest_for_runner(self) -> str | None:
         """Return only the enclosing corpus digest for package-internal provenance binding."""
 
-        return _FIXTURE_CORPUS_DIGESTS.get(self)
+        return self._runner_corpus_digest
 
 
 _FIXTURE_EXECUTION_DOCUMENTS: WeakKeyDictionary[object, dict[str, object]] = WeakKeyDictionary()
-_FIXTURE_CORPUS_DIGESTS: WeakKeyDictionary[object, str | None] = WeakKeyDictionary()
 
 
 @dataclass(frozen=True, slots=True)
