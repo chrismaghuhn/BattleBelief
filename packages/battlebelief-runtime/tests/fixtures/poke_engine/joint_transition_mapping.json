@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "minimum_successors": 1,
+    "p1_terastallized": true,
+    "work_units": 1
+  },
+  "fixture_id": "joint-transition-mapping-v1",
+  "p1_choice": "tackle-tera",
+  "p2_choice": "tackle",
+  "schema_version": 1
+}

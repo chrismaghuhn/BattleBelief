@@ -1,0 +1,8 @@
+{
+  "fixture_id": "unsupported-mapping-v1",
+  "schema_version": 1,
+  "unsupported_field": {
+    "private_backend_dump": "C:\\Users\\mallory\\engine\\State(0xDEADBEEF)",
+    "secret_move": "hiddenpower"
+  }
+}
