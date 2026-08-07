@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from tools.check_architecture import ImportRule, scan_tree
+from tools.check_architecture import ImportRule, scan_poke_engine_public_surface, scan_tree
 
 
 def write_module(root: Path, package: str, body: str) -> Path:
@@ -176,6 +176,30 @@ def test_native_import_is_allowed_inside_poke_engine_adapter(tmp_path: Path) -> 
     )
 
     assert scan_tree(tmp_path, ImportRule.runtime()) == []
+
+
+def test_public_poke_engine_adapter_rejects_task25_probe_and_native_exports(
+    tmp_path: Path,
+) -> None:
+    package = tmp_path / "battlebelief_runtime/adapters/poke_engine"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(
+        "from .native_probe import FixtureBundle\n"
+        "from .legal_choice_probe import run_legal_choice_probe\n"
+        "__all__ = ['FixtureBundle', 'run_legal_choice_probe']\n",
+        encoding="utf-8",
+    )
+
+    errors = scan_poke_engine_public_surface(tmp_path)
+
+    assert any("native_probe" in error for error in errors)
+    assert any("legal_choice_probe" in error for error in errors)
+    assert any("exports differ" in error for error in errors)
+
+
+def test_current_poke_engine_public_surface_is_exactly_approved() -> None:
+    runtime_root = Path(__file__).resolve().parents[2] / "packages/battlebelief-runtime/src"
+    assert scan_poke_engine_public_surface(runtime_root) == []
 
 
 def test_lab_cannot_import_native_engine_directly(tmp_path: Path) -> None:

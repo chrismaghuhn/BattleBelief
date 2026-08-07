@@ -69,6 +69,20 @@ LAB_RUNTIME_ALLOWED = (
     "battlebelief_runtime.testing",
     "battlebelief_runtime.public_api",
 )
+POKE_ENGINE_PUBLIC_EXPORTS = (
+    "MappingReport",
+    "PokeEngineMappingFailure",
+    "PokeEngineTransitionModel",
+    "RequiredCapabilities",
+    "run_gen9_sentinel",
+)
+POKE_ENGINE_PUBLIC_IMPORTS = {
+    "mapping_report": frozenset(
+        {"MappingReport", "PokeEngineMappingFailure", "RequiredCapabilities"}
+    ),
+    "sentinel": frozenset({"run_gen9_sentinel"}),
+    "transition_model": frozenset({"PokeEngineTransitionModel"}),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,6 +345,37 @@ def scan_tree(root: Path, rule: ImportRule) -> list[str]:
     return sorted(set(errors))
 
 
+def scan_poke_engine_public_surface(runtime_root: Path) -> list[str]:
+    """Reject private probe/native symbols at the public adapter boundary."""
+
+    path = runtime_root / "battlebelief_runtime/adapters/poke_engine/__init__.py"
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, UnicodeDecodeError, SyntaxError) as error:
+        return [f"poke_engine public adapter is unreadable: {type(error).__name__}"]
+    errors: list[str] = []
+    exported: object = None
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            allowed = POKE_ENGINE_PUBLIC_IMPORTS.get(module)
+            imported = frozenset(alias.name for alias in node.names)
+            if node.level != 1 or allowed is None or not imported.issubset(allowed):
+                errors.append(
+                    f"{path.name}:{node.lineno}: forbidden public adapter import {module}"
+                )
+        elif isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+        ):
+            try:
+                exported = ast.literal_eval(node.value)
+            except (ValueError, SyntaxError):
+                errors.append(f"{path.name}:{node.lineno}: public adapter __all__ is not literal")
+    if exported != list(POKE_ENGINE_PUBLIC_EXPORTS):
+        errors.append(f"{path.name}: public adapter exports differ from approved surface")
+    return errors
+
+
 def main() -> int:
     repository = Path(__file__).resolve().parents[1]
     checks = (
@@ -339,6 +384,7 @@ def main() -> int:
         (repository / "packages/battlebelief-lab/src", ImportRule.lab()),
     )
     errors = [error for root, rule in checks for error in scan_tree(root, rule)]
+    errors.extend(scan_poke_engine_public_surface(repository / "packages/battlebelief-runtime/src"))
 
     old_names = ("pokemonbot_core", "pokemonbot_runtime", "pokemonbot_lab", "urn:pokemonbot")
     for pattern in ("packages/**/*.py", "packages/**/pyproject.toml"):
