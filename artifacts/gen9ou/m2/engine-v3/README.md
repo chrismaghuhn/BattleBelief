@@ -22,5 +22,8 @@ accepts the complete closure.
 
 The native Speed-Tie audit deliberately retains branch-local action-order
 metadata even where two branches have the same resulting serialized state.
-This artifact does not modify Runtime coalescing, expose a Runtime observation
-surface, qualify any capability, or make a mechanics-parity claim.
+Consequently, the Task-27 Runtime observation successor is blocked until a
+separate Runtime transition-metadata/coalescing predecessor can retain this
+branch-local distinction without changing transition semantics. This artifact
+does not modify Runtime coalescing, expose a Runtime observation surface,
+qualify any capability, or make a mechanics-parity claim.
