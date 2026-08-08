@@ -88,6 +88,18 @@ def test_v3_patch_transports_native_order_without_repr_or_python_ordering() -> N
     assert "__repr__" not in patch_text
     assert 'format!("{:?}"' not in patch_text
     assert "keeps_same_state_speed_tie_branches_distinct" in patch_text
+    assert '"switch pikachu"' not in patch_text
+    assert '"switch bulbasaur"' not in patch_text
+    assert 'side_one_moves or [Move(id="tackle", pp=32), Move(id="leer", pp=32)]' in patch_text
+
+
+def test_v3_patch_bytes_are_preserved_on_windows_checkouts() -> None:
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+    assert (
+        "artifacts/gen9ou/m2/engine/downstream-patches/"
+        "poke-engine-resolved-action-order-v1.patch binary"
+    ) in attributes
 
 
 def test_v3_patch_chain_is_ordered_and_rejects_a_reversed_chain(tmp_path: Path) -> None:

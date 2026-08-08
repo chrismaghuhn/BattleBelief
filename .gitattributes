@@ -12,3 +12,4 @@
 *.cjs text eol=lf
 *.ps1 text eol=crlf
 artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch binary
+artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-resolved-action-order-v1.patch binary
