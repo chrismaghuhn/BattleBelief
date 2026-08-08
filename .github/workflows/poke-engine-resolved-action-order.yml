@@ -111,6 +111,7 @@ jobs:
           path: |
             ${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json
             ${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}
+            ${{ runner.temp }}/resolved-order-sentinel-${{ env.ENGINE_CELL }}.json
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
