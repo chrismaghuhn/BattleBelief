@@ -29,7 +29,7 @@ index 80b017f363d257420a71aed2b6f049c0c9e92efa..784598311efddb333204c922f3ba239b
 @@ -366,0 +367 @@ class StateInstructions:
 +    resolved_action_order: Optional[Tuple[str, str]]
 diff --git a/poke-engine-py/python/tests/test_poke_engine.py b/poke-engine-py/python/tests/test_poke_engine.py
-index 5d5a35306e68746c8d526f06d2f6c1c8e715591b..19c513331d08a6ae76f6e5ffd0a09b9915e31851 100644
+index 5d5a35306e68746c8d526f06d2f6c1c8e715591b..062e775a2c0f64552fd4f2f1fc58ef9ba80c8dad 100644
 --- a/poke-engine-py/python/tests/test_poke_engine.py
 +++ b/poke-engine-py/python/tests/test_poke_engine.py
 @@ -104 +104 @@ def test_generate_instructions_errors_when_move_does_not_exist():
@@ -143,7 +143,7 @@ index 5d5a35306e68746c8d526f06d2f6c1c8e715591b..19c513331d08a6ae76f6e5ffd0a09b99
 +    branches = _orders(_order_state(), "leer", "leer")
 +
 +    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2"), ("p2", "p1")}
-+    assert sum(branch.percentage for branch in branches) == pytest.approx(1.0)
++    assert sum(branch.percentage for branch in branches) == pytest.approx(100.0)
 +
 +
 +def test_resolved_action_order_tera_uses_the_same_native_order_path():

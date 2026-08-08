@@ -91,6 +91,7 @@ def test_v3_patch_transports_native_order_without_repr_or_python_ordering() -> N
     assert '"switch pikachu"' not in patch_text
     assert '"switch bulbasaur"' not in patch_text
     assert 'side_one_moves or [Move(id="tackle", pp=32), Move(id="leer", pp=32)]' in patch_text
+    assert "sum(branch.percentage for branch in branches) == pytest.approx(100.0)" in patch_text
 
 
 def test_v3_patch_bytes_are_preserved_on_windows_checkouts() -> None:
