@@ -4,7 +4,7 @@ title: Manifest-Schemas, Canonicalization und Evolution
 document_type: contract
 status: accepted
 normative: true
-version: 19
+version: 20
 applies_to:
   - manifests
   - release
@@ -14,7 +14,7 @@ supersedes: []
 superseded_by: null
 owners:
   - maintainer
-last_reviewed: 2026-08-07
+last_reviewed: 2026-08-08
 ---
 
 # Manifest-Schemas, Canonicalization und Evolution
@@ -54,6 +54,9 @@ folgenden Dateien definieren die maschinenvalidierte Struktur:
 | `poke-engine`-Quelle v2 (downstream patched) | [`engine-source-v2.schema.json`](../../schemas/manifests/engine-source-v2.schema.json) |
 | `poke-engine`-Build v2 (downstream patched) | [`engine-build-v2.schema.json`](../../schemas/manifests/engine-build-v2.schema.json) |
 | `poke-engine`-Artifact-Index v2 (downstream patched) | [`engine-artifact-index-v2.schema.json`](../../schemas/manifests/engine-artifact-index-v2.schema.json) |
+| `poke-engine`-Quelle v3 (ordered downstream patch chain) | [`engine-source-v3.schema.json`](../../schemas/manifests/engine-source-v3.schema.json) |
+| `poke-engine`-Build v3 (ordered downstream patch chain) | [`engine-build-v3.schema.json`](../../schemas/manifests/engine-build-v3.schema.json) |
+| `poke-engine`-Artifact-Index v3 (ordered downstream patch chain) | [`engine-artifact-index-v3.schema.json`](../../schemas/manifests/engine-artifact-index-v3.schema.json) |
 | Decision-Record-Payload v1 | [`decision-record-payload.schema.json`](../../schemas/records/decision-record-payload.schema.json) |
 | Decision-Record-Payload v2 | [`decision-record-payload-v2.schema.json`](../../schemas/records/decision-record-payload-v2.schema.json) |
 | Decision-Record-Envelope v1 | [`decision-record.schema.json`](../../schemas/records/decision-record.schema.json) |
@@ -79,7 +82,9 @@ geschlossenen Sechs-Zellen-Artifact-Index. Die additive v2-Manifestfamilie
 bindet zusätzlich den vollständigen v1-Quellmanifest-Digest, den exakten
 Downstream-Patch und die vollständige resultierende Source-Closure; der
 Base-Upstream-Commit ist dabei keine behauptete Upstream-Identität des
-Patch-Ergebnisses. Ein Build-Manifest bewahrt neben dem
+Patch-Ergebnisses. Die additive v3-Manifestfamilie bindet die explizit
+geordnete Kette aus Legal-Choice- und Resolved-Action-Order-Patch; Dateinamen
+legen dabei keine Patch-Reihenfolge fest. Ein Build-Manifest bewahrt neben dem
 Digest des ursprünglichen Wheel-`RECORD` auch dessen normalisierte Einträge.
 Die Installationsprüfung verifiziert diese Einträge erneut und erlaubt nur die
 dokumentierten, vom Installer erzeugten Metadaten-Sidecars. Diese Manifeste
