@@ -5,11 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
+from tools import create_engine_artifact_index_v3 as artifact_index_v3
 from tools import smoke_poke_engine_resolved_action_order as resolved_order_smoke
 from tools.build_poke_engine_wheel import (
     RESOLVED_ACTION_ORDER_ADAPTER_VERSION,
@@ -266,6 +268,57 @@ def test_v3_smoke_rejects_wrong_v2_manifest_identity(
         )
         == 1
     )
+
+
+@pytest.mark.parametrize("field", ("configuration_digest", "result_digest"))
+def test_v3_index_rejects_malformed_sentinel_digest(field: str) -> None:
+    evidence = {
+        "schema_version": 3,
+        "cell_id": "ubuntu-24.04-x86_64-cp312",
+        "classification": "healthy",
+        "source_manifest_digest": "sha256:" + "a" * 64,
+        "build_manifest_digest": "sha256:" + "b" * 64,
+        "wheel_sha256": "sha256:" + "c" * 64,
+        "fixture_digest": "sha256:" + "d" * 64,
+        "configuration_digest": "sha256:" + "e" * 64,
+        "result_digest": "sha256:" + "f" * 64,
+    }
+    evidence[field] = "not-a-digest"
+    cell = {
+        "cell_id": "ubuntu-24.04-x86_64-cp312",
+        "source_manifest_digest": "sha256:" + "a" * 64,
+        "build_manifest_digest": "sha256:" + "b" * 64,
+        "wheel_sha256": "sha256:" + "c" * 64,
+    }
+
+    with pytest.raises(artifact_index_v3.ArtifactIndexV3Error, match="sentinel evidence differs"):
+        artifact_index_v3._evidence_for_cell(
+            evidence,
+            cell,
+            fixture_digest="sha256:" + "d" * 64,
+        )
+
+
+def test_v3_smoke_binds_the_observed_order_branch_multiplicity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(sys.modules, "poke_engine", object())
+    monkeypatch.setattr(resolved_order_smoke, "run_legal_choice_probe", lambda _module: {})
+
+    def observed_orders(
+        _module: object, *, side_one_speed: int, side_two_speed: int
+    ) -> list[tuple[str, str]]:
+        if side_one_speed > side_two_speed:
+            return [("p1", "p2"), ("p1", "p2")]
+        return [("p2", "p1"), ("p2", "p1")]
+
+    monkeypatch.setattr(resolved_order_smoke, "_orders", observed_orders)
+
+    assert resolved_order_smoke._run_checks() == {
+        "legal_choices": {},
+        "faster_p1": [["p1", "p2"], ["p1", "p2"]],
+        "faster_p2": [["p2", "p1"], ["p2", "p1"]],
+    }
 
 
 def test_v3_release_schema_gate_rejects_an_unknown_source_field() -> None:

@@ -93,8 +93,8 @@ def _run_checks() -> dict[str, Any]:
         _fail("native order authority differs")
     return {
         "legal_choices": legal_choices,
-        "faster_p1": [["p1", "p2"]],
-        "faster_p2": [["p2", "p1"]],
+        "faster_p1": [list(order) for order in faster_p1],
+        "faster_p2": [list(order) for order in faster_p2],
     }
 
 

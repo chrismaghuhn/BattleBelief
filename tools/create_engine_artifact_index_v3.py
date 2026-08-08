@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -29,6 +30,7 @@ EXPECTED_CELLS = frozenset(
     for operating_system in ("ubuntu-24.04", "windows-2025")
     for minor in ("312", "313", "314")
 )
+SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 class ArtifactIndexV3Error(RuntimeError):
@@ -151,7 +153,8 @@ def _evidence_for_cell(
     if any(evidence.get(key) != value for key, value in expected.items()):
         _fail("sentinel evidence differs")
     fields = ("configuration_digest", "result_digest")
-    if any(not isinstance(evidence.get(key), str) for key in fields):
+    values = [evidence.get(key) for key in fields]
+    if any(not isinstance(value, str) or not SHA256_PATTERN.fullmatch(value) for value in values):
         _fail("sentinel evidence differs")
     return {key: str(evidence[key]) for key in fields}
 
