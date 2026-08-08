@@ -1,3 +1,23 @@
+---
+document_id: task-28-qualification-freeze-repair-design
+title: Task 28 Qualification Freeze Repair Design
+document_type: operation
+status: accepted
+normative: false
+version: 1
+applies_to:
+  - task-24
+  - task-27
+  - task-28
+  - task-29
+effective_from: 2026-08-08
+supersedes: []
+superseded_by: null
+owners:
+  - maintainer
+last_reviewed: 2026-08-08
+---
+
 # Task 28 qualification-freeze repair design
 
 ## Status
