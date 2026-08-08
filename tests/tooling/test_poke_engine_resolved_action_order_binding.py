@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 from tools import smoke_poke_engine_resolved_action_order as resolved_order_smoke
 from tools.build_poke_engine_wheel import (
@@ -252,3 +253,83 @@ def test_v3_smoke_rejects_wrong_v2_manifest_identity(
         )
         == 1
     )
+
+
+def test_v3_release_schema_gate_rejects_an_unknown_source_field() -> None:
+    from tools.verify_published_engine_release_v3 import _validate_manifest_schema
+
+    with pytest.raises(RuntimeError, match="schema differs"):
+        _validate_manifest_schema(
+            {"schema_id": "urn:battlebelief:schema:manifest:engine-source:v3", "unexpected": True},
+            "engine-source-v3.schema.json",
+        )
+
+
+@pytest.mark.parametrize("field", ["source_tree_digest", "downstream_patch_chain_digest"])
+def test_v3_release_rejects_wrong_index_source_closure_digest(field: str) -> None:
+    from tools.verify_published_engine_release_v3 import _validate_index_source_closure
+
+    source = json.loads((ROOT / "artifacts/gen9ou/m2/engine-v3/engine-source.json").read_bytes())
+    index = {
+        "source_manifest_digest": manifest_digest(source),
+        "source_tree_digest": source["source_tree_digest"],
+        "downstream_patch_chain_digest": manifest_digest(source["downstream_patches"]),
+    }
+    index[field] = "sha256:" + "0" * 64
+
+    with pytest.raises(RuntimeError, match="source closure differs"):
+        _validate_index_source_closure(index, source)
+
+
+def test_v3_available_workflow_binds_every_cell_sentinel_into_the_index() -> None:
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/poke-engine-resolved-action-order.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=yaml.BaseLoader,
+    )
+
+    available = workflow["jobs"]["resolved-order-available-index"]
+    assert available["needs"] == [
+        "resolved-order-build",
+        "resolved-order-candidate-index",
+    ]
+    steps = available["steps"]
+    downloads = [
+        step["with"]
+        for step in steps
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == [
+        {
+            "pattern": "resolved-order-build-*",
+            "path": "${{ runner.temp }}/v3-builds",
+            "merge-multiple": "true",
+        }
+    ]
+    command = next(step["run"] for step in steps if step.get("name") == "Create available v3 index")
+    assert "--availability-status available" in command
+    assert '--evidence-root "${RUNNER_TEMP}/v3-final"' in command
+    assert any(
+        step.get("with", {}).get("name") == "resolved-order-publication-candidate" for step in steps
+    )
+
+
+def test_v3_workflow_is_triggered_by_every_staged_smoke_input() -> None:
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/poke-engine-resolved-action-order.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=yaml.BaseLoader,
+    )
+
+    paths = workflow["on"]["pull_request"]["paths"]
+    assert "packages/battlebelief-runtime/tests/fixtures/poke_engine/**" in paths
+    assert (
+        "packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/"
+        "native_probe.py"
+    ) in paths
+    assert (
+        "packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/"
+        "legal_choice_probe.py"
+    ) in paths

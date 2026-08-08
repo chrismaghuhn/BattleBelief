@@ -3,17 +3,24 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import NoReturn
+from typing import Any, NoReturn
+
+from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from battlebelief_core.canonicalization import manifest_digest  # noqa: E402
-from tools.build_poke_engine_wheel import RESOLVED_ACTION_ORDER_RELEASE_TAG  # noqa: E402
+from tools.build_poke_engine_wheel import (  # noqa: E402
+    RESOLVED_ACTION_ORDER_RELEASE_TAG,
+    BuildPokeEngineError,
+    validate_resolved_action_order_source_manifest,
+)
 from tools.verify_published_engine_release import (  # noqa: E402
     CHECKSUMS_NAME,
     LICENSE_NAME,
@@ -40,11 +47,57 @@ def _fail(message: str) -> NoReturn:
     raise PublishedReleaseV3Error(message)
 
 
+def _validate_manifest_schema(document: Mapping[str, Any], schema_name: str) -> None:
+    """Reject every non-v3-schema manifest before trusting its identities."""
+
+    try:
+        schema = json.loads((ROOT / "schemas" / "manifests" / schema_name).read_bytes())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        _fail("v3 release schema is unreadable")
+    if list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(document)):
+        _fail("v3 release schema differs")
+
+
+def _validate_index_source_closure(index: Mapping[str, Any], source: Mapping[str, Any]) -> None:
+    """Bind every index-level source identity to the verified source manifest."""
+
+    patches = source.get("downstream_patches")
+    if not isinstance(patches, list) or {
+        "source_manifest_digest": index.get("source_manifest_digest"),
+        "source_tree_digest": index.get("source_tree_digest"),
+        "downstream_patch_chain_digest": index.get("downstream_patch_chain_digest"),
+    } != {
+        "source_manifest_digest": manifest_digest(source),
+        "source_tree_digest": source.get("source_tree_digest"),
+        "downstream_patch_chain_digest": manifest_digest(patches),
+    }:
+        _fail("v3 release index source closure differs")
+
+
 def _verify_manifest_closure(
     *, bundle_root: Path, manifest_root: Path, expected_tag: str, expected_repository: str
 ) -> set[str]:
     index, index_raw = _load_object(bundle_root / "engine-artifact-index.json", canonical=True)
     source, source_raw = _load_object(bundle_root / "engine-source.json", canonical=True)
+    _validate_manifest_schema(index, "engine-artifact-index-v3.schema.json")
+    _validate_manifest_schema(source, "engine-source-v3.schema.json")
+    _validate_index_source_closure(index, source)
+    try:
+        base_source, _ = _load_object(
+            ROOT / "artifacts/gen9ou/m2/engine/engine-source.json", canonical=True
+        )
+        validate_resolved_action_order_source_manifest(
+            source,
+            base_source,
+            (
+                ROOT
+                / "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch",
+                ROOT
+                / "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-resolved-action-order-v1.patch",
+            ),
+        )
+    except (BuildPokeEngineError, OSError, RuntimeError, ValueError):
+        _fail("v3 release source patch chain differs")
     if index.get("schema_id") != "urn:battlebelief:schema:manifest:engine-artifact-index:v3":
         _fail("v3 release index schema differs")
     if source.get("schema_id") != "urn:battlebelief:schema:manifest:engine-source:v3":
@@ -87,6 +140,7 @@ def _verify_manifest_closure(
         build_name = f"engine-build-{cell_id}.json"
         manifest_names.add(build_name)
         build, build_raw = _load_object(bundle_root / build_name, canonical=True)
+        _validate_manifest_schema(build, "engine-build-v3.schema.json")
         try:
             if (manifest_root / build_name).read_bytes() != build_raw:
                 _fail("v3 committed build differs")

@@ -14,8 +14,9 @@ tie calculation is introduced.
 
 The six-cell candidate workflow builds CPython 3.12, 3.13, and 3.14 wheels for
 Ubuntu 24.04 x86-64 and Windows Server 2025 x86-64, runs the upstream native
-binding tests and the staged-wheel smoke, and creates a candidate index. The
-immutable prerelease tag is created only after merge from `main`, after all
+binding tests and the staged-wheel smoke, and creates both a candidate index
+and an available-index publication candidate that binds each cell's sentinel.
+The immutable prerelease tag is created only after merge from `main`, after all
 six wheel and sentinel records are available and the v3 release verifier
 accepts the complete closure.
 
