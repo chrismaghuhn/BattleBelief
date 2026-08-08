@@ -323,6 +323,11 @@ def test_v3_available_workflow_binds_every_cell_sentinel_into_the_index() -> Non
     command = next(step["run"] for step in steps if step.get("name") == "Create available v3 index")
     assert "--availability-status available" in command
     assert '--evidence-root "${RUNNER_TEMP}/v3-final"' in command
+    assert (
+        'find "${RUNNER_TEMP}/v3-builds" -type f -name "*.whl" -exec cp {} "${RUNNER_TEMP}/v3-final/" \\;'
+        in command
+    )
+    assert 'cp "${RUNNER_TEMP}/v3-builds"/*.whl' not in command
     assert any(
         step.get("with", {}).get("name") == "resolved-order-publication-candidate" for step in steps
     )

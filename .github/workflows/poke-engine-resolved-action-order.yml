@@ -179,7 +179,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/v3-final"
           cp artifacts/gen9ou/m2/engine-v3/engine-source.json "${RUNNER_TEMP}/v3-final/engine-source.json"
           cp "${RUNNER_TEMP}/v3-builds"/engine-build-*.json "${RUNNER_TEMP}/v3-final/"
-          cp "${RUNNER_TEMP}/v3-builds"/*.whl "${RUNNER_TEMP}/v3-final/"
+          find "${RUNNER_TEMP}/v3-builds" -type f -name "*.whl" -exec cp {} "${RUNNER_TEMP}/v3-final/" \;
           cp "${RUNNER_TEMP}/v3-builds"/resolved-order-sentinel-*.json "${RUNNER_TEMP}/v3-final/"
           uv run python tools/create_engine_artifact_index_v3.py --source-manifest "${RUNNER_TEMP}/v3-final/engine-source.json" --input-root "${RUNNER_TEMP}/v3-final" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status available --evidence-root "${RUNNER_TEMP}/v3-final" --output "${RUNNER_TEMP}/v3-final/engine-artifact-index.json"
       - name: Upload v3 available publication candidate
