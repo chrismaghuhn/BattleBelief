@@ -1,0 +1,147 @@
+name: Downstream poke-engine resolved-action-order artifact
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/poke-engine-resolved-action-order.yml"
+      - "artifacts/gen9ou/m2/engine-v3/**"
+      - "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-resolved-action-order-v1.patch"
+      - "schemas/manifests/engine-*-v3.schema.json"
+      - "tools/build_poke_engine_wheel.py"
+      - "tools/create_engine_artifact_index_v3.py"
+      - "tools/smoke_poke_engine_resolved_action_order.py"
+      - "tools/verify_published_*_v3.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resolved-order-build:
+    name: resolved-order-build-${{ matrix.os }}-py${{ matrix.python }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, python: "3.12", python_tag: cp312, abi_tag: cp312, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.13", python_tag: cp313, abi_tag: cp313, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: ubuntu-24.04, python: "3.14", python_tag: cp314, abi_tag: cp314, target: x86_64-unknown-linux-gnu, platform_tag: linux_x86_64}
+          - {os: windows-2025, python: "3.12", python_tag: cp312, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.13", python_tag: cp313, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+          - {os: windows-2025, python: "3.14", python_tag: cp314, abi_tag: none, target: x86_64-pc-windows-msvc, platform_tag: win_amd64}
+    runs-on: ${{ matrix.os }}
+    env:
+      ENGINE_TARGET: ${{ matrix.target }}
+      ENGINE_CELL: ${{ matrix.os }}-x86_64-${{ matrix.python_tag }}
+      ENGINE_WHEEL: poke_engine-0.0.50-${{ matrix.python_tag }}-${{ matrix.abi_tag }}-${{ matrix.platform_tag }}.whl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install exact Python tooling
+        run: |
+          python -m pip install uv==0.12.0
+          uv sync --frozen --all-packages --group dev
+          uv venv "${{ runner.temp }}/maturin-env" --python python
+          uv pip install --python "${{ runner.temp }}/maturin-env" maturin==1.7.1
+      - name: Install exact Rust toolchain
+        run: |
+          rustup toolchain install 1.83.0 --profile minimal --target "${{ env.ENGINE_TARGET }}"
+          rustup default 1.83.0
+      - name: Resolve controlled executables on Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "ENGINE_PYTHON=$(command -v python)" >> "$GITHUB_ENV"
+          echo "ENGINE_RUSTC=$(rustup which --toolchain 1.83.0 rustc)" >> "$GITHUB_ENV"
+          echo "ENGINE_CARGO=$(rustup which --toolchain 1.83.0 cargo)" >> "$GITHUB_ENV"
+          echo "ENGINE_MATURIN=${RUNNER_TEMP}/maturin-env/bin/maturin" >> "$GITHUB_ENV"
+      - name: Resolve controlled executables on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $rustc = (& rustup which --toolchain 1.83.0 rustc).Trim()
+          $cargo = (& rustup which --toolchain 1.83.0 cargo).Trim()
+          "ENGINE_PYTHON=$((Get-Command python.exe).Source)" >> $env:GITHUB_ENV
+          "ENGINE_RUSTC=$rustc" >> $env:GITHUB_ENV
+          "ENGINE_CARGO=$cargo" >> $env:GITHUB_ENV
+          "ENGINE_MATURIN=$env:RUNNER_TEMP\maturin-env\Scripts\maturin.exe" >> $env:GITHUB_ENV
+      - name: Acquire exact upstream base source
+        run: uv run python tools/build_poke_engine_wheel.py acquire --checkout "${{ runner.temp }}/poke-engine"
+      - name: Fetch locked Cargo dependencies before offline build
+        shell: pwsh
+        env:
+          CARGO_HOME: ${{ runner.temp }}/battlebelief-engine-cargo-home
+        run: '& "${{ env.ENGINE_CARGO }}" fetch --locked --manifest-path "${{ runner.temp }}/poke-engine/poke-engine-py/Cargo.toml"'
+      - name: Build and bind one ordered downstream wheel cell
+        run: uv run python tools/build_poke_engine_wheel.py build-v3 --checkout "${{ runner.temp }}/poke-engine" --base-source-manifest artifacts/gen9ou/m2/engine/engine-source.json --source-manifest artifacts/gen9ou/m2/engine-v3/engine-source.json --legal-choice-patch artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch --resolved-action-order-patch artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-resolved-action-order-v1.patch --python "${{ env.ENGINE_PYTHON }}" --rustc "${{ env.ENGINE_RUSTC }}" --cargo "${{ env.ENGINE_CARGO }}" --maturin "${{ env.ENGINE_MATURIN }}" --target "${{ env.ENGINE_TARGET }}" --operating-system "${{ matrix.os }}" --wheelhouse "${{ runner.temp }}/engine-wheel" --output "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json"
+      - name: Run native Python-binding regression tests
+        shell: pwsh
+        run: |
+          uv venv "${{ runner.temp }}/binding-test-env" --python "${{ env.ENGINE_PYTHON }}"
+          if ("${{ runner.os }}" -eq "Windows") { $testPython = "${{ runner.temp }}\binding-test-env\Scripts\python.exe" } else { $testPython = "${{ runner.temp }}/binding-test-env/bin/python" }
+          uv pip install --python $testPython pytest==9.1.1
+          uv pip install --python $testPython --no-deps "${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}"
+          & $testPython -m pytest "${{ runner.temp }}/poke-engine/poke-engine-py/python/tests/test_poke_engine.py" -q -k resolved_action_order
+      - name: Verify v3 staged wheel
+        run: uv run python tools/verify_published_wheel_manifest_v3.py --source-manifest artifacts/gen9ou/m2/engine-v3/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --wheel "${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}"
+      - name: Build package wheels for the v3 staged-wheel smoke
+        run: |
+          uv build packages/battlebelief-core --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+          uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
+          uv venv "${{ runner.temp }}/sentinel-env" --python "${{ env.ENGINE_PYTHON }}" --seed
+      - name: Run v3 staged-wheel smoke
+        shell: pwsh
+        run: |
+          $core = @(Get-ChildItem -LiteralPath "${{ runner.temp }}/battlebelief-wheels" -Filter 'battlebelief_core-*.whl' -File)
+          $runtime = @(Get-ChildItem -LiteralPath "${{ runner.temp }}/battlebelief-wheels" -Filter 'battlebelief_runtime-*.whl' -File)
+          if ("${{ runner.os }}" -eq "Windows") { $sentinelPython = "${{ runner.temp }}\sentinel-env\Scripts\python.exe" } else { $sentinelPython = "${{ runner.temp }}/sentinel-env/bin/python" }
+          uv pip install --python $sentinelPython --only-binary :all: rfc8785==0.1.4
+          uv pip install --python $sentinelPython --no-deps $core[0].FullName $runtime[0].FullName "${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}"
+          & $sentinelPython tools/smoke_poke_engine_resolved_action_order.py --cell-id "${{ env.ENGINE_CELL }}" --source-manifest artifacts/gen9ou/m2/engine-v3/engine-source.json --build-manifest "${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --output "${{ runner.temp }}/resolved-order-sentinel-${{ env.ENGINE_CELL }}.json"
+      - name: Upload v3 cell artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: resolved-order-build-${{ env.ENGINE_CELL }}
+          path: |
+            ${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json
+            ${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  resolved-order-candidate-index:
+    name: resolved-order-candidate-index
+    needs: [resolved-order-build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.14"
+      - name: Install locked tooling
+        run: |
+          python -m pip install uv==0.12.0
+          uv sync --frozen --all-packages --group dev
+      - name: Download all v3 cell artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: resolved-order-build-*
+          path: ${{ runner.temp }}/engine-builds
+          merge-multiple: true
+      - name: Create v3 candidate index
+        run: uv run python tools/create_engine_artifact_index_v3.py --source-manifest artifacts/gen9ou/m2/engine-v3/engine-source.json --input-root "${{ runner.temp }}/engine-builds" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status candidate --output "${{ runner.temp }}/engine-data/engine-artifact-index.json"
+      - name: Upload v3 candidate sidecars
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: resolved-order-candidate-index
+          path: ${{ runner.temp }}/engine-data
+          if-no-files-found: error
+          retention-days: 7
