@@ -823,7 +823,7 @@ def inspect_wheel(
 ) -> dict[str, Any]:
     """Bind a built wheel and its security-relevant metadata."""
 
-    if not re.fullmatch(r"0\.0\.(?:48|49)", distribution_version):
+    if distribution_version not in SUPPORTED_WHEEL_DISTRIBUTION_VERSIONS:
         _fail("wheel distribution identity differs")
     expected_filename = (
         f"poke_engine-{distribution_version}-{python_tag}-{abi_tag}-{platform_tag}.whl"
@@ -1131,6 +1131,9 @@ RESOLVED_ACTION_ORDER_BUILD_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine
 RESOLVED_ACTION_ORDER_INDEX_SCHEMA_ID = "urn:battlebelief:schema:manifest:engine-artifact-index:v3"
 RESOLVED_ACTION_ORDER_ADAPTER_VERSION = "battlebelief-poke-engine-v3-resolved-action-order"
 RESOLVED_ACTION_ORDER_RELEASE_TAG = "engine-poke-engine-v0.0.50-bcf13823-v3-resolved-order-r1"
+SUPPORTED_WHEEL_DISTRIBUTION_VERSIONS = frozenset(
+    (UPSTREAM_TAG.removeprefix("v"), LEGAL_CHOICE_VERSION, RESOLVED_ACTION_ORDER_VERSION)
+)
 RESOLVED_ACTION_ORDER_PATCH_CHAIN = (
     (
         "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-legal-choices-v1.patch",
