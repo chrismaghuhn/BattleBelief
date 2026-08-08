@@ -67,6 +67,7 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
         "artifact-stage-sentinel",
         "artifact-index",
         "runtime-search-smoke",
+        "differential-harness-smoke",
     ]
     assert "permissions" not in gate
     assert all("uses" not in step for step in gate["steps"])
@@ -82,6 +83,7 @@ def test_pr_gate_requires_focused_protocol_and_safety_smokes() -> None:
     assert '"$ARTIFACT_STAGE_SENTINEL"' in gate_step["run"]
     assert '"$ARTIFACT_INDEX"' in gate_step["run"]
     assert '"$RUNTIME_SEARCH_SMOKE"' in gate_step["run"]
+    assert '"$DIFFERENTIAL_HARNESS_SMOKE"' in gate_step["run"]
     assert "success|skipped" in gate_step["run"]
 
 
@@ -365,3 +367,32 @@ def test_pr_gate_requires_oracle_smoke() -> None:
     gate_step = gate["steps"][0]
     assert gate_step["env"]["ORACLE_SMOKE"] == "${{ needs['oracle-smoke'].result }}"
     assert '"$ORACLE_SMOKE"' in gate_step["run"]
+
+
+def test_differential_harness_smoke_is_data_only_and_synthetic() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["differential-harness-smoke"]
+
+    assert job["name"] == "differential-harness-smoke"
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert "permissions" not in job
+    steps = job["steps"]
+    assert [step.get("uses") for step in steps if "uses" in step] == [
+        _CHECKOUT_ACTION,
+        _SETUP_PYTHON_ACTION,
+    ]
+    assert steps[0]["with"] == {"persist-credentials": "false"}
+    assert steps[1]["with"] == {"python-version": "3.14"}
+    assert [step.get("run") for step in steps if "run" in step] == [
+        "python -m pip install uv==0.12.0",
+        "uv sync --frozen --all-packages --group dev",
+        "uv run python tools/validate_differential_corpus.py",
+        "uv run python tools/run_engine_differential.py --synthetic-smoke",
+    ]
+
+    gate = workflow["jobs"]["pr-gate"]
+    assert "differential-harness-smoke" in gate["needs"]
+    gate_step = gate["steps"][0]
+    assert gate_step["env"]["DIFFERENTIAL_HARNESS_SMOKE"] == (
+        "${{ needs['differential-harness-smoke'].result }}"
+    )

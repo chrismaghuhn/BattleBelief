@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "corpus_id": "gen9ou-differential",
+  "corpus_version": "1",
+  "corpus_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "schema_bindings": [
+    {
+      "schema_id": "urn:battlebelief:schema:evaluation:differential-corpus:v1",
+      "schema_version": 1,
+      "schema_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "schema_id": "urn:battlebelief:schema:evaluation:differential-fixture:v1",
+      "schema_version": 1,
+      "schema_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "canonicalization": {
+    "canonicalization_id": "canonicalization-profile",
+    "canonicalization_version": "1",
+    "canonicalization_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "catalog": {
+    "catalog_id": "gen9ou-engine-capabilities",
+    "catalog_version": "1",
+    "catalog_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "ruleset": {
+    "ruleset_id": "synthetic-gen9ou-ruleset-v1",
+    "ruleset_digest": "sha256:f11dfee276a8addfea7b292b45b6bb5d823b1728a4b446776034f84e643e7fde",
+    "snapshot": {
+      "format_id": "gen9ou",
+      "ruleset_id": "synthetic-gen9ou-ruleset-v1",
+      "ruleset_version": 1
+    }
+  },
+  "normalization": {
+    "profile_id": "canonical-ordering",
+    "profile_version": "1",
+    "profile_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "classifier": {
+    "classifier_id": "battlebelief-differential-classifier",
+    "classifier_version": "1",
+    "classifier_source_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "known_divergence_definitions": []
+  },
+  "fixtures": [
+    {
+      "fixture_id": "schema-fixture",
+      "path": "fixtures/schema-fixture.json",
+      "fixture_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "coverage": [
+    {
+      "capability_id": "gen9.legality.move.selection",
+      "coverage_kind": "reviewed_fixture",
+      "fixture_ids": ["schema-fixture"],
+      "known_divergence_id": null
+    }
+  ]
+}

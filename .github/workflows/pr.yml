@@ -210,6 +210,27 @@ jobs:
       - name: Run safety smoke
         run: uv run pytest tests/smokes/test_safety_smoke.py -v
 
+  differential-harness-smoke:
+    name: differential-harness-smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        run: python -m pip install uv==0.12.0
+      - name: Sync locked workspace
+        run: uv sync --frozen --all-packages --group dev
+      - name: Validate the frozen data-only corpus closure
+        run: uv run python tools/validate_differential_corpus.py
+      - name: Run only the injected synthetic differential smoke
+        run: uv run python tools/run_engine_differential.py --synthetic-smoke
+
   artifact-build:
     name: engine-build-${{ matrix.os }}-py${{ matrix.python }}
     timeout-minutes: 45
@@ -597,6 +618,7 @@ jobs:
       - artifact-stage-sentinel
       - artifact-index
       - runtime-search-smoke
+      - differential-harness-smoke
     runs-on: ubuntu-24.04
     steps:
       - name: Evaluate required jobs
@@ -612,9 +634,10 @@ jobs:
           ARTIFACT_STAGE_SENTINEL: ${{ needs['artifact-stage-sentinel'].result }}
           ARTIFACT_INDEX: ${{ needs['artifact-index'].result }}
           RUNTIME_SEARCH_SMOKE: ${{ needs['runtime-search-smoke'].result }}
+          DIFFERENTIAL_HARNESS_SMOKE: ${{ needs['differential-harness-smoke'].result }}
         shell: bash
         run: |
-          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE" "$ARTIFACT_BUILD" "$ARTIFACT_CANDIDATE_INDEX" "$ARTIFACT_STAGE_SENTINEL" "$ARTIFACT_INDEX" "$RUNTIME_SEARCH_SMOKE"; do
+          for result in "$QUALITY" "$PACKAGE_SMOKE" "$ORACLE_SMOKE" "$DEPENDENCY_REVIEW" "$PROTOCOL_SMOKE" "$SAFETY_SMOKE" "$ARTIFACT_BUILD" "$ARTIFACT_CANDIDATE_INDEX" "$ARTIFACT_STAGE_SENTINEL" "$ARTIFACT_INDEX" "$RUNTIME_SEARCH_SMOKE" "$DIFFERENTIAL_HARNESS_SMOKE"; do
             case "$result" in
               success|skipped) ;;
               *) echo "Required job result: $result"; exit 1 ;;

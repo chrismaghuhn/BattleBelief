@@ -54,7 +54,15 @@ CATALOG_SCHEMAS = frozenset({"engine-capability-catalog-v1.schema.json"})
 def test_m15_examples_use_explicit_schema_mappings() -> None:
     schema_root = ROOT / "schemas"
     assert set(EXAMPLE_SCHEMA_MAP) == {
-        path.name for path in (schema_root / "examples").glob("*.example.json")
+        path.name
+        for path in (schema_root / "examples").glob("*.example.json")
+        if path.name
+        not in {
+            "capability-qualification.example.json",
+            "differential-corpus.example.json",
+            "differential-fixture.example.json",
+            "differential-result.example.json",
+        }
     }
     for example_name, schema_name in EXAMPLE_SCHEMA_MAP.items():
         example = json.loads((schema_root / "examples" / example_name).read_text())

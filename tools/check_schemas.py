@@ -84,6 +84,10 @@ EXAMPLE_SCHEMA_MAP = {
     "measurement-run-result.example.json": "measurement-run-result.schema.json",
     "showdown-oracle-source.example.json": "showdown-oracle-source.schema.json",
     "showdown-oracle-build.example.json": "showdown-oracle-build.schema.json",
+    "differential-corpus.example.json": "differential-corpus.schema.json",
+    "differential-fixture.example.json": "differential-fixture.schema.json",
+    "differential-result.example.json": "differential-result.schema.json",
+    "capability-qualification.example.json": "capability-qualification.schema.json",
 }
 
 INVALID_EXAMPLE_SCHEMA_MAP = {
@@ -95,6 +99,10 @@ INVALID_EXAMPLE_SCHEMA_MAP = {
     "invalid/engine-capability-evidence.invalid.json": "engine-capability-evidence.schema.json",
     "invalid/showdown-oracle-source.invalid.json": "showdown-oracle-source.schema.json",
     "invalid/showdown-oracle-build.invalid.json": "showdown-oracle-build.schema.json",
+    "invalid/differential-corpus.invalid.json": "differential-corpus.schema.json",
+    "invalid/differential-fixture.invalid.json": "differential-fixture.schema.json",
+    "invalid/differential-result.invalid.json": "differential-result.schema.json",
+    "invalid/capability-qualification.invalid.json": "capability-qualification.schema.json",
 }
 
 
@@ -168,6 +176,14 @@ RECORD_SCHEMA_NAMES = frozenset(
 )
 
 CATALOG_SCHEMA_NAMES = frozenset({"engine-capability-catalog-v1.schema.json"})
+EVALUATION_SCHEMA_NAMES = frozenset(
+    {
+        "capability-qualification.schema.json",
+        "differential-corpus.schema.json",
+        "differential-fixture.schema.json",
+        "differential-result.schema.json",
+    }
+)
 
 _CONTRACT_PATHS = {
     "contract-engine-capabilities": Path("docs/contracts/engine-capabilities.md"),
@@ -186,6 +202,8 @@ _QUALIFICATION_PROVENANCE_RELATIVE = Path(
 def _schema_path_for_example(schema_root: Path, schema_name: str) -> Path:
     if schema_name in CATALOG_SCHEMA_NAMES:
         return schema_root / "catalogs" / schema_name
+    if schema_name in EVALUATION_SCHEMA_NAMES:
+        return schema_root / "evaluation" / schema_name
     directory = "records" if schema_name in RECORD_SCHEMA_NAMES else "manifests"
     return schema_root / directory / schema_name
 

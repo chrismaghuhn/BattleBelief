@@ -259,6 +259,19 @@ def main() -> int:
             [
                 str(environment_python(lab_env)),
                 "-c",
+                "from importlib import resources; "
+                "from pathlib import Path; "
+                f"source = Path({str(ROOT)!r}) / 'schemas' / 'evaluation'; "
+                "package = resources.files('battlebelief_lab.differential').joinpath('schemas'); "
+                "assert all((package.joinpath(name).read_bytes() == (source / name).read_bytes()) "
+                "for name in ('differential-corpus.schema.json', 'differential-fixture.schema.json', "
+                "'differential-result.schema.json', 'capability-qualification.schema.json'))",
+            ]
+        )
+        run(
+            [
+                str(environment_python(lab_env)),
+                "-c",
                 "from battlebelief_lab.oracle.showdown import "
                 "OracleFailureClass, OracleRequestIdentity, OracleResult, "
                 "ShowdownBuildManifest, ShowdownOracleConfig, ShowdownOracleSession, "

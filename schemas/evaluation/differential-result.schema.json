@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:battlebelief:schema:evaluation:differential-result:v1",
+  "title": "BattleBelief differential fixture result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "fixture_digest",
+    "execution_status",
+    "divergence_class",
+    "failure_class",
+    "failure_origin",
+    "differing_fields",
+    "known_divergence_id",
+    "synthetic",
+    "provenance",
+    "runner",
+    "classifier",
+    "seed"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "fixture_id": {"$ref": "#/$defs/id"},
+    "fixture_digest": {"$ref": "#/$defs/digest"},
+    "execution_status": {"enum": ["completed", "skipped", "failed"]},
+    "divergence_class": {"enum": ["match", "known_divergence", "unclassified", null]},
+    "failure_class": {
+      "enum": [
+        "unavailable",
+        "artifact_mismatch",
+        "timeout",
+        "crash",
+        "malformed_output",
+        "mapping_failure",
+        "backend_error",
+        null
+      ]
+    },
+    "failure_origin": {"enum": ["oracle", "engine", "runtime_adapter", null]},
+    "differing_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/comparison_field"}
+    },
+    "known_divergence_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+    "synthetic": {"type": "boolean"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "runner": {"$ref": "#/$defs/implementation"},
+    "classifier": {"$ref": "#/$defs/classifier"},
+    "seed": {"$ref": "#/$defs/seed"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"failure_class": {"type": "null"}}},
+      "then": {"properties": {"failure_origin": {"type": "null"}}},
+      "else": {"properties": {"failure_origin": {"not": {"type": "null"}}}}
+    },
+    {
+      "if": {"properties": {"failure_origin": {"type": "null"}}},
+      "then": {"properties": {"failure_class": {"type": "null"}}},
+      "else": {"properties": {"failure_class": {"not": {"type": "null"}}}}
+    },
+    {
+      "if": {"properties": {"execution_status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "divergence_class": {"enum": ["match", "known_divergence", "unclassified"]},
+          "failure_class": {"type": "null"},
+          "failure_origin": {"type": "null"}
+        }
+      },
+      "else": {"properties": {"divergence_class": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"execution_status": {"const": "failed"}}},
+      "then": {
+        "properties": {
+          "failure_class": {"not": {"type": "null"}},
+          "failure_origin": {"not": {"type": "null"}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"divergence_class": {"const": "known_divergence"}}},
+      "then": {"properties": {"known_divergence_id": {"$ref": "#/$defs/id"}}},
+      "else": {"properties": {"known_divergence_id": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"execution_status": {"const": "completed"}}},
+          {"properties": {"divergence_class": {"const": "match"}}}
+        ]
+      },
+      "then": {"properties": {"differing_fields": {"maxItems": 0}}}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"properties": {"execution_status": {"const": "completed"}}},
+          {"properties": {"differing_fields": {"maxItems": 0}}}
+        ]
+      },
+      "then": {"properties": {"divergence_class": {"const": "match"}}}
+    }
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+    "version": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+    "schema_id": {
+      "type": "string",
+      "pattern": "^urn:battlebelief:schema:[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*:v[1-9][0-9]*$"
+    },
+    "comparison_field": {
+      "enum": [
+        "legal_actions",
+        "active_slot",
+        "effective_types",
+        "terastallized",
+        "hp",
+        "status",
+        "action_order",
+        "terminal_state",
+        "terminal_value",
+        "chance_branch_probabilities"
+      ]
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runner_id", "runner_version", "runner_source_digest"],
+      "properties": {
+        "runner_id": {"$ref": "#/$defs/id"},
+        "runner_version": {"$ref": "#/$defs/version"},
+        "runner_source_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "classifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classifier_id", "classifier_version", "classifier_source_digest"],
+      "properties": {
+        "classifier_id": {"$ref": "#/$defs/id"},
+        "classifier_version": {"$ref": "#/$defs/version"},
+        "classifier_source_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "seed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed_id", "seed_digest"],
+      "properties": {
+        "seed_id": {"$ref": "#/$defs/id"},
+        "seed_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "corpus",
+        "ruleset",
+        "catalog",
+        "oracle",
+        "engine",
+        "runtime_adapter",
+        "environment",
+        "canonicalization",
+        "result_schema"
+      ],
+      "properties": {
+        "corpus": {"$ref": "#/$defs/corpus"},
+        "ruleset": {"$ref": "#/$defs/ruleset"},
+        "catalog": {"$ref": "#/$defs/catalog"},
+        "oracle": {"$ref": "#/$defs/oracle"},
+        "engine": {"$ref": "#/$defs/engine"},
+        "runtime_adapter": {"$ref": "#/$defs/runtime_adapter"},
+        "environment": {"$ref": "#/$defs/environment"},
+        "canonicalization": {"$ref": "#/$defs/canonicalization"},
+        "result_schema": {"$ref": "#/$defs/result_schema"}
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["corpus_id", "corpus_version", "corpus_digest"],
+      "properties": {
+        "corpus_id": {"$ref": "#/$defs/id"},
+        "corpus_version": {"$ref": "#/$defs/version"},
+        "corpus_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleset_id", "ruleset_digest"],
+      "properties": {
+        "ruleset_id": {"$ref": "#/$defs/id"},
+        "ruleset_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_id", "catalog_version", "catalog_digest"],
+      "properties": {
+        "catalog_id": {"$ref": "#/$defs/id"},
+        "catalog_version": {"$ref": "#/$defs/version"},
+        "catalog_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_manifest_digest", "build_manifest_digest"],
+      "properties": {
+        "source_manifest_digest": {"$ref": "#/$defs/digest"},
+        "build_manifest_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_manifest_digest", "build_manifest_digest", "wheel_digest"],
+      "properties": {
+        "source_manifest_digest": {"$ref": "#/$defs/digest"},
+        "build_manifest_digest": {"$ref": "#/$defs/digest"},
+        "wheel_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "runtime_adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter_id", "adapter_version", "source_digest"],
+      "properties": {
+        "adapter_id": {"$ref": "#/$defs/id"},
+        "adapter_version": {"$ref": "#/$defs/version"},
+        "source_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment_id", "environment_digest"],
+      "properties": {
+        "environment_id": {"$ref": "#/$defs/id"},
+        "environment_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "canonicalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_version", "profile_digest"],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/id"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "result_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "schema_version", "schema_digest"],
+      "properties": {
+        "schema_id": {"$ref": "#/$defs/schema_id"},
+        "schema_version": {"$ref": "#/$defs/version"},
+        "schema_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

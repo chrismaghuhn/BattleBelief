@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "capability_id": "gen9.legality.move.selection",
+  "required_fixture_count": 1,
+  "required_environment_count": 1,
+  "result_count": 1,
+  "all_required_fixtures_present": true,
+  "environment_matrix_complete": true,
+  "all_executed": true,
+  "all_results_match": true,
+  "identities_match": true,
+  "contains_synthetic": true,
+  "capability_status": "unknown",
+  "exact_eligible": false
+}
