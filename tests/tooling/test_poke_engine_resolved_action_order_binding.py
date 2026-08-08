@@ -395,6 +395,7 @@ def test_v3_workflow_is_triggered_by_every_staged_smoke_input() -> None:
     )
 
     paths = workflow["on"]["pull_request"]["paths"]
+    assert ".gitattributes" in paths
     assert "packages/battlebelief-runtime/tests/fixtures/poke_engine/**" in paths
     assert (
         "packages/battlebelief-runtime/src/battlebelief_runtime/adapters/poke_engine/"

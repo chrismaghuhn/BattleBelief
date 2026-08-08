@@ -3,6 +3,7 @@ name: Downstream poke-engine resolved-action-order artifact
 on:
   pull_request:
     paths:
+      - ".gitattributes"
       - ".github/workflows/poke-engine-resolved-action-order.yml"
       - "artifacts/gen9ou/m2/engine-v3/**"
       - "artifacts/gen9ou/m2/engine/downstream-patches/poke-engine-resolved-action-order-v1.patch"
