@@ -252,8 +252,10 @@ def test_build_argv_is_locked_feature_explicit_and_platform_truthful() -> None:
     assert "--compatibility" not in windows
 
 
-def _write_fixture_wheel(path: Path, *, version: str = "0.0.48") -> None:
-    dist_info = "poke_engine-0.0.48.dist-info"
+def _write_fixture_wheel(
+    path: Path, *, version: str = "0.0.48", dist_info_version: str = "0.0.48"
+) -> None:
+    dist_info = f"poke_engine-{dist_info_version}.dist-info"
     metadata = f"Metadata-Version: 2.1\nName: poke-engine\nVersion: {version}\n".encode()
     wheel_metadata = b"Wheel-Version: 1.0\nRoot-Is-Purelib: false\nTag: cp314-none-win_amd64\n"
 
@@ -310,6 +312,39 @@ def test_wheel_inspection_rejects_wrong_distribution_version(tmp_path: Path) -> 
             python_tag="cp314",
             abi_tag="none",
             platform_tag="win_amd64",
+        )
+
+
+@pytest.mark.parametrize("distribution_version", ["0.0.48", "0.0.49", "0.0.50"])
+def test_wheel_inspection_accepts_each_approved_distribution_version(
+    tmp_path: Path, distribution_version: str
+) -> None:
+    wheel_path = tmp_path / f"poke_engine-{distribution_version}-cp314-none-win_amd64.whl"
+    _write_fixture_wheel(
+        wheel_path,
+        version=distribution_version,
+        dist_info_version=distribution_version,
+    )
+
+    inspected = inspect_wheel(
+        wheel_path,
+        python_tag="cp314",
+        abi_tag="none",
+        platform_tag="win_amd64",
+        distribution_version=distribution_version,
+    )
+
+    assert inspected["filename"] == wheel_path.name
+
+
+def test_wheel_inspection_rejects_an_unapproved_distribution_version(tmp_path: Path) -> None:
+    with pytest.raises(BuildPokeEngineError, match="wheel distribution identity differs"):
+        inspect_wheel(
+            tmp_path / "poke_engine-0.0.51-cp314-none-win_amd64.whl",
+            python_tag="cp314",
+            abi_tag="none",
+            platform_tag="win_amd64",
+            distribution_version="0.0.51",
         )
 
 

@@ -1,0 +1,272 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 165663e71a05fcea146debbaf1ee0269f412fe97..28676d14647c5bfb5d7ebcfa8beec11dda8d49fe 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -200 +200 @@ name = "poke_engine"
+-version = "0.0.49"
++version = "0.0.50"
+diff --git a/poke-engine-py/Cargo.toml b/poke-engine-py/Cargo.toml
+index 9f0043c1c105a68d997fcf0698f699c005035d73..e74cf10c5212a7ce18d2341c57283d56a183f3c7 100644
+--- a/poke-engine-py/Cargo.toml
++++ b/poke-engine-py/Cargo.toml
+@@ -4 +4 @@ edition = "2021"
+-version = "0.0.49"
++version = "0.0.50"
+diff --git a/poke-engine-py/pyproject.toml b/poke-engine-py/pyproject.toml
+index 2518ee7943a666c45b904c195118b45427d4f6f1..895822428b81e6a00f2e3cd2cbdfcf65357449fe 100644
+--- a/poke-engine-py/pyproject.toml
++++ b/poke-engine-py/pyproject.toml
+@@ -11 +11 @@ name = "poke-engine"
+-version = "0.0.49"
++version = "0.0.50"
+diff --git a/poke-engine-py/python/poke_engine/poke_engine.pyi b/poke-engine-py/python/poke_engine/poke_engine.pyi
+index 80b017f363d257420a71aed2b6f049c0c9e92efa..784598311efddb333204c922f3ba239bba16c864 100644
+--- a/poke-engine-py/python/poke_engine/poke_engine.pyi
++++ b/poke-engine-py/python/poke_engine/poke_engine.pyi
+@@ -363 +363 @@ class StateInstructions:
+-    """State instructions with percentage and instruction list."""
++    """State instructions with percentage, instruction list, and native action order."""
+@@ -366,0 +367 @@ class StateInstructions:
++    resolved_action_order: Optional[Tuple[str, str]]
+diff --git a/poke-engine-py/python/tests/test_poke_engine.py b/poke-engine-py/python/tests/test_poke_engine.py
+index 5d5a35306e68746c8d526f06d2f6c1c8e715591b..062e775a2c0f64552fd4f2f1fc58ef9ba80c8dad 100644
+--- a/poke-engine-py/python/tests/test_poke_engine.py
++++ b/poke-engine-py/python/tests/test_poke_engine.py
+@@ -104 +104 @@ def test_generate_instructions_errors_when_move_does_not_exist():
+-def _pokemon(name, moves, *, hp=100):
++def _pokemon(name, moves, *, hp=100, speed=100):
+@@ -116 +116 @@ def _pokemon(name, moves, *, hp=100):
+-        speed=100,
++        speed=speed,
+@@ -207,0 +208,123 @@ def test_legal_choices_uses_canonical_lowercase_choice_strings():
++
++
++def _order_state(
++    *,
++    side_one_speed=100,
++    side_two_speed=100,
++    side_one_moves=None,
++    side_two_moves=None,
++    side_one_reserve=False,
++    side_two_reserve=False,
++):
++    side_one_pokemon = [
++        _pokemon(
++            "squirtle",
++            side_one_moves or [Move(id="tackle", pp=32), Move(id="leer", pp=32)],
++            speed=side_one_speed,
++        )
++    ]
++    side_two_pokemon = [
++        _pokemon(
++            "charmander",
++            side_two_moves or [Move(id="tackle", pp=32), Move(id="leer", pp=32)],
++            speed=side_two_speed,
++        )
++    ]
++    if side_one_reserve:
++        side_one_pokemon.append(_pokemon("pikachu", [Move(id="tackle", pp=32)], speed=1))
++    if side_two_reserve:
++        side_two_pokemon.append(_pokemon("bulbasaur", [Move(id="tackle", pp=32)], speed=1))
++    return State(
++        side_one=Side(pokemon=side_one_pokemon),
++        side_two=Side(pokemon=side_two_pokemon),
++        weather="none",
++        weather_turns_remaining=-1,
++        terrain="none",
++        terrain_turns_remaining=-1,
++        trick_room=False,
++        trick_room_turns_remaining=-1,
++    )
++
++
++def _orders(state, side_one_choice, side_two_choice):
++    before = state.to_string()
++    branches = generate_instructions(state, side_one_choice, side_two_choice)
++    assert state.to_string() == before
++    assert branches
++    assert all(isinstance(branch.percentage, float) for branch in branches)
++    assert all(isinstance(branch.instruction_list, list) for branch in branches)
++    return branches
++
++
++def test_resolved_action_order_uses_the_native_ordinary_speed_branch():
++    branches = _orders(_order_state(side_one_speed=120, side_two_speed=80), "tackle", "tackle")
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2")}
++
++
++def test_resolved_action_order_uses_the_native_reversed_speed_branch():
++    branches = _orders(_order_state(side_one_speed=80, side_two_speed=120), "tackle", "tackle")
++
++    assert {branch.resolved_action_order for branch in branches} == {("p2", "p1")}
++
++
++def test_resolved_action_order_uses_the_native_priority_branch():
++    branches = _orders(
++        _order_state(
++            side_one_speed=1,
++            side_two_speed=999,
++            side_one_moves=[Move(id="quickattack", pp=32)],
++        ),
++        "quickattack",
++        "tackle",
++    )
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2")}
++
++
++def test_resolved_action_order_uses_the_native_switch_move_branch():
++    branches = _orders(
++        _order_state(side_one_reserve=True), "pikachu", "tackle"
++    )
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2")}
++
++
++def test_resolved_action_order_uses_the_native_switch_switch_branch():
++    branches = _orders(
++        _order_state(
++            side_one_speed=120,
++            side_two_speed=80,
++            side_one_reserve=True,
++            side_two_reserve=True,
++        ),
++        "pikachu",
++        "bulbasaur",
++    )
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2")}
++
++
++def test_resolved_action_order_exposes_both_native_speed_tie_branches():
++    branches = _orders(_order_state(), "leer", "leer")
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2"), ("p2", "p1")}
++    assert sum(branch.percentage for branch in branches) == pytest.approx(100.0)
++
++
++def test_resolved_action_order_tera_uses_the_same_native_order_path():
++    branches = _orders(
++        _order_state(side_one_speed=120, side_two_speed=80), "tackle-tera", "tackle"
++    )
++
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2")}
++
++
++def test_resolved_action_order_keeps_same_state_speed_tie_branches_distinct():
++    state = _order_state()
++    branches = _orders(state, "leer", "leer")
++    successor_states = {state.apply_instructions(branch).to_string() for branch in branches}
++
++    assert len(branches) == 2
++    assert len(successor_states) == 1
++    assert {branch.resolved_action_order for branch in branches} == {("p1", "p2"), ("p2", "p1")}
+diff --git a/poke-engine-py/src/lib.rs b/poke-engine-py/src/lib.rs
+index 86e8cde8fc8db6df63616b4424579ce7a783db66..259c07ff2ed9ec54ba115b5614e4ef8ec5f646a1 100644
+--- a/poke-engine-py/src/lib.rs
++++ b/poke-engine-py/src/lib.rs
+@@ -9 +9,2 @@ use poke_engine::engine::generate_instructions::{
+-    calculate_both_damage_rolls, generate_instructions_from_move_pair,
++    calculate_both_damage_rolls, generate_instructions_from_move_pair_with_resolved_action_order,
++    ResolvedActionOrder,
+@@ -990,0 +992 @@ struct PyStateInstructions {
++    pub resolved_action_order: Option<(String, String)>,
+@@ -1001,0 +1004 @@ impl From<StateInstructions> for PyStateInstructions {
++            resolved_action_order: None,
+@@ -1085,2 +1088,17 @@ fn generate_instructions(
+-    let instructions = generate_instructions_from_move_pair(&mut state, &s1_move, &s2_move, true);
+-    let py_instructions = instructions.iter().map(|i| i.clone().into()).collect();
++    let instructions = generate_instructions_from_move_pair_with_resolved_action_order(
++        &mut state,
++        &s1_move,
++        &s2_move,
++        true,
++    );
++    let py_instructions = instructions
++        .into_iter()
++        .map(|(instructions, resolved_action_order)| {
++            let mut py_instructions: PyStateInstructions = instructions.into();
++            py_instructions.resolved_action_order = resolved_action_order.map(|order| match order {
++                ResolvedActionOrder::SideOneThenSideTwo => ("p1".to_string(), "p2".to_string()),
++                ResolvedActionOrder::SideTwoThenSideOne => ("p2".to_string(), "p1".to_string()),
++            });
++            py_instructions
++        })
++        .collect();
+diff --git a/src/genx/generate_instructions.rs b/src/genx/generate_instructions.rs
+index 3b173fe232f292e117b06f9048f988341c6271d3..c244405c168f31a3fb66d7e5188e62f0fb0178d7 100644
+--- a/src/genx/generate_instructions.rs
++++ b/src/genx/generate_instructions.rs
+@@ -4023,0 +4024,6 @@ pub fn generate_instructions_for_bss_team_preview(
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub enum ResolvedActionOrder {
++    SideOneThenSideTwo,
++    SideTwoThenSideOne,
++}
++
+@@ -4029,0 +4036,17 @@ pub fn generate_instructions_from_move_pair(
++    generate_instructions_from_move_pair_with_resolved_action_order(
++        state,
++        side_one_move,
++        side_two_move,
++        branch_on_damage,
++    )
++    .into_iter()
++    .map(|(instructions, _)| instructions)
++    .collect()
++}
++
++pub fn generate_instructions_from_move_pair_with_resolved_action_order(
++    state: &mut State,
++    side_one_move: &MoveChoice,
++    side_two_move: &MoveChoice,
++    branch_on_damage: bool,
++) -> Vec<(StateInstructions, Option<ResolvedActionOrder>)> {
+@@ -4044 +4067,4 @@ pub fn generate_instructions_from_move_pair(
+-        );
++        )
++        .into_iter()
++        .map(|instructions| (instructions, None))
++        .collect();
+@@ -4143 +4169,4 @@ pub fn generate_instructions_from_move_pair(
+-        return state_instructions_vec;
++        return state_instructions_vec
++            .into_iter()
++            .map(|instructions| (instructions, Some(ResolvedActionOrder::SideOneThenSideTwo)))
++            .collect();
+@@ -4159 +4188,4 @@ pub fn generate_instructions_from_move_pair(
+-        return state_instructions_vec;
++        return state_instructions_vec
++            .into_iter()
++            .map(|instructions| (instructions, Some(ResolvedActionOrder::SideTwoThenSideOne)))
++            .collect();
+@@ -4207,0 +4240 @@ pub fn generate_instructions_from_move_pair(
++    let mut resolved_action_orders = Vec::with_capacity(4);
+@@ -4235,0 +4269,4 @@ pub fn generate_instructions_from_move_pair(
++            resolved_action_orders.resize(
++                state_instructions_vec.len(),
++                ResolvedActionOrder::SideOneThenSideTwo,
++            );
+@@ -4257,0 +4295,4 @@ pub fn generate_instructions_from_move_pair(
++            resolved_action_orders.resize(
++                state_instructions_vec.len(),
++                ResolvedActionOrder::SideTwoThenSideOne,
++            );
+@@ -4284,0 +4326,4 @@ pub fn generate_instructions_from_move_pair(
++            resolved_action_orders.resize(
++                state_instructions_vec.len(),
++                ResolvedActionOrder::SideOneThenSideTwo,
++            );
+@@ -4310,0 +4356,4 @@ pub fn generate_instructions_from_move_pair(
++            resolved_action_orders.resize(
++                state_instructions_vec.len(),
++                ResolvedActionOrder::SideTwoThenSideOne,
++            );
+@@ -4312,0 +4362 @@ pub fn generate_instructions_from_move_pair(
++    debug_assert_eq!(state_instructions_vec.len(), resolved_action_orders.len());
+@@ -4313,0 +4364,4 @@ pub fn generate_instructions_from_move_pair(
++        .into_iter()
++        .zip(resolved_action_orders.into_iter())
++        .map(|(instructions, action_order)| (instructions, Some(action_order)))
++        .collect()
