@@ -123,7 +123,7 @@ jobs:
       - name: Stage v2 cell artifact
         run: uv run python -c "from pathlib import Path; import shutil; stage=Path(r'${{ runner.temp }}/engine-cell'); stage.mkdir(); shutil.copy2(Path(r'${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json'), stage); shutil.copy2(Path(r'${{ runner.temp }}/engine-wheel/${{ env.ENGINE_WHEEL }}'), stage)"
       - name: Upload v2 cell artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: legal-choice-build-${{ env.ENGINE_CELL }}
           path: ${{ runner.temp }}/engine-cell
@@ -159,7 +159,7 @@ jobs:
       - name: Assemble v2 candidate sidecars
         run: uv run python -c "from pathlib import Path; import shutil; data=Path(r'${{ runner.temp }}/engine-data'); shutil.copy2(Path('artifacts/gen9ou/m2/engine-v2/engine-source.json'), data); [shutil.copy2(path, data) for path in Path(r'${{ runner.temp }}/engine-builds').glob('engine-build-*.json')]"
       - name: Upload v2 candidate sidecars
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: legal-choice-candidate-index
           path: ${{ runner.temp }}/engine-data
@@ -230,7 +230,7 @@ jobs:
           }
           & $sentinelPython tools/smoke_poke_engine_legal_choices.py --cell-id "${{ env.ENGINE_CELL }}" --source-manifest "${{ runner.temp }}/engine-data/engine-source.json" --build-manifest "${{ runner.temp }}/engine-cell/engine-build-${{ env.ENGINE_CELL }}.json" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --output "${{ runner.temp }}/legal-choice-sentinel-${{ env.ENGINE_CELL }}.json"
       - name: Upload v2 sentinel evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: legal-choice-sentinel-${{ env.ENGINE_CELL }}
           path: ${{ runner.temp }}/legal-choice-sentinel-${{ env.ENGINE_CELL }}.json
@@ -275,7 +275,7 @@ jobs:
           cp "${RUNNER_TEMP}/v2-builds"/*.whl "${RUNNER_TEMP}/v2-final/"
           uv run python tools/create_engine_artifact_index_v2.py --source-manifest "${RUNNER_TEMP}/v2-final/engine-source.json" --input-root "${RUNNER_TEMP}/v2-final" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --availability-status available --evidence-root "${RUNNER_TEMP}/v2-evidence" --output "${RUNNER_TEMP}/v2-final/engine-artifact-index.json"
       - name: Upload v2 available publication candidate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: legal-choice-publication-candidate
           path: ${{ runner.temp }}/v2-final

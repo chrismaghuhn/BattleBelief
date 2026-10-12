@@ -306,7 +306,7 @@ jobs:
       - name: Stage the cell artifact
         run: uv run python -c "from pathlib import Path; import shutil; stage=Path(r'${{ runner.temp }}/engine-cell'); stage.mkdir(); shutil.copy2(Path(r'${{ runner.temp }}/engine-build-${{ env.ENGINE_CELL }}.json'), stage); [shutil.copy2(path, stage) for path in Path(r'${{ runner.temp }}/engine-wheel').glob('*.whl')]"
       - name: Upload temporary cell artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-build-${{ env.ENGINE_CELL }}
           path: ${{ runner.temp }}/engine-cell
@@ -342,7 +342,7 @@ jobs:
       - name: Assemble candidate sidecars
         run: uv run python -c "from pathlib import Path; import shutil; data=Path(r'${{ runner.temp }}/engine-data'); shutil.copy2(Path('artifacts/gen9ou/m2/engine/engine-source.json'), data); [shutil.copy2(path, data) for path in Path(r'${{ runner.temp }}/engine-builds').glob('engine-build-*.json')]"
       - name: Upload candidate index and sidecars
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-candidate-index
           path: ${{ runner.temp }}/engine-data
@@ -418,7 +418,7 @@ jobs:
         shell: pwsh
         run: '& "${{ env.SENTINEL_PYTHON }}" tools/smoke_gen9_engine.py --data-root "${{ runner.temp }}/engine-data" --fixture-root packages/battlebelief-runtime/tests/fixtures/poke_engine --staged-wheel "${{ runner.temp }}/engine-cell/${{ env.ENGINE_WHEEL }}" --output "${{ runner.temp }}/sentinel-${{ env.ENGINE_CELL }}.json"'
       - name: Upload sentinel evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-sentinel-${{ env.ENGINE_CELL }}
           path: ${{ runner.temp }}/sentinel-${{ env.ENGINE_CELL }}.json
@@ -486,7 +486,7 @@ jobs:
               --wheel "${RUNNER_TEMP}/publication/$wheel"
           done
       - name: Upload verified immutable release bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-publication-bundle
           path: ${{ runner.temp }}/publication
