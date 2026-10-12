@@ -149,7 +149,7 @@ jobs:
           python -m pip install uv==0.12.0
           uv sync --frozen --all-packages --group dev
       - name: Download all v2 cell artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: legal-choice-build-*
           path: ${{ runner.temp }}/engine-builds
@@ -199,12 +199,12 @@ jobs:
           uv build packages/battlebelief-runtime --wheel --out-dir "${{ runner.temp }}/battlebelief-wheels"
           uv venv "${{ runner.temp }}/sentinel-env" --python python --seed
       - name: Download v2 candidate sidecars
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: legal-choice-candidate-index
           path: ${{ runner.temp }}/engine-data
       - name: Download matching v2 wheel cell
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: legal-choice-build-${{ env.ENGINE_CELL }}
           path: ${{ runner.temp }}/engine-cell
@@ -255,13 +255,13 @@ jobs:
           python -m pip install uv==0.12.0
           uv sync --frozen --all-packages --group dev
       - name: Download v2 build cell artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: legal-choice-build-*
           path: ${{ runner.temp }}/v2-builds
           merge-multiple: true
       - name: Download v2 sentinel evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: legal-choice-sentinel-*
           path: ${{ runner.temp }}/v2-evidence
